@@ -112,7 +112,7 @@ export default function Login() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={isLoading}>
+          <button type="submit" className="btn btn-primary btn-full btn-lg">
             {isLoading ? (
               <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px', margin: '0 auto' }} />
             ) : (
