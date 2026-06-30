@@ -1,7 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authApi } from '../api/endpoints';
+import axios from 'axios'; // Import standard axios directly to bypass endpoint blocks
 
 const AuthContext = createContext(null);
+
+// Get the base API URL from your React environment variables (fallback to localhost if missing)
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 export function decodeToken(token) {
   try {
@@ -9,7 +12,6 @@ export function decodeToken(token) {
     const base64Url = token.split('.')[1];
     if (!base64Url) return null;
 
-    // Production-safe base64 decoding that safely handles special Unicode characters
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
     const jsonPayload = decodeURIComponent(
       window
@@ -48,12 +50,50 @@ export function AuthProvider({ children }) {
   }, [initUser]);
 
   const login = async (email, password) => {
-    const res = await authApi.login(email, password);
-    const { access_token } = res.data;
-    localStorage.setItem('token', access_token);
-    const payload = decodeToken(access_token);
-    setUser({ token: access_token, ...payload });
-    return payload;
+    console.log("   👉 3. Inside AuthContext: login function triggered.");
+    
+    // 1. Build the mandatory OAuth2 form parameters for FastAPI
+    const formData = new URLSearchParams();
+    formData.append('username', email);
+    formData.append('password', password);
+
+    console.log(`   👉 4. Dispatching direct form-urlencoded request to: ${API_BASE_URL}/auth/login`);
+    
+    try {
+      // 2. Fire the request explicitly bypassing endpoints wrapper
+      const res = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+      });
+
+      console.log("   👉 5. Network request resolved successfully! Data:", res?.data);
+
+      const { access_token } = res.data;
+      localStorage.setItem('token', access_token);
+      
+      const payload = decodeToken(access_token);
+      console.log("   👉 6. Decoded payload contents:", payload);
+
+      if (!payload) {
+        throw new Error("JWT payload decoding failed and returned null.");
+      }
+
+      setUser({ token: access_token, ...payload });
+      return payload;
+    } catch (apiError) {
+      // 3. This will print the EXACT reason it's failing (CORS, 422, 401, etc.)
+      console.error("   ❌ API NETWORK FAILURE DETAILED DIAGNOSTICS:");
+      if (apiError.response) {
+        console.error("   Status Code:", apiError.response.status);
+        console.error("   Server Error Data Body:", apiError.response.data);
+      } else if (apiError.request) {
+        console.error("   No response received from backend. Is your server running or is there a CORS/Network blocking rule?");
+      } else {
+        console.error("   Request configuration error message:", apiError.message);
+      }
+      throw apiError; 
+    }
   };
 
   const logout = () => {

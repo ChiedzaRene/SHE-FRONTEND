@@ -13,28 +13,37 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("👉 1. Form submit intercepted successfully!"); 
     setError('');
     setIsLoading(true);
 
     try {
+      console.log("👉 2. Attempting to call Context login() with email:", email);
       const payload = await login(email, password);
+      console.log("👉 3. login() call completed! Returned payload:", payload);
       
-      switch (payload.role) {
+      switch (payload?.role) {
         case 'admin': 
+          console.log("Routing to: /admin");
           navigate('/admin'); 
           break;
         case 'she_team': 
+          console.log("Routing to: /she-dashboard");
           navigate('/she-dashboard'); 
           break;
         case 'site_manager': 
+          console.log("Routing to: /site-dashboard");
           navigate('/site-dashboard'); 
           break;
         default: 
+          console.log("No explicit role matching. Routing to default: /");
           navigate('/');
       }
     } catch (err) {
+      console.error("❌ 4. Catch block caught an execution error:", err);
       setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
     } finally {
+      console.log("👉 5. Finally block clearing loading indicators.");
       setIsLoading(false);
     }
   };
