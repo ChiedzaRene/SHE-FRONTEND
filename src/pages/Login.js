@@ -112,3 +112,6 @@ export function useAuth() {
   }
   return context;
 }
+
+export { Login };          // Named export safeguard
+export default Login;
