@@ -1,113 +1,114 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-// 1. Import the verified logo file
-import logo from '../assets/glow-logo-1.jpg'; 
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import api from '../api/axios'; // Adjust this path to match your actual folder structure
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
-  const navigate = useNavigate();
+const AuthContext = createContext(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
+  // Helper function to safely decode JWT payload data
+  const decodeToken = (token) => {
     try {
-      const payload = await login(email, password);
-      // Route based on role
-      switch (payload.role) {
-        case 'admin': navigate('/admin'); break;
-        case 'she_team': navigate('/she-dashboard'); break;
-        case 'site_manager': navigate('/site-dashboard'); break;
-        default: navigate('/');
-      }
+      if (!token) return null;
+      const base64Url = token.split('.')[1];
+      if (!base64Url) return null;
+
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+
+      return JSON.parse(jsonPayload);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error("Failed to decode token:", err);
+      return null;
     }
   };
 
+  // Check for an existing session on app initialization
+  useEffect(() => {
+    const initializeAuth = () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        const payload = decodeToken(token);
+        // Optional: Check if token is expired here (payload.exp * 1000 < Date.now())
+        if (payload) {
+          setUser(payload);
+        } else {
+          localStorage.removeItem('token');
+        }
+      }
+      setLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
+
+  /**
+   * Login helper formatted specifically for FastAPI's OAuth2PasswordRequestForm
+   * @param {string} email 
+   * @param {string} password 
+   */
+  const login = async (email, password) => {
+    // 1. Format credentials into standard URL parameters instead of raw JSON
+    const formData = new URLSearchParams();
+    formData.append('username', email); // Mandatory fallback key name for FastAPI
+    formData.append('password', password);
+
+    // 2. Transmit request through global api wrapper configurations
+    const response = await api.post('/auth/login', formData, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+
+    const { access_token } = response.data;
+
+    // 3. Persist credential details inside browser memory
+    localStorage.setItem('token', access_token);
+
+    // 4. Decode the profile roles and IDs out of the payload
+    const payload = decodeToken(access_token);
+    setUser(payload);
+
+    // Return the payload back up to the Login.js component for conditional dashboard routing
+    return payload;
+  };
+
+  /**
+   * Log out helper to scrub credentials completely
+   */
+  const logout = () => {
+    localStorage.removeItem('token');
+    setUser(null);
+    window.location.href = '/login';
+  };
+
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    isAuthenticated: !!user,
+  };
+
   return (
-    <div className="login-page">
-      <div className="login-card">
-        {/* --- BRAND LOGO --- */}
-        <div className="login-logo" style={{ textAlign: 'center', paddingBottom: '20px' }}>
-          <img 
-            src={logo} 
-            alt="Glow Petroleum" 
-            style={{ 
-              maxWidth: '220px', 
-              height: 'auto', 
-              marginBottom: '16px' 
-            }} 
-          />
-          <h1 className="login-logo-title" style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>
-            SHE Portal
-          </h1>
-          <p className="login-logo-sub" style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            Safety, Health, Environment
-          </p>
-        </div>
-
-        {error && (
-          <div className="error-msg" style={{ 
-            backgroundColor: 'var(--danger-light)', 
-            color: 'var(--danger)', 
-            padding: '10px', 
-            borderRadius: '6px', 
-            marginBottom: '20px',
-            fontSize: '0.85rem',
-            textAlign: 'center',
-            fontWeight: '600'
-          }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <input
-              type="email"
-              className="form-control"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. manager@glowpetroleum.co.zw"
-              required
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: '32px' }}>
-            <label className="form-label">Password</label>
-            <input
-              type="password"
-              className="form-control"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-            />
-          </div>
-
-          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={isLoading}>
-            {isLoading ? (
-              <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px', margin: '0 auto' }} />
-            ) : (
-              'Sign In'
-            )}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-light)' }}>
-          © {new Date().getFullYear()} Glow Petroleum Ltd.
-        </div>
-      </div>
-    </div>
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
   );
+}
+
+// Custom hook to consume authentication contexts quickly inside child files
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be wrapped tightly inside an <AuthProvider /> block');
+  }
+  return context;
 }

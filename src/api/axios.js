@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-// Create the configured Axios instance
+// 1. Create the unified instance
 const api = axios.create({
-  // This automatically uses your Netlify environment variable, falling back to Render if missing
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
+  baseURL: process.env.REACT_APP_API_URL || 'https://she-backend-tjlg.onrender.com',
 });
 
-// Attach JWT token to every request automatically
+// 2. Attach JWT token to every outgoing request automatically
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -15,7 +14,7 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Auto-logout on 401 (except when on the login endpoint itself)
+// 3. Auto-logout on 401 (except on the login endpoint)
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -27,32 +26,18 @@ api.interceptors.response.use(
   }
 );
 
-// Your clean component login submit handler
-const handleLogin = async (e) => {
-  e.preventDefault();
-
+// 4. Dedicated export for the login request that accepts credentials safely
+export const loginUser = async (email, password) => {
   const formData = new URLSearchParams();
-  formData.append('username', email); 
+  formData.append('username', email); // Mandatory key name for FastAPI form_data
   formData.append('password', password);
 
-  try {
-    // By using api.post instead of axios.post, it automatically prefixes 
-    // your REACT_APP_API_URL straight to the front of '/auth/login'
-    const response = await api.post('/auth/login', formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-    });
-    
-    const token = response.data.access_token;
-    localStorage.setItem('token', token);
-    
-    window.location.href = '/'; 
-    
-  } catch (error) {
-    console.error("Login failed:", error.response?.data?.detail || error.message);
-  }
+  const response = await api.post('/auth/login', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
+  return response.data;
 };
 
-export { handleLogin };
 export default api;
