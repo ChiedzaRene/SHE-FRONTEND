@@ -13,37 +13,57 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("👉 1. Form submit intercepted successfully!"); 
+    
     setError('');
     setIsLoading(true);
 
     try {
-      console.log("👉 2. Attempting to call Context login() with email:", email);
-      const payload = await login(email, password);
-      console.log("👉 3. login() call completed! Returned payload:", payload);
       
-      switch (payload?.role) {
+      const res = await login(email, password);
+      
+
+      // Verify payload existence before proceeding
+      if (!res) {
+        throw new Error("Invalid response from server or authentication failed.");
+      }
+
+      // Safe role normalization
+      const rawRole = res?.role || res?.user?.role || res?.data?.role || '';
+      const role = String(rawRole).toLowerCase().trim();
+
+      console.log("Normalized role detected:", role);
+
+      switch (role) {
+        case 'super_admin':
+          console.log("Routing to: /admin/users");
+          navigate('/admin/users', { replace: true });
+          break;
         case 'admin': 
           console.log("Routing to: /admin");
-          navigate('/admin'); 
+          navigate('/admin', { replace: true }); 
           break;
         case 'she_team': 
           console.log("Routing to: /she-dashboard");
-          navigate('/she-dashboard'); 
+          navigate('/she-dashboard', { replace: true }); 
           break;
         case 'site_manager': 
           console.log("Routing to: /site-dashboard");
-          navigate('/site-dashboard'); 
+          navigate('/site-dashboard', { replace: true }); 
           break;
         default: 
-          console.log("No explicit role matching. Routing to default: /");
-          navigate('/');
+          
+          // DO NOT NAVIGATE — Stop invalid users here
+          setError("Account does not have a valid assigned role. Please contact your administrator.");
       }
     } catch (err) {
-      console.error("❌ 4. Catch block caught an execution error:", err);
-      setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
+      
+      setError(
+        err?.response?.data?.detail || 
+        err?.message || 
+        'Invalid email or password. Please try again.'
+      );
     } finally {
-      console.log("👉 5. Finally block clearing loading indicators.");
+
       setIsLoading(false);
     }
   };
@@ -121,7 +141,7 @@ export default function Login() {
             />
           </div>
 
-          <button type="submit" className="btn btn-primary btn-full btn-lg">
+          <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={isLoading}>
             {isLoading ? (
               <div className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px', margin: '0 auto' }} />
             ) : (

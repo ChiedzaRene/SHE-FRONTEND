@@ -1,43 +1,40 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios'; // Import standard axios directly to bypass endpoint blocks
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import { loginUser } from '../api/axios';
 
-const AuthContext = createContext(null);
+const AuthContext = createContext();
 
-// Get the base API URL from your React environment variables (fallback to localhost if missing)
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
-
-export function decodeToken(token) {
-  try {
-    if (!token) return null;
-    const base64Url = token.split('.')[1];
-    if (!base64Url) return null;
-
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      window
-        .atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-
-    return JSON.parse(jsonPayload);
-  } catch (error) {
-    console.error("JWT Decode error:", error);
-    return null;
-  }
-}
-
-export function AuthProvider({ children }) {
+export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const initUser = useCallback(() => {
+  // Helper to decode JWT payload safely
+  const parseJwt = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      const payload = decodeToken(token);
+      const payload = parseJwt(token);
       if (payload) {
-        setUser({ token, ...payload });
+        setUser({
+          email: payload.sub || payload.email,
+          sub: String(payload.sub || ''),
+          role: payload.role || 'site_manager',
+          site_id: payload.site_id || null,
+        });
       } else {
         localStorage.removeItem('token');
       }
@@ -45,55 +42,38 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  useEffect(() => { 
-    initUser(); 
-  }, [initUser]);
-
   const login = async (email, password) => {
-    console.log("   👉 3. Inside AuthContext: login function triggered.");
-    
-    // 1. Build the mandatory OAuth2 form parameters for FastAPI
-    const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
+    // 1. Call API
+    const data = await loginUser(email, password);
 
-    console.log(`   👉 4. Dispatching direct form-urlencoded request to: ${API_BASE_URL}/auth/login`);
-    
-    try {
-      // 2. Fire the request explicitly bypassing endpoints wrapper
-      const res = await axios.post(`${API_BASE_URL}/auth/login`, formData, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      });
-
-      console.log("   👉 5. Network request resolved successfully! Data:", res?.data);
-
-      const { access_token } = res.data;
-      localStorage.setItem('token', access_token);
-      
-      const payload = decodeToken(access_token);
-      console.log("   👉 6. Decoded payload contents:", payload);
-
-      if (!payload) {
-        throw new Error("JWT payload decoding failed and returned null.");
-      }
-
-      setUser({ token: access_token, ...payload });
-      return payload;
-    } catch (apiError) {
-      // 3. This will print the EXACT reason it's failing (CORS, 422, 401, etc.)
-      console.error("   ❌ API NETWORK FAILURE DETAILED DIAGNOSTICS:");
-      if (apiError.response) {
-        console.error("   Status Code:", apiError.response.status);
-        console.error("   Server Error Data Body:", apiError.response.data);
-      } else if (apiError.request) {
-        console.error("   No response received from backend. Is your server running or is there a CORS/Network blocking rule?");
-      } else {
-        console.error("   Request configuration error message:", apiError.message);
-      }
-      throw apiError; 
+    // 2. Validate token presence
+    const token = data?.access_token || data?.token;
+    if (!token) {
+      throw new Error("No access token returned from server.");
     }
+
+    // 3. Save token
+    localStorage.setItem('token', token);
+
+    // 4. Parse token payload
+    const payload = parseJwt(token);
+    if (!payload) {
+      localStorage.removeItem('token');
+      throw new Error("Invalid access token format.");
+    }
+
+    const userData = {
+      email: payload.sub || payload.email || email,
+      sub: String(payload.sub || ''),
+      role: payload.role || data.role || 'site_manager',
+      site_id: payload.site_id || data.site_id || null,
+    };
+
+    // 5. Set state
+    setUser(userData);
+
+    // 6. CRITICAL FIX: RETURN USER DATA TO LOGIN.JS
+    return userData;
   };
 
   const logout = () => {
@@ -102,12 +82,10 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
-      {children}
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {!loading && children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);

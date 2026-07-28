@@ -126,9 +126,12 @@ const UserManagement = () => {
   // --- HELPERS ---
   const getSiteName = (id) => sites.find(s => String(s.id) === String(id))?.name || 'Global';
   
+  // Filter out super_admin users from display
   const filteredUsers = users.filter((u) => 
-    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
+    u.role !== 'super_admin' && (
+      u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase())
+    )
   );
 
   return (

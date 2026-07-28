@@ -3,6 +3,7 @@ import axios from 'axios';
 // 1. Create the unified instance
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'https://she-backend-tjlg.onrender.com',
+  /*baseURL: 'http://localhost:8000',*/
 });
 
 // 2. Attach JWT token to every outgoing request automatically
@@ -18,9 +19,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401 && !err.config.url.includes('/auth/login')) {
+    // Only wipe token and redirect if the 401 isn't coming from login
+    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
+      console.warn("Unauthorized request to:", err.config?.url);
+      
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      
+      // Soft-redirect to login ONLY if we aren't already there
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(err);
   }
@@ -41,3 +49,4 @@ export const loginUser = async (email, password) => {
 };
 
 export default api;
+

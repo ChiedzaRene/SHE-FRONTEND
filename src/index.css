@@ -1091,4 +1091,12 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 @media (max-width: 640px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .quick-actions { grid-template-columns: 1fr; }
+  .legal-compliance-header {
+    align-items: flex-start !important;
+    text-align: left !important;
+  }
+
+  .legal-compliance-header > div:first-child {
+    justify-content: flex-start !important;
+  }
 }

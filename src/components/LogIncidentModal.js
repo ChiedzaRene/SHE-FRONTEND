@@ -9,42 +9,56 @@ export default function LogIncidentModal({
   prefill = null,
 }) {
   const [site, setSite] = useState(null);
+
+  // Helper to get standard YYYY-MM-DD string
+  const formatDateForInput = (dateInput) => {
+    if (!dateInput) return new Date().toISOString().split("T")[0];
+    const parsed = new Date(dateInput);
+    return Number.isNaN(parsed.getTime())
+      ? new Date().toISOString().split("T")[0]
+      : parsed.toISOString().split("T")[0];
+  };
+
   const [formData, setFormData] = useState({
     type: "injury",
     description: "",
     severity: "low",
     lost_time_days: "",
+    occurred_at: formatDateForInput(),
   });
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     if (!isOpen) return;
-    // Pre-fill if follow-up, otherwise reset
     setFormData({
       type: prefill?.type || "injury",
       description: prefill?.description || "",
       severity: prefill?.severity || "low",
-      lost_time_days: "",
+      lost_time_days: prefill?.lost_time_days || "",
+      occurred_at: formatDateForInput(prefill?.occurred_at),
     });
     setError("");
-  }, [isOpen, prefill?.type, prefill?.description, prefill?.severity]);
+  }, [isOpen, prefill]);
 
+  // Fetch Site Details
   useEffect(() => {
     if (!isOpen) return;
     const fetchSite = async () => {
       try {
-        // Get site_id from token
         const token = localStorage.getItem("token");
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        const siteId = payload.site_id;
+        if (token) {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          const siteId = payload.site_id;
 
-        if (siteId) {
-          const res = await sitesApi.getOne(siteId);
-          setSite(res.data);
+          if (siteId) {
+            const res = await sitesApi.getOne(siteId);
+            setSite(res.data);
+          }
         }
       } catch (err) {
-        console.error("Could not fetch site", err);
+        console.error("Could not fetch site details:", err);
       }
     };
     fetchSite();
@@ -55,24 +69,48 @@ export default function LogIncidentModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
+    if (!site?.id) {
+      setError("Site information is missing. Please re-login.");
+      return;
+    }
+
+    if (formData.description.trim().length < 5) {
+      setError("Description must be at least 5 characters long.");
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Format as ISO Timestamp with explicit time to prevent timezone shift
+      const formattedOccurredAt = formData.occurred_at
+        ? new Date(`${formData.occurred_at}T12:00:00.000Z`).toISOString()
+        : null;
+
       const payload = {
-        site_id: site?.id,
+        site_id: site.id,
         type: formData.type,
         description: formData.description,
         severity: formData.severity,
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
+        occurred_at: formattedOccurredAt, // <--- Sent explicitly to FastAPI
       };
 
       await incidentsApi.create(payload);
       onIncidentLogged();
       onClose();
     } catch (err) {
-      console.error("Error:", err.response?.data?.detail);
-      setError("Failed to log incident. Please try again.");
+      console.error("Error logging incident:", err.response?.data?.detail);
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) {
+        setError(`${detail[0]?.loc?.join(" -> ")}: ${detail[0]?.msg}`);
+      } else if (typeof detail === "string") {
+        setError(detail);
+      } else {
+        setError("Failed to log incident. Please check input data.");
+      }
     } finally {
       setLoading(false);
     }
@@ -94,7 +132,16 @@ export default function LogIncidentModal({
 
         <div className="modal-body">
           {error && (
-            <div style={{ color: "red", marginBottom: "10px" }}>{error}</div>
+            <div
+              style={{
+                color: "#ef4444",
+                marginBottom: "12px",
+                fontSize: "14px",
+                fontWeight: 500,
+              }}
+            >
+              {error}
+            </div>
           )}
           <form id="incident-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -126,6 +173,7 @@ export default function LogIncidentModal({
                   <option value="near-miss">Near-Miss</option>
                 </select>
               </div>
+
               <div className="form-group">
                 <label className="form-label">Severity</label>
                 <select
@@ -144,7 +192,21 @@ export default function LogIncidentModal({
               </div>
             </div>
 
-            <div className="form-group">
+            {/* INCIDENT DATE INPUT FIELD */}
+            <div className="form-group" style={{ marginTop: "12px" }}>
+              <label className="form-label">Incident Date (Occurred At)</label>
+              <input
+                type="date"
+                className="form-control"
+                value={formData.occurred_at}
+                onChange={(e) =>
+                  setFormData({ ...formData, occurred_at: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: "12px" }}>
               <label className="form-label">Description</label>
               <textarea
                 className="form-control"
@@ -159,7 +221,7 @@ export default function LogIncidentModal({
             </div>
 
             {isInjury && (
-              <div className="form-group">
+              <div className="form-group" style={{ marginTop: "12px" }}>
                 <label className="form-label">Lost Time Days</label>
                 <input
                   type="number"

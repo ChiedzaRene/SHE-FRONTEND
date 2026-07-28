@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { X, Save, AlertCircle } from "lucide-react";
 import { legalApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
@@ -22,7 +22,7 @@ const LegalRecordModal = ({
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
 
-  const getTokenSiteId = () => {
+  const getTokenSiteId = useCallback(() => {
     try {
       const token = localStorage.getItem("token");
       const payload = JSON.parse(atob(token.split(".")[1]));
@@ -30,7 +30,7 @@ const LegalRecordModal = ({
     } catch {
       return "";
     }
-  };
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -59,7 +59,7 @@ const LegalRecordModal = ({
     }
 
     setError("");
-  }, [isOpen, editRecord]);
+  }, [isOpen, editRecord, isSiteManager, getTokenSiteId]);
 
   if (!isOpen) return null;
 

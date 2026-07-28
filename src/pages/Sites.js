@@ -10,6 +10,7 @@ import {
   X,
   Save
 } from 'lucide-react';
+import { ClipboardCheck } from 'lucide-react';
 import { sitesApi } from '../api/endpoints';
 
 export default function Sites() {
@@ -114,6 +115,9 @@ export default function Sites() {
     <div>
       <div className="page-header">
         <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6366f1', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>
+            <ClipboardCheck size={14} /> Glow Petroleum SHE
+          </div>
           <h1 className="page-title">Sites Management</h1>
           <p className="page-subtitle">Manage Glow Petroleum service stations and depots</p>
         </div>

@@ -77,20 +77,20 @@ export const trainingsApi = {
   update: (id, data) => api.put(`/trainings/${id}`, data),
 };
 
+export const inspectionsApi = {
+  getAll: () => api.get("/inspections/"),
+  getOne: (id) => api.get(`/inspections/${id}`),
+  getBySite: (siteId) => api.get(`/inspections/site/${siteId}`),
+  create: (data) => api.post("/inspections/", data),
+  update: (id, data) => api.put(`/inspections/${id}`, data),
+  delete: (id) => api.delete(`/inspections/${id}`),
+};
+
 export const usersApi = {
-  // GET /users (List)
-  getAll: () => api.get("/users"),
-
-  // GET /users/{id} (Single)
+  getAll: () => api.get("/users/"),        // add trailing slash
   getOne: (id) => api.get(`/users/${id}`),
-
-  // POST /users (Create) - REMOVED the trailing slash here
-  create: (data) => api.post("/users", data),
-
-  // PUT /users/{id} (Update)
+  create: (data) => api.post("/users/", data),  // already fixed
   update: (id, data) => api.put(`/users/${id}`, data),
-
-  // DELETE /users/{id} (Delete)
   delete: (id) => api.delete(`/users/${id}`),
 };
 

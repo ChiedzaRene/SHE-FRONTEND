@@ -93,9 +93,9 @@ const ScorecardOverview = () => {
     <div style={{ padding: "20px" }}>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Site Legal Compliance Scores</h1>
+          <h1 className="page-title">Site Inspection Scores</h1>
           <p className="page-subtitle">
-            Latest legal requirements scorecard for each site
+            Latest inspection scores for each site
           </p>
         </div>
       </div>
@@ -234,7 +234,7 @@ const ScorecardOverview = () => {
                       color: "#64748b",
                     }}
                   >
-                    No scorecard submissions found.
+                    No inspection submissions found.
                   </td>
                 </tr>
               ) : (
