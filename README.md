@@ -1,3 +1,24 @@
+# SHE Dashboard - Frontend
+
+React app for the Glow Petroleum Safety, Health & Environment dashboard. It talks to the
+SHE backend API.
+
+## Development
+
+```bash
+npm ci
+echo "REACT_APP_API_URL=http://localhost:8000" > .env.local
+npm start          # http://localhost:3000
+npm run build
+```
+
+* Pages are lazy-loaded per route (`src/App.js`).
+* TRIR / LTIFR come from the server; a site with no hours entered shows **N/A**. Hours are
+  entered on the **Hours Worked** page (SHE team and admins).
+* The list of sites is cached for 60 seconds across pages (`src/api/endpoints.js`).
+
+---
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

@@ -105,7 +105,8 @@ export default function Sites() {
         // Optimistic update: remove from UI immediately
         setSites(prev => prev.filter(site => site.id !== id));
       } catch (err) {
-        alert('Could not delete site. It may have linked incidents or audits.');
+        // The server says exactly what is still linked (e.g. "Cannot delete a site that still has 3 incidents")
+        alert(err.response?.data?.detail || 'Could not delete site.');
       }
     }
   };

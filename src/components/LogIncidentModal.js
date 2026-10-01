@@ -2,6 +2,13 @@ import React, { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 
+// "YYYY-MM-DDTHH:mm" in the user's local time, the format <input type="datetime-local"> uses
+const nowLocal = () => {
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+};
+
 export default function LogIncidentModal({
   isOpen,
   onClose,
@@ -14,6 +21,7 @@ export default function LogIncidentModal({
     description: "",
     severity: "low",
     lost_time_days: "",
+    occurred_at: nowLocal(),
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -26,6 +34,7 @@ export default function LogIncidentModal({
       description: prefill?.description || "",
       severity: prefill?.severity || "low",
       lost_time_days: "",
+      occurred_at: nowLocal(),
     });
     setError("");
   }, [isOpen, prefill?.type, prefill?.description, prefill?.severity]);
@@ -65,6 +74,7 @@ export default function LogIncidentModal({
         severity: formData.severity,
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
+        occurred_at: formData.occurred_at || undefined,
       };
 
       await incidentsApi.create(payload);
@@ -142,6 +152,20 @@ export default function LogIncidentModal({
                   <option value="critical">Critical</option>
                 </select>
               </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">When did it happen?</label>
+              <input
+                type="datetime-local"
+                className="form-control"
+                value={formData.occurred_at}
+                max={nowLocal()}
+                onChange={(e) =>
+                  setFormData({ ...formData, occurred_at: e.target.value })
+                }
+                required
+              />
             </div>
 
             <div className="form-group">

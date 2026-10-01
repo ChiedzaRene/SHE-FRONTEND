@@ -41,6 +41,7 @@ export const sitesApi = {
   getOne: (id) => api.get(`/sites/${id}`),
   create: (data) => api.post("/sites/", data).then(invalidateSites),
   update: (id, data) => api.put(`/sites/${id}`, data).then(invalidateSites),
+  delete: (id) => api.delete(`/sites/${id}`).then(invalidateSites),
 };
 
 export const incidentsApi = {

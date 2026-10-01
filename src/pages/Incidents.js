@@ -117,12 +117,9 @@ export default function Incidents() {
         const sev = (inc.severity || "").trim().toLowerCase();
         return ["low", "medium", "modrate"].includes(sev);
       }).length,
-      resolved: result.filter(
-        (inc) => (inc.status || "").trim().toLowerCase() === "resolved",
-      ).length,
-      open: result.filter(
-        (inc) => (inc.status || "").trim().toLowerCase() !== "resolved",
-      ).length,
+      // Incidents carry a boolean `resolved` flag (there is no status field)
+      resolved: result.filter((inc) => inc.resolved).length,
+      open: result.filter((inc) => !inc.resolved).length,
     };
 
     setFilteredIncidents(result);
