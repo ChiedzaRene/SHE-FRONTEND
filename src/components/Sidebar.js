@@ -19,7 +19,8 @@ export default function Sidebar() {
   const { user, logout } = useAuth();
 
   const getLinks = () => {
-    const role = user?.role;
+    // super_admin sees the same navigation as admin
+    const role = user?.role === "super_admin" ? "admin" : user?.role;
     const baseLinks = [
       {
         to:

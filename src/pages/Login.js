@@ -21,7 +21,8 @@ export default function Login() {
       const payload = await login(email, password);
       // Route based on role
       switch (payload.role) {
-        case 'admin': navigate('/admin'); break;
+        case 'admin':
+        case 'super_admin': navigate('/admin'); break;
         case 'she_team': navigate('/she-dashboard'); break;
         case 'site_manager': navigate('/site-dashboard'); break;
         default: navigate('/');

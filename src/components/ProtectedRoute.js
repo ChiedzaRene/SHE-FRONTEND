@@ -14,7 +14,8 @@ export default function ProtectedRoute({ allowedRoles }) {
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to their respective dashboard
     switch (user.role) {
-      case 'admin': return <Navigate to="/admin" replace />;
+      case 'admin':
+      case 'super_admin': return <Navigate to="/admin" replace />;
       case 'she_team': return <Navigate to="/she-dashboard" replace />;
       case 'site_manager': return <Navigate to="/site-dashboard" replace />;
       default: return <Navigate to="/login" replace />;
