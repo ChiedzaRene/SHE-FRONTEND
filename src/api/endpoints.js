@@ -48,8 +48,13 @@ export const incidentsApi = {
   getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),
-  getMetrics: (siteId) => api.get(`/incidents/metrics/${siteId}`),
-  getGlobalMetrics: () => api.get("/incidents/metrics/global"),
+  // period: "12m" (rolling 12 months, default) or "ytd"
+  getMetrics: (siteId, period = "12m") =>
+    api.get(`/incidents/metrics/${siteId}`, { params: { period } }),
+  getGlobalMetrics: (period = "12m") =>
+    api.get("/incidents/metrics/global", { params: { period } }),
+  getMetricsBySite: (period = "12m") =>
+    api.get("/incidents/metrics/by-site", { params: { period } }),
 };
 
 export const actionsApi = {
@@ -117,4 +122,11 @@ export const scorecardApi = {
 
   // Single submission by id
   getById: (id) => api.get(`/scorecard/${id}`),
+};
+
+// Monthly hours worked per site: the denominator for TRIR / LTIFR (entered by the SHE team)
+export const siteHoursApi = {
+  list: (params = {}) => api.get("/site-hours/", { params }),
+  // data: { site_id, month: "YYYY-MM", hours_worked }
+  save: (data) => api.put("/site-hours/", data),
 };

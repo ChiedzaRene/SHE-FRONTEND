@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { bucketWidth } from "../utils/breakpoint";
+import { fmtRate, siteStatus, STATUS_STYLE, TRIR_LIMIT, LTIFR_LIMIT } from "../utils/rates";
 import {
   Building2,
   AlertTriangle,
@@ -47,8 +48,8 @@ const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState({
     total_incidents: 0,
-    trir: 0,
-    ltifr: 0,
+    trir: null,
+    ltifr: null,
   });
   const [sites, setSites] = useState([]);
   const [incidents, setIncidents] = useState([]);
@@ -60,12 +61,13 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [mRes, sRes, iRes] = await Promise.all([
+      const [mRes, sRes, iRes, bsRes] = await Promise.all([
         incidentsApi
           .getGlobalMetrics()
-          .catch(() => ({ data: { trir: 0, ltifr: 0 } })),
+          .catch(() => ({ data: { trir: null, ltifr: null } })),
         sitesApi.getAll().catch(() => ({ data: [] })),
         incidentsApi.getAll().catch(() => ({ data: [] })),
+        incidentsApi.getMetricsBySite().catch(() => ({ data: [] })),
       ]);
 
       const fetchedSites = sRes.data || [];
@@ -75,22 +77,16 @@ export default function AdminDashboard() {
       setSites(fetchedSites);
       setIncidents(fetchedIncidents);
 
-      // --- Calculate Site Leaderboard Data ---
+      // --- Site leaderboard: rates are calculated on the server (200,000-hour basis) ---
+      const ratesBySite = new Map((bsRes.data || []).map((m) => [m.site_id, m]));
       const perSiteData = fetchedSites.map((site) => {
-        const siteIncidents = fetchedIncidents.filter(
-          (i) => i.site_id === site.id,
-        );
-        const hours = site.man_hours || 200000;
-
-        const trir = (siteIncidents.length * 200000) / hours;
-        const ltiCount = siteIncidents.filter(
-          (i) =>
-            i.type?.toUpperCase() === "LTI" ||
-            i.severity?.toLowerCase() === "critical",
-        ).length;
-        const ltifr = (ltiCount * 200000) / hours;
-
-        return { ...site, trir, ltifr, incidentCount: siteIncidents.length };
+        const m = ratesBySite.get(site.id);
+        return {
+          ...site,
+          trir: m?.trir ?? null,
+          ltifr: m?.ltifr ?? null,
+          incidentCount: m?.total_incidents ?? 0,
+        };
       });
       setSiteMetrics(perSiteData);
     } catch (err) {
@@ -172,20 +168,20 @@ export default function AdminDashboard() {
         />
         <KPICard
           label="Active Incidents"
-          value={incidents.filter((i) => i.status !== "Resolved").length}
+          value={incidents.filter((i) => !i.resolved).length}
           Icon={AlertTriangle}
           color="#f43f5e"
         />
         <KPICard
-          label="TRIR (Avg)"
-          value={metrics.trir.toFixed(2)}
+          label="TRIR (12 mo)"
+          value={fmtRate(metrics.trir)}
           Icon={BarChart2}
           color="#10b981"
           showInfo
         />
         <KPICard
-          label="LTIFR (Avg)"
-          value={metrics.ltifr.toFixed(2)}
+          label="LTIFR (12 mo)"
+          value={fmtRate(metrics.ltifr)}
           Icon={Activity}
           color="#a855f7"
           showInfo
@@ -226,9 +222,9 @@ export default function AdminDashboard() {
               lineHeight: "1.5",
             }}
           >
-            <strong>Total Recordable Incident Rate:</strong> Represents the
-            number of injuries per 100 employees per year. It tracks the
-            frequency of safety events.
+            <strong>Total Recordable Incident Rate:</strong> Recordable
+            injuries per 200,000 hours worked, over the last 12 months. Sites
+            with no hours entered show N/A.
           </p>
         </div>
         <div
@@ -257,9 +253,9 @@ export default function AdminDashboard() {
               lineHeight: "1.5",
             }}
           >
-            <strong>Lost Time Injury Frequency Rate:</strong> Measures injuries
-            resulting in lost work days per 1 million hours. It tracks the
-            severity of safety events.
+            <strong>Lost Time Injury Frequency Rate:</strong> Injuries
+            resulting in lost work days per 200,000 hours worked, over the
+            last 12 months. It tracks the severity of safety events.
           </p>
         </div>
       </div>
@@ -473,8 +469,8 @@ export default function AdminDashboard() {
                           {site.incidentCount} incident
                           {site.incidentCount !== 1 ? "s" : ""}
                           <br />
-                          TRIR: {site.trir.toFixed(2)} &nbsp;|&nbsp; LTIFR:{" "}
-                          {site.ltifr.toFixed(2)}
+                          TRIR: {fmtRate(site.trir)} &nbsp;|&nbsp; LTIFR:{" "}
+                          {fmtRate(site.ltifr)}
                         </div>
                       </LeafletTooltip>
                       <Popup>
@@ -482,23 +478,18 @@ export default function AdminDashboard() {
                         <br />
                         Incidents: <strong>{site.incidentCount}</strong>
                         <br />
-                        TRIR: {site.trir.toFixed(2)}
+                        TRIR: {fmtRate(site.trir)}
                         <br />
-                        LTIFR: {site.ltifr.toFixed(2)}
+                        LTIFR: {fmtRate(site.ltifr)}
                         <br />
                         Status:{" "}
                         <span
                           style={{
-                            color:
-                              site.trir > 1.5 || site.ltifr > 0.5
-                                ? "#dc2626"
-                                : "#16a34a",
+                            color: STATUS_STYLE[siteStatus(site)].color,
                             fontWeight: 700,
                           }}
                         >
-                          {site.trir > 1.5 || site.ltifr > 0.5
-                            ? "ACTION REQUIRED"
-                            : "COMPLIANT"}
+                          {STATUS_STYLE[siteStatus(site)].label}
                         </span>
                       </Popup>
                     </CircleMarker>
@@ -544,8 +535,8 @@ export default function AdminDashboard() {
                         gap: "6px",
                       }}
                     >
-                      {site.trir.toFixed(2)}{" "}
-                      {site.trir > 1.5 ? (
+                      {fmtRate(site.trir)}{" "}
+                      {site.trir == null ? null : site.trir > TRIR_LIMIT ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -560,8 +551,8 @@ export default function AdminDashboard() {
                         gap: "6px",
                       }}
                     >
-                      {site.ltifr.toFixed(2)}{" "}
-                      {site.ltifr > 0.5 ? (
+                      {fmtRate(site.ltifr)}{" "}
+                      {site.ltifr == null ? null : site.ltifr > LTIFR_LIMIT ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -575,19 +566,11 @@ export default function AdminDashboard() {
                         borderRadius: "20px",
                         fontSize: "0.7rem",
                         fontWeight: "800",
-                        backgroundColor:
-                          site.trir > 1.5 || site.ltifr > 0.5
-                            ? "#fef2f2"
-                            : "#f0fdf4",
-                        color:
-                          site.trir > 1.5 || site.ltifr > 0.5
-                            ? "#dc2626"
-                            : "#16a34a",
+                        backgroundColor: STATUS_STYLE[siteStatus(site)].bg,
+                        color: STATUS_STYLE[siteStatus(site)].color,
                       }}
                     >
-                      {site.trir > 1.5 || site.ltifr > 0.5
-                        ? "ACTION REQUIRED"
-                        : "COMPLIANT"}
+                      {STATUS_STYLE[siteStatus(site)].label}
                     </span>
                   </td>
                 </tr>
@@ -682,8 +665,8 @@ const ProgressBar = ({ label, val, target, max }) => (
       }}
     >
       <span style={{ color: "#64748b" }}>{label}</span>
-      <span style={{ color: val > target ? "#ef4444" : "#10b981" }}>
-        {val.toFixed(2)}
+      <span style={{ color: val == null ? "#94a3b8" : val > target ? "#ef4444" : "#10b981" }}>
+        {fmtRate(val)}
       </span>
     </div>
     <div
@@ -696,7 +679,7 @@ const ProgressBar = ({ label, val, target, max }) => (
     >
       <div
         style={{
-          width: `${Math.min((val / max) * 100, 100)}%`,
+          width: `${val == null ? 0 : Math.min((val / max) * 100, 100)}%`,
           height: "100%",
           backgroundColor: val > target ? "#ef4444" : "#10b981",
         }}

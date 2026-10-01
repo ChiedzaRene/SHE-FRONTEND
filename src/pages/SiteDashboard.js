@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { bucketWidth } from "../utils/breakpoint";
+import { fmtRate } from "../utils/rates";
 import { 
   Clock, ShieldCheck, Activity, Plus,
   TrendingDown, TrendingUp, AlertCircle, FileText, Phone 
@@ -12,7 +13,7 @@ export default function SiteDashboard() {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incidents, setIncidents] = useState([]);
-  const [metrics, setMetrics] = useState({ total_incidents: 0, trir: 0.0 });
+  const [metrics, setMetrics] = useState({ total_incidents: 0, trir: null });
   const [openActions, setOpenActions] = useState(0);
   const [loading, setLoading] = useState(true);
   const [windowWidth, setWindowWidth] = useState(() => bucketWidth(window.innerWidth));
@@ -40,12 +41,12 @@ export default function SiteDashboard() {
 
       const [incRes, metRes, actRes] = await Promise.all([
         incidentsApi.getBySite(siteId).catch(() => ({ data: [] })),
-        incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, trir: 0 } })),
+        incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, trir: null } })),
         actionsApi.getAll().catch(() => ({ data: [] }))
       ]);
 
       setIncidents(incRes.data || []);
-      setMetrics(metRes.data || { total_incidents: 0, trir: 0 });
+      setMetrics(metRes.data || { total_incidents: 0, trir: null });
       setOpenActions((actRes.data || actRes).filter(a => String(a.site_id) === String(siteId) && !a.resolved).length);
     } catch (err) {
       console.error("Dashboard Sync Error:", err);
@@ -135,7 +136,7 @@ export default function SiteDashboard() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}><Activity size={28} /></div>
               <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#1e293b' }}>
-                {Number(metrics.trir).toFixed(2)}
+                {fmtRate(metrics.trir)}
               </span>
             </div>
           </div>

@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   Droplets,
+  Clock,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -46,6 +47,7 @@ export default function Sidebar() {
 
     if (role === "admin" || role === "she_team") {
       baseLinks.splice(1, 0, { to: "/sites", icon: Factory, label: "Sites" });
+      baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
     }
 
     if (role === "admin") {

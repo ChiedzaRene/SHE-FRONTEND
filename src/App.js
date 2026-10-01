@@ -16,6 +16,7 @@ const AuditList = lazy(() => import("./pages/AuditList"));
 const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
+const SiteHours = lazy(() => import("./pages/SiteHours"));
 
 function App() {
   return (
@@ -61,6 +62,15 @@ function App() {
             >
               <Route path="/sites" element={<Sites />} />
               <Route path="/trainings" element={<Trainings />} />
+            </Route>
+
+            {/* Monthly hours worked (TRIR/LTIFR denominator): SHE team and admins */}
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team"]} />
+              }
+            >
+              <Route path="/site-hours" element={<SiteHours />} />
             </Route>
 
             {/* Site Manager Routes */}
