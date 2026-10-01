@@ -12,11 +12,35 @@ export const authApi = {
   register: (data) => api.post("/auth/register", data),
 };
 
+// Nearly every page loads the sites list. Share one in-flight/recent request between
+// them instead of refetching on each navigation. Cleared on any site change and on logout.
+const SITES_TTL_MS = 60 * 1000;
+let sitesCache = null; // { at: number, promise: Promise }
+
+export const clearSitesCache = () => {
+  sitesCache = null;
+};
+
+const invalidateSites = (res) => {
+  clearSitesCache();
+  return res;
+};
+
 export const sitesApi = {
-  getAll: () => api.get("/sites/"),
+  getAll: () => {
+    if (sitesCache && Date.now() - sitesCache.at < SITES_TTL_MS) {
+      return sitesCache.promise;
+    }
+    const promise = api.get("/sites/").catch((err) => {
+      clearSitesCache(); // never cache a failure
+      throw err;
+    });
+    sitesCache = { at: Date.now(), promise };
+    return promise;
+  },
   getOne: (id) => api.get(`/sites/${id}`),
-  create: (data) => api.post("/sites/", data),
-  update: (id, data) => api.put(`/sites/${id}`, data),
+  create: (data) => api.post("/sites/", data).then(invalidateSites),
+  update: (id, data) => api.put(`/sites/${id}`, data).then(invalidateSites),
 };
 
 export const incidentsApi = {

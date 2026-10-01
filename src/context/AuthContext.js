@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { authApi } from '../api/endpoints';
+import { authApi, clearSitesCache } from '../api/endpoints';
 
 const AuthContext = createContext(null);
 
@@ -34,6 +34,7 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     const res = await authApi.login(email, password);
     const { access_token } = res.data;
+    clearSitesCache();
     localStorage.setItem('token', access_token);
     const payload = decodeToken(access_token);
     setUser({ token: access_token, ...payload });
@@ -42,6 +43,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     localStorage.removeItem('token');
+    clearSitesCache(); // the next user may see a different set of sites
     setUser(null);
   };
 
