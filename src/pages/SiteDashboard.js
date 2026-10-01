@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { bucketWidth } from "../utils/breakpoint";
 import { 
   Clock, ShieldCheck, Activity, Plus,
   TrendingDown, TrendingUp, AlertCircle, FileText, Phone 
@@ -14,7 +15,7 @@ export default function SiteDashboard() {
   const [metrics, setMetrics] = useState({ total_incidents: 0, trir: 0.0 });
   const [openActions, setOpenActions] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowWidth, setWindowWidth] = useState(() => bucketWidth(window.innerWidth));
   const [siteName, setSiteName] = useState('Loading...');
 
   // Get user info from token
@@ -22,7 +23,7 @@ export default function SiteDashboard() {
   const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : {};
 
   useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(bucketWidth(window.innerWidth));
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);

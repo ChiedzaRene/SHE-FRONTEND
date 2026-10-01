@@ -1,21 +1,21 @@
-import React from "react";
+import React, { lazy } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 
 import Login from "./pages/Login";
-import AdminDashboard from "./pages/AdminDashboard";
-import SheDashboard from "./pages/SheDashboard";
-import CommandCenter from "./pages/CommandCenter";
-import SiteDashboard from "./pages/SiteDashboard";
-import Sites from "./pages/Sites";
-import CorrectiveActions from "./pages/CorrectiveActions";
-import Incidents from "./pages/Incidents";
-import AuditList from "./pages/AuditList";
-import LegalCompliance from "./pages/LegalCompliance";
-import Trainings from "./pages/Training";
-import UserManagement from "./pages/Users";
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const SheDashboard = lazy(() => import("./pages/SheDashboard"));
+const CommandCenter = lazy(() => import("./pages/CommandCenter"));
+const SiteDashboard = lazy(() => import("./pages/SiteDashboard"));
+const Sites = lazy(() => import("./pages/Sites"));
+const CorrectiveActions = lazy(() => import("./pages/CorrectiveActions"));
+const Incidents = lazy(() => import("./pages/Incidents"));
+const AuditList = lazy(() => import("./pages/AuditList"));
+const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
+const Trainings = lazy(() => import("./pages/Training"));
+const UserManagement = lazy(() => import("./pages/Users"));
 
 function App() {
   return (

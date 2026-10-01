@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { bucketWidth } from "../utils/breakpoint";
 import {
   Building2,
   AlertTriangle,
@@ -54,7 +55,7 @@ export default function AdminDashboard() {
   const [siteMetrics, setSiteMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowWidth, setWindowWidth] = useState(() => bucketWidth(window.innerWidth));
   const [mapSearch, setMapSearch] = useState("");
 
   const fetchData = useCallback(async () => {
@@ -101,7 +102,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchData();
-    const handleResize = () => setWindowWidth(window.innerWidth);
+    const handleResize = () => setWindowWidth(bucketWidth(window.innerWidth));
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [fetchData]);
