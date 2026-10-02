@@ -14,6 +14,7 @@ import {
   LogOut,
   Droplets,
   Clock,
+  FileText,
 } from "lucide-react";
 
 export default function Sidebar() {
@@ -35,6 +36,7 @@ export default function Sidebar() {
       },
       { to: "/incidents", icon: AlertTriangle, label: "Incidents" },
       { to: "/corrective-actions", icon: Wrench, label: "Corrective Actions" },
+      { to: "/reports", icon: FileText, label: "Reports" },
     ];
 
     if (role === "admin" || role === "she_team" || role === "site_manager") {

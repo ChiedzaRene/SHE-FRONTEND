@@ -131,3 +131,27 @@ export const siteHoursApi = {
   // data: { site_id, month: "YYYY-MM", hours_worked }
   save: (data) => api.put("/site-hours/", data),
 };
+
+// Reports: one structured document per kind, as JSON for the screen or a CSV/PDF download.
+// kind: "performance" | "compliance" | "incidents" | "leaderboard"
+export const reportsApi = {
+  get: (kind, params = {}) => api.get(`/reports/${kind}`, { params }),
+
+  // Fetches the file with the auth header and hands it to the browser as a download
+  download: async (kind, params, format) => {
+    const res = await api.get(`/reports/${kind}`, {
+      params: { ...params, format },
+      responseType: "blob",
+    });
+    const disposition = res.headers["content-disposition"] || "";
+    const match = /filename="?([^";]+)"?/.exec(disposition);
+    const url = URL.createObjectURL(res.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = match ? match[1] : `she-${kind}.${format}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
+};

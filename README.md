@@ -15,6 +15,8 @@ npm run build
 * Pages are lazy-loaded per route (`src/App.js`).
 * TRIR / LTIFR come from the server; a site with no hours entered shows **N/A**. Hours are
   entered on the **Hours Worked** page (SHE team and admins).
+* **Reports** page: monthly performance, compliance status, incident register and site comparison,
+  viewable on screen or downloaded as PDF / CSV. Site managers see only their own site.
 * The list of sites is cached for 60 seconds across pages (`src/api/endpoints.js`).
 
 ---

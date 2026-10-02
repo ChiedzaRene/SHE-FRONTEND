@@ -17,6 +17,7 @@ const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
 const SiteHours = lazy(() => import("./pages/SiteHours"));
+const Reports = lazy(() => import("./pages/Reports"));
 
 function App() {
   return (
@@ -80,6 +81,7 @@ function App() {
 
             {/* General Protected Routes */}
             <Route element={<ProtectedRoute />}>
+              <Route path="/reports" element={<Reports />} />
               <Route path="/incidents" element={<Incidents />} />
               <Route
                 path="/corrective-actions"
