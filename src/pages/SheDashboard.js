@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     ltifr: null,
   });
   const [sites, setSites] = useState([]);
-  const [incidentSummary, setIncidentSummary] = useState({ total: 0, open: 0, by_type: [] });
+  const [incidentSummary, setIncidentSummary] = useState({ total: 0, open: 0, by_type: [], by_site: [] });
   const [siteMetrics, setSiteMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
           .getGlobalMetrics()
           .catch(() => ({ data: { trir: null, ltifr: null } })),
         sitesApi.getAll().catch(() => ({ data: [] })),
-        incidentsApi.getSummary().catch(() => ({ data: { total: 0, open: 0, by_type: [] } })),
+        incidentsApi.getSummary().catch(() => ({ data: { total: 0, open: 0, by_type: [], by_site: [] } })),
         incidentsApi.getMetricsBySite().catch(() => ({ data: [] })),
       ]);
 
@@ -59,13 +59,15 @@ export default function AdminDashboard() {
 
       // --- Site leaderboard: rates are calculated on the server (200,000-hour basis) ---
       const ratesBySite = new Map((bsRes.data || []).map((m) => [m.site_id, m]));
+      // Map bubbles show every incident recorded at the site, not only the last 12 months
+      const countBySite = new Map((iRes.data?.by_site || []).map((c) => [c.site_id, c.value]));
       const perSiteData = fetchedSites.map((site) => {
         const m = ratesBySite.get(site.id);
         return {
           ...site,
           trir: m?.trir ?? null,
           ltifr: m?.ltifr ?? null,
-          incidentCount: m?.total_incidents ?? 0,
+          incidentCount: countBySite.get(site.id) ?? m?.total_incidents ?? 0,
         };
       });
       setSiteMetrics(perSiteData);
@@ -268,27 +270,35 @@ export default function AdminDashboard() {
 
         <Section title="Incident Distribution">
           <div style={{ height: "220px" }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={8}
-                  dataKey="value"
-                >
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % 5]} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend
-                  verticalAlign="middle"
-                  align="right"
-                  layout="vertical"
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {chartData.length === 0 ? (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+                No incidents recorded yet
+              </div>
+            ) : (
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={chartData.length > 1 ? 8 : 0}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [`${v} incident${v === 1 ? "" : "s"}`]} />
+                  <Legend
+                    verticalAlign="middle"
+                    align="right"
+                    layout="vertical"
+                    formatter={(name, entry) => `${name} (${entry.payload.value})`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Section>
       </div>
@@ -323,7 +333,7 @@ export default function AdminDashboard() {
                 color: "#94a3b8",
               }}
             >
-              Bubble size = incident volume
+              Bubble size = incidents recorded at the site
             </span>
           </div>
           <div

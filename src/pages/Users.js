@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usersApi, sitesApi } from '../api/endpoints';
 import { useFeedback } from '../components/Feedback';
+import { useAuth } from '../context/AuthContext';
 import { apiError } from '../utils/apiError';
 import {
   Plus,
@@ -16,6 +17,7 @@ import {
 
 const UserManagement = () => {
   const { notify, confirm } = useFeedback();
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,6 +27,8 @@ const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // null = Create, object = Edit
   const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -118,6 +122,7 @@ const UserManagement = () => {
     setIsModalOpen(false);
     setEditingUser(null);
     setShowPassword(false);
+    setFormError('');
     setFormData({
       full_name: '', email: '', password: '',
       role: 'site_manager', site_id: '', is_active: true
@@ -126,28 +131,42 @@ const UserManagement = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try {
-      const payload = {
-        ...formData,
-        site_id: formData.site_id ? Number(formData.site_id) : null,
-      };
-      
-      // If editing and password is empty, remove it from payload so it doesn't overwrite with empty string
-      if (editingUser && !payload.password) {
-        delete payload.password;
-      }
+    setFormError('');
+    const newPassword = formData.password || '';
+    if (newPassword && newPassword.length < 8) {
+      setFormError('The password must be at least 8 characters.');
+      return;
+    }
+    const payload = {
+      ...formData,
+      site_id: formData.site_id ? Number(formData.site_id) : null,
+    };
+    // If editing and password is empty, remove it from payload so it doesn't overwrite with empty string
+    if (editingUser && !payload.password) {
+      delete payload.password;
+    }
 
+    setSaving(true);
+    try {
+      let message;
       if (editingUser) {
         await usersApi.update(editingUser.id, payload);
+        const isMe = String(editingUser.id) === String(currentUser?.user_id);
+        if (newPassword && isMe) message = 'Your password has been changed.';
+        else if (newPassword) message = `Password reset for ${payload.email}. They'll be asked to choose their own password when they next sign in.`;
+        else message = `${payload.email} updated.`;
       } else {
         await usersApi.create(payload);
+        message = `${payload.email} created. They'll choose their own password at first sign-in.`;
       }
-      
       closeModal();
+      notify(message, 'success');
       await fetchData();
     } catch (err) {
-      console.error('Save failed', err.response?.data);
-      notify(apiError(err, 'Could not save the user.'), 'error');
+      // Shown inside the box so it can't be missed; the box stays open to fix it
+      setFormError(apiError(err, 'Could not save the user.'));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -273,6 +292,9 @@ const UserManagement = () => {
                     value={formData.password}
                     onChange={handleInputChange}
                     required={!editingUser}
+                    minLength={8}
+                    autoComplete="new-password"
+                    placeholder={editingUser ? 'New password (at least 8 characters)' : 'At least 8 characters'}
                   />
                   <button type="button" className="users-password-toggle" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
@@ -305,10 +327,16 @@ const UserManagement = () => {
                 <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleInputChange} />
                 <label className="form-label" style={{ marginBottom: 0 }}>User is Active</label>
               </div>
+              {formError && (
+                <div role="alert" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 12px',
+                  borderRadius: 6, fontSize: '0.85rem', fontWeight: 600, marginBottom: 12 }}>
+                  {formError}
+                </div>
+              )}
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>Cancel</button>
-                <button type="submit" className="btn btn-primary">
-                  {editingUser ? 'Update User' : 'Create User'}
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
                 </button>
               </div>
             </form>

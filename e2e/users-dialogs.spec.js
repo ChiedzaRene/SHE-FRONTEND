@@ -42,3 +42,33 @@ test('cancelling the delete dialog does nothing', async ({ page }) => {
   await expect(page.getByRole('alertdialog')).toHaveCount(0);
   expect(calls.filter((c) => c.startsWith('DELETE'))).toHaveLength(0);
 });
+
+test('resetting a password closes the box and confirms it', async ({ page }) => {
+  await signIn(page, { role: 'admin' });
+  const sent = [];
+  await mockApi(page, {
+    'GET /users': users,
+    'PUT /users/7': (route, req) => { sent.push(req.postDataJSON()); return route.fulfill(json(200, { ...users[1], must_change_password: true })); },
+  });
+  await page.goto('/users');
+  await page.locator('tr', { hasText: 'busy@glow.com' }).locator('button').first().click();
+  await page.locator('input[name=password]').fill('Brand-new-9');
+  await page.getByRole('button', { name: 'Update User' }).click();
+  await expect(page.locator('.modal')).toHaveCount(0);
+  await expect(page.getByText(/Password reset for busy@glow.com/)).toBeVisible();
+  expect(sent[0].password).toBe('Brand-new-9');
+});
+
+test('a reset the server refuses keeps the box open and shows why inside it', async ({ page }) => {
+  await signIn(page, { role: 'admin' });
+  await mockApi(page, {
+    'GET /users': users,
+    'PUT /users/7': (route) => route.fulfill(json(403, { detail: 'Only a super admin can modify super admins' })),
+  });
+  await page.goto('/users');
+  await page.locator('tr', { hasText: 'busy@glow.com' }).locator('button').first().click();
+  await page.locator('input[name=password]').fill('Brand-new-9');
+  await page.getByRole('button', { name: 'Update User' }).click();
+  await expect(page.locator('.modal [role=alert]')).toHaveText('Only a super admin can modify super admins');
+  await expect(page.locator('.modal')).toHaveCount(1);
+});
