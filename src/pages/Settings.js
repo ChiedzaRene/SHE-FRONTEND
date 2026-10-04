@@ -1,23 +1,29 @@
 import React, { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserCircle, Target, ScrollText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AccountTab from "../components/settings/AccountTab";
 import TargetsTab from "../components/settings/TargetsTab";
 import AuditLogTab from "../components/settings/AuditLogTab";
 
+const HOME = { admin: "/admin", super_admin: "/admin", she_team: "/she-dashboard", site_manager: "/site-dashboard" };
+
 export default function Settings() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const role = user?.role;
+  // An administrator set a temporary password: nothing else works until the user chooses their own
+  const forced = Boolean(user?.mcp);
 
   // The server enforces these too; hiding a tab here is only about not showing people what they can't use
   const tabs = useMemo(
     () =>
       [
         { id: "account", label: "My account", icon: UserCircle, show: true, Component: AccountTab },
-        { id: "targets", label: "Safety targets", icon: Target, show: role === "admin" || role === "super_admin", Component: TargetsTab },
-        { id: "audit", label: "Audit log", icon: ScrollText, show: role === "super_admin", Component: AuditLogTab },
+        { id: "targets", label: "Safety targets", icon: Target, show: !forced && (role === "admin" || role === "super_admin"), Component: TargetsTab },
+        { id: "audit", label: "Audit log", icon: ScrollText, show: !forced && role === "super_admin", Component: AuditLogTab },
       ].filter((t) => t.show),
-    [role],
+    [role, forced],
   );
   const [active, setActive] = useState("account");
   const current = tabs.find((t) => t.id === active) || tabs[0];
@@ -31,6 +37,13 @@ export default function Settings() {
           <p className="page-subtitle">Your account, the safety limits and the activity log</p>
         </div>
       </div>
+
+      {forced && (
+        <div role="alert" className="card" style={{ padding: 16, marginBottom: 20, background: "#FFFBEB", border: "1px solid #FCD34D", color: "#92400E" }}>
+          <strong>Choose a new password to continue.</strong> An administrator set a temporary password for your
+          account. Enter it below as the temporary password, then pick your own.
+        </div>
+      )}
 
       <div role="tablist" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
         {tabs.map(({ id, label, icon: Icon }) => (
@@ -46,7 +59,10 @@ export default function Settings() {
         ))}
       </div>
 
-      <Panel />
+      <Panel
+        forced={forced}
+        onPasswordChanged={forced ? () => navigate(HOME[role] || "/") : undefined}
+      />
     </div>
   );
 }

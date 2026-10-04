@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { accountApi } from "../../api/endpoints";
+import { useAuth } from "../../context/AuthContext";
 import { apiError } from "../../utils/apiError";
 
 const ROLE_LABEL = {
@@ -23,7 +24,8 @@ const Message = ({ result }) =>
     </div>
   ) : null;
 
-export default function AccountTab() {
+export default function AccountTab({ forced = false, onPasswordChanged }) {
+  const { replaceToken } = useAuth();
   const [me, setMe] = useState(null);
   const loaded = me !== null; // the forms stay disabled until then, so loading can't overwrite what you type
   const [name, setName] = useState("");
@@ -70,11 +72,14 @@ export default function AccountTab() {
     if (next === current) return setPwResult({ ok: false, text: "The new password must be different from the current one." });
     setSavingPw(true);
     try {
-      await accountApi.changePassword({ current_password: current, new_password: next });
+      const res = await accountApi.changePassword({ current_password: current, new_password: next });
+      // Every other session was signed out; keep this one going with the fresh token
+      if (res.data?.access_token) replaceToken(res.data.access_token);
       setCurrent("");
       setNext("");
       setConfirm("");
-      setPwResult({ ok: true, text: "Password changed. Use the new password next time you sign in." });
+      setPwResult({ ok: true, text: "Password changed. Your other devices have been signed out." });
+      if (onPasswordChanged) onPasswordChanged();
     } catch (err) {
       setPwResult({ ok: false, text: apiError(err, "Could not change the password.") });
     } finally {
@@ -112,7 +117,7 @@ export default function AccountTab() {
         <div className="card-header"><div className="card-title">Change password</div></div>
         <form onSubmit={savePassword} style={{ padding: 20 }}>
           <div className="form-group">
-            <label className="form-label" htmlFor="pw-current">Current password</label>
+            <label className="form-label" htmlFor="pw-current">{forced ? "Temporary password (from your administrator)" : "Current password"}</label>
             <input id="pw-current" type="password" className="form-control" autoComplete="current-password"
               value={current} onChange={(e) => setCurrent(e.target.value)} required />
           </div>
@@ -132,7 +137,7 @@ export default function AccountTab() {
           </button>
           <Message result={pwResult} />
           <p style={{ color: "#64748b", fontSize: "0.8rem", marginTop: 12 }}>
-            Changing your password does not sign out other devices; those sessions end on their own after 8 hours.
+            Changing your password signs you out of all your other devices.
           </p>
         </form>
       </div>

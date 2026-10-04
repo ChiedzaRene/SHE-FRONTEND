@@ -41,6 +41,14 @@ export function AuthProvider({ children }) {
     return payload;
   };
 
+  // After the user changes their own password the server returns a fresh token (the old one,
+  // like every other session, is signed out). Swap it in so this session carries on.
+  const replaceToken = (token) => {
+    localStorage.setItem('token', token);
+    const payload = decodeToken(token);
+    if (payload) setUser({ token, ...payload });
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     clearSitesCache(); // the next user may see a different set of sites
@@ -48,7 +56,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, replaceToken, loading }}>
       {children}
     </AuthContext.Provider>
   );

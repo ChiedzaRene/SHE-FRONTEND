@@ -250,6 +250,11 @@ const UserManagement = () => {
                     {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
                   </button>
                 </div>
+                <small style={{ color: '#64748b', display: 'block', marginTop: 6 }}>
+                  {editingUser
+                    ? 'If you set a new password, the user is signed out everywhere and must choose their own password at their next sign-in.'
+                    : 'This is a temporary password. The user will be asked to choose their own at first sign-in.'}
+                </small>
               </div>
               <div className="two-col users-form-two-col">
                 <div className="form-group">

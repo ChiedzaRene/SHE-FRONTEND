@@ -19,6 +19,11 @@ export default function Login() {
 
     try {
       const payload = await login(email, password);
+      // Temporary password set by an admin: go straight to choosing a new one
+      if (payload.mcp) {
+        navigate('/settings');
+        return;
+      }
       // Route based on role
       switch (payload.role) {
         case 'admin':
@@ -28,7 +33,8 @@ export default function Login() {
         default: navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
+      const detail = err.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
     }

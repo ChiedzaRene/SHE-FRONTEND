@@ -21,6 +21,14 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
+    // An admin reset this account's password: the server refuses everything until it is changed
+    if (
+      err.response?.status === 403 &&
+      err.response?.data?.detail?.code === 'password_change_required' &&
+      window.location.pathname !== '/settings'
+    ) {
+      window.location.href = '/settings';
+    }
     return Promise.reject(err);
   }
 );
