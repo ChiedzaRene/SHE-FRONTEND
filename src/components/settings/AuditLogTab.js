@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { FileText, RefreshCw } from "lucide-react";
 import { auditApi } from "../../api/endpoints";
-import { apiError } from "../../utils/apiError";
+import { apiError, apiErrorFromBlob } from "../../utils/apiError";
 
 const PAGE_SIZE = 50;
 const fmtTime = (ts) => (ts ? new Date(ts).toLocaleString() : "");
@@ -21,6 +21,30 @@ export default function AuditLogTab() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [exporting, setExporting] = useState(false);
+
+  const filters = () => {
+    const params = {};
+    if (user) params.user = user;
+    if (action) params.action = action;
+    if (resource) params.resource = resource;
+    if (start) params.start = start;
+    if (end) params.end = end;
+    return params;
+  };
+
+  const exportPdf = async () => {
+    setExporting(true);
+    setError("");
+    try {
+      await auditApi.exportPdf(filters());
+      setRefresh((n) => n + 1); // the export is itself logged, so show it
+    } catch (err) {
+      setError(await apiErrorFromBlob(err, "Could not create the PDF."));
+    } finally {
+      setExporting(false);
+    }
+  };
 
   useEffect(() => {
     auditApi.facets().then((res) => setFacets(res.data)).catch(() => {});
@@ -102,6 +126,10 @@ export default function AuditLogTab() {
           </div>
           <button className="btn btn-outline" type="button" onClick={() => setRefresh((n) => n + 1)}>
             <RefreshCw size={16} /> Refresh
+          </button>
+          <button className="btn btn-primary" type="button" onClick={exportPdf} disabled={exporting || total === 0}
+            title="Download the entries matching these filters (newest 2000)">
+            <FileText size={16} /> {exporting ? "Preparing..." : "Export PDF"}
           </button>
         </div>
       </div>

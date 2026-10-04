@@ -68,13 +68,25 @@ const UserManagement = () => {
   };
 
   const handleDeleteClick = async (userId) => {
-    if (window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
-      try {
-        await usersApi.delete(userId);
-        await fetchData();
-      } catch (err) {
-        alert("Failed to delete user.");
+    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    try {
+      await usersApi.delete(userId);
+      await fetchData();
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 409 && typeof detail === 'string') {
+        // The user has recorded incidents, audits etc. Those must keep their author, so offer the safe alternative.
+        if (window.confirm(`${detail}\n\nDeactivate this account now?`)) {
+          try {
+            await usersApi.update(userId, { is_active: false });
+            await fetchData();
+          } catch (e2) {
+            alert(e2.response?.data?.detail || 'Could not deactivate the user.');
+          }
+        }
+        return;
       }
+      alert(typeof detail === 'string' ? detail : 'Failed to delete user.');
     }
   };
 

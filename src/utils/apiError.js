@@ -11,3 +11,16 @@ export const apiError = (err, fallback = "Something went wrong. Please try again
   }
   return fallback;
 };
+
+// Same as apiError, for requests made with responseType "blob" (their error body arrives as a Blob)
+export const apiErrorFromBlob = async (err, fallback) => {
+  const body = err.response?.data;
+  if (body instanceof Blob) {
+    try {
+      return apiError({ response: { ...err.response, data: JSON.parse(await body.text()) } }, fallback);
+    } catch {
+      /* not JSON: fall through */
+    }
+  }
+  return apiError(err, fallback);
+};

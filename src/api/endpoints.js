@@ -1,4 +1,5 @@
 import api from "./axios";
+import { saveBlobResponse } from "../utils/download";
 
 export const authApi = {
   login: (email, password) => {
@@ -143,16 +144,7 @@ export const reportsApi = {
       params: { ...params, format },
       responseType: "blob",
     });
-    const disposition = res.headers["content-disposition"] || "";
-    const match = /filename="?([^";]+)"?/.exec(disposition);
-    const url = URL.createObjectURL(res.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = match ? match[1] : `she-${kind}.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    saveBlobResponse(res, `she-${kind}.${format}`);
   },
 };
 
@@ -172,4 +164,9 @@ export const auditApi = {
   // params: { user, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
   list: (params = {}) => api.get("/audit-logs/", { params }),
   facets: () => api.get("/audit-logs/facets"),
+  // Same filters as list (no paging); the PDF holds the newest 2000 matching entries
+  exportPdf: async (params = {}) => {
+    const res = await api.get("/audit-logs/export", { params, responseType: "blob" });
+    saveBlobResponse(res, "she-audit-log.pdf");
+  },
 };
