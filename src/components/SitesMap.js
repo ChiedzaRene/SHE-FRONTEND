@@ -6,11 +6,22 @@ import { fmtRate, siteStatus, STATUS_STYLE } from "../utils/rates";
 const ZIMBABWE = [-19.0154, 29.1549];
 
 // Map backgrounds, tried in order. If the first can't be reached the next is used.
+// None of these needs an account key. (CARTO's basemaps now return "API KEY REQUIRED" images instead.)
+const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas";
 const PROVIDERS = [
-  { url: "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" },
-  { url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" },
+  {
+    // light grey background so the coloured bubbles stand out, with place names on top
+    url: `${ESRI}/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}`,
+    labels: `${ESRI}/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}`,
+    maxZoom: 16,
+    attribution: 'Tiles &copy; <a href="https://www.esri.com">Esri</a> &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors',
+  },
+  {
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
 ];
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 const TILE_ERRORS_BEFORE_SWITCH = 4;
 
 const bubbleRadius = (count, max) => (max === 0 ? 8 : 8 + (count / max) * 32);
@@ -83,7 +94,11 @@ export default function SitesMap({ sites, search, limits }) {
       )}
       <div style={{ flex: 1, minHeight: 0, background: "#e5edf5" }}>
         <MapContainer center={ZIMBABWE} zoom={6} scrollWheelZoom={false} style={{ height: "100%", width: "100%" }}>
-          <TileLayer key={provider} url={PROVIDERS[provider].url} attribution={ATTRIBUTION} eventHandlers={tileHandlers} />
+          <TileLayer key={provider} url={PROVIDERS[provider].url} attribution={PROVIDERS[provider].attribution}
+            maxZoom={PROVIDERS[provider].maxZoom} eventHandlers={tileHandlers} />
+          {PROVIDERS[provider].labels && (
+            <TileLayer key={`labels-${provider}`} url={PROVIDERS[provider].labels} maxZoom={PROVIDERS[provider].maxZoom} />
+          )}
           <FitToSites points={points} />
           {located.map((site) => {
             const radius = bubbleRadius(site.incidentCount, maxCount);
