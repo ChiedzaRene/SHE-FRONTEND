@@ -64,8 +64,13 @@ input, select, textarea {
 .app-layout {
   display: flex;
   height: 100vh;
+  height: 100dvh; /* the visible height on phones, where the address bar comes and goes */
   overflow: hidden;
 }
+
+/* The menu bar and backdrop only exist on small screens (see RESPONSIVE below) */
+.mobile-topbar,
+.sidebar-backdrop { display: none; }
 
 .main-content {
   flex: 1;
@@ -1084,8 +1089,83 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 /* ─── RESPONSIVE ─────────────────────────── */
 @media (max-width: 900px) {
   .two-col { grid-template-columns: 1fr; }
-  .main-content { padding: 20px 16px; }
-  .sidebar { width: 200px; min-width: 200px; }
+  .main-content { padding: 20px 16px; min-height: 0; }
+
+  /* Phones and tablets: a top bar with a menu button, and the sidebar slides in over the page */
+  .app-layout { flex-direction: column; }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    height: 56px;
+    padding: 0 8px;
+    background: linear-gradient(90deg, #001a4d 0%, #003087 100%);
+    color: #fff;
+    position: relative;
+    z-index: 20;
+  }
+  .mobile-topbar-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px; /* a comfortable thumb target */
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+  .mobile-topbar-button:hover,
+  .mobile-topbar-button:focus-visible { background: rgba(255,255,255,0.14); outline: none; }
+  .mobile-topbar-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #CC0000, #ff4444);
+  }
+  .mobile-topbar-title { font-weight: 800; letter-spacing: -0.3px; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: auto;
+    width: 280px;
+    max-width: 85vw;
+    min-width: 0;
+    z-index: 40;
+    transform: translateX(-105%);
+    visibility: hidden; /* off-screen links must not be reachable with the keyboard */
+    transition: transform 0.22s ease, visibility 0s linear 0.22s;
+  }
+  .nav-open .sidebar {
+    transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.22s ease, visibility 0s;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgba(15, 23, 42, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    display: block;
+    transition: opacity 0.22s ease;
+  }
+  .nav-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar, .nav-open .sidebar, .sidebar-backdrop { transition: none; }
 }
 
 @media (max-width: 640px) {

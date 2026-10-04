@@ -17,7 +17,7 @@ import {
   FileText,
 } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ id }) {
   const { user, logout } = useAuth();
 
   const getLinks = () => {
@@ -81,7 +81,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="sidebar">
+    <div className="sidebar" id={id}>
       {/* Logo */}
       <div className="sidebar-logo">
         <div

@@ -22,6 +22,11 @@ npm run build
 * A user on a temporary password (new account, or reset by an admin) is sent to **Settings > My account**
   and cannot use anything else until they choose their own password. Changing a password signs the user out
   of their other devices.
+* On screens up to 900px wide the sidebar becomes a slide-in menu opened from a top bar (`components/Layout.js`,
+  the RESPONSIVE section of `index.css`).
+* The dashboard site map is one shared component (`components/SitesMap.js`): it zooms to fit the sites, falls
+  back from the Carto to the OpenStreetMap background (and shows a message if neither loads), and lists any
+  site that has no coordinates.
 * The list of sites is cached for 60 seconds across pages (`src/api/endpoints.js`).
 
 ---

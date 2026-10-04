@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { bucketWidth } from "../utils/breakpoint";
 import { fmtRate, siteStatus, STATUS_STYLE } from "../utils/rates";
 import useSafetyTargets from "../hooks/useSafetyTargets";
+import SitesMap from "../components/SitesMap";
 import {
   Building2,
   AlertTriangle,
@@ -19,30 +20,8 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
-  Popup,
-  Tooltip as LeafletTooltip,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 
-// Bubble radius: min 8px, max 40px, scaled by incident count
-const getBubbleRadius = (incidentCount, maxCount) => {
-  if (maxCount === 0) return 8;
-  return 8 + (incidentCount / maxCount) * 32;
-};
-
-// Color: green (0 incidents) → amber → red (high incidents)
-const getBubbleColor = (incidentCount, maxCount) => {
-  if (maxCount === 0 || incidentCount === 0) return "#10b981";
-  const ratio = incidentCount / maxCount;
-  if (ratio < 0.4) return "#10b981"; // green
-  if (ratio < 0.7) return "#f59e0b"; // amber
-  return "#ef4444"; // red
-};
 
 const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
 
@@ -417,7 +396,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             <input
-              placeholder="Filter by city..."
+              placeholder="Find a site..." aria-label="Find a site on the map"
               style={{
                 padding: "8px 12px",
                 borderRadius: "8px",
@@ -428,78 +407,8 @@ export default function AdminDashboard() {
             />
           </div>
         </div>
-        <div style={{ height: "420px" }}>
-          {(() => {
-            const filteredSiteMetrics = siteMetrics.filter((s) =>
-              s.name.toLowerCase().includes(mapSearch.toLowerCase()),
-            );
-            const maxCount = Math.max(
-              ...filteredSiteMetrics.map((s) => s.incidentCount),
-              1,
-            );
-            return (
-              <MapContainer
-                center={[-19.0154, 29.1549]}
-                zoom={6}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-                {filteredSiteMetrics.map((site) => {
-                  const radius = getBubbleRadius(site.incidentCount, maxCount);
-                  const color = getBubbleColor(site.incidentCount, maxCount);
-                  return (
-                    <CircleMarker
-                      key={site.id}
-                      center={[site.latitude || -19, site.longitude || 29]}
-                      radius={radius}
-                      pathOptions={{
-                        fillColor: color,
-                        fillOpacity: 0.55,
-                        color: color,
-                        weight: 2,
-                        opacity: 0.9,
-                      }}
-                    >
-                      <LeafletTooltip
-                        direction="top"
-                        offset={[0, -radius]}
-                        permanent={false}
-                      >
-                        <div style={{ textAlign: "center", lineHeight: "1.4" }}>
-                          <strong>{site.name}</strong>
-                          <br />
-                          {site.incidentCount} incident
-                          {site.incidentCount !== 1 ? "s" : ""}
-                          <br />
-                          TRIR: {fmtRate(site.trir)} &nbsp;|&nbsp; LTIFR:{" "}
-                          {fmtRate(site.ltifr)}
-                        </div>
-                      </LeafletTooltip>
-                      <Popup>
-                        <strong>{site.name}</strong>
-                        <br />
-                        Incidents: <strong>{site.incidentCount}</strong>
-                        <br />
-                        TRIR: {fmtRate(site.trir)}
-                        <br />
-                        LTIFR: {fmtRate(site.ltifr)}
-                        <br />
-                        Status:{" "}
-                        <span
-                          style={{
-                            color: STATUS_STYLE[siteStatus(site, limits)].color,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {STATUS_STYLE[siteStatus(site, limits)].label}
-                        </span>
-                      </Popup>
-                    </CircleMarker>
-                  );
-                })}
-              </MapContainer>
-            );
-          })()}
+        <div style={{ height: isMobile ? "380px" : "420px" }}>
+          <SitesMap sites={siteMetrics} search={mapSearch} limits={limits} />
         </div>
       </div>
 
