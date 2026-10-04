@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { usersApi, sitesApi } from '../api/endpoints';
+import { useFeedback } from '../components/Feedback';
+import { apiError } from '../utils/apiError';
 import {
   Plus,
   Search,
@@ -13,6 +15,7 @@ import {
 } from 'lucide-react';
 
 const UserManagement = () => {
+  const { notify, confirm } = useFeedback();
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -68,25 +71,38 @@ const UserManagement = () => {
   };
 
   const handleDeleteClick = async (userId) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) return;
+    const ok = await confirm({
+      title: 'Delete this user?',
+      message: 'This permanently removes the account and cannot be undone.',
+      confirmLabel: 'Delete user',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await usersApi.delete(userId);
       await fetchData();
+      notify('User deleted.', 'success');
     } catch (err) {
       const detail = err.response?.data?.detail;
       if (err.response?.status === 409 && typeof detail === 'string') {
         // The user has recorded incidents, audits etc. Those must keep their author, so offer the safe alternative.
-        if (window.confirm(`${detail}\n\nDeactivate this account now?`)) {
+        const deactivate = await confirm({
+          title: "This account can't be deleted",
+          message: `${detail}\n\nDeactivate this account instead?`,
+          confirmLabel: 'Deactivate account',
+        });
+        if (deactivate) {
           try {
             await usersApi.update(userId, { is_active: false });
             await fetchData();
+            notify('Account deactivated. They can no longer sign in.', 'success');
           } catch (e2) {
-            alert(e2.response?.data?.detail || 'Could not deactivate the user.');
+            notify(apiError(e2, 'Could not deactivate the user.'), 'error');
           }
         }
         return;
       }
-      alert(typeof detail === 'string' ? detail : 'Failed to delete user.');
+      notify(apiError(err, 'Failed to delete user.'), 'error');
     }
   };
 
@@ -131,7 +147,7 @@ const UserManagement = () => {
       await fetchData();
     } catch (err) {
       console.error('Save failed', err.response?.data);
-      alert(err.response?.data?.detail || 'An error occurred');
+      notify(apiError(err, 'Could not save the user.'), 'error');
     }
   };
 
@@ -215,7 +231,7 @@ const UserManagement = () => {
                         <button className="btn-icon-only" onClick={() => handleEditClick(user)}>
                           <Edit2 size={16} color="#6366f1" />
                         </button>
-                        <button className="btn-icon-only" onClick={() => handleDeleteClick(user.id)}>
+                        <button className="btn-icon-only" aria-label={`Delete ${user.email}`} onClick={() => handleDeleteClick(user.id)}>
                           <Trash2 size={16} color="#ef4444" />
                         </button>
                       </div>

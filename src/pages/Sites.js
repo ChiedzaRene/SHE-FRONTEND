@@ -11,8 +11,11 @@ import {
   Save
 } from 'lucide-react';
 import { sitesApi } from '../api/endpoints';
+import { useFeedback } from '../components/Feedback';
+import { apiError } from '../utils/apiError';
 
 export default function Sites() {
+  const { notify, confirm } = useFeedback();
   // --- STATE MANAGEMENT ---
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,7 @@ export default function Sites() {
       closeForm();
     } catch (err) {
       console.error(err);
-      alert('Failed to save site. Ensure coordinates are valid numbers.');
+      notify(apiError(err, 'Failed to save site. Ensure coordinates are valid numbers.'), 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -99,14 +102,14 @@ export default function Sites() {
 
   // Delete Logic
   const handleDelete = async (id, name) => {
-    if (window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) {
+    if (await confirm({ title: 'Delete site?', message: `Delete ${name}? This cannot be undone.`, confirmLabel: 'Delete site', danger: true })) {
       try {
         await sitesApi.delete(id);
         // Optimistic update: remove from UI immediately
         setSites(prev => prev.filter(site => site.id !== id));
       } catch (err) {
         // The server says exactly what is still linked (e.g. "Cannot delete a site that still has 3 incidents")
-        alert(err.response?.data?.detail || 'Could not delete site.');
+        notify(apiError(err, 'Could not delete site.'), 'error');
       }
     }
   };

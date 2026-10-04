@@ -33,7 +33,7 @@ export default function AdminDashboard() {
     ltifr: null,
   });
   const [sites, setSites] = useState([]);
-  const [incidents, setIncidents] = useState([]);
+  const [incidentSummary, setIncidentSummary] = useState({ total: 0, open: 0, by_type: [] });
   const [siteMetrics, setSiteMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,16 +47,15 @@ export default function AdminDashboard() {
           .getGlobalMetrics()
           .catch(() => ({ data: { trir: null, ltifr: null } })),
         sitesApi.getAll().catch(() => ({ data: [] })),
-        incidentsApi.getAll().catch(() => ({ data: [] })),
+        incidentsApi.getSummary().catch(() => ({ data: { total: 0, open: 0, by_type: [] } })),
         incidentsApi.getMetricsBySite().catch(() => ({ data: [] })),
       ]);
 
       const fetchedSites = sRes.data || [];
-      const fetchedIncidents = iRes.data || [];
 
       setMetrics(mRes.data);
       setSites(fetchedSites);
-      setIncidents(fetchedIncidents);
+      setIncidentSummary(iRes.data);
 
       // --- Site leaderboard: rates are calculated on the server (200,000-hour basis) ---
       const ratesBySite = new Map((bsRes.data || []).map((m) => [m.site_id, m]));
@@ -87,14 +86,7 @@ export default function AdminDashboard() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;
 
-  const chartData = Object.values(
-    incidents.reduce((acc, curr) => {
-      const type = curr.type || "Other";
-      if (!acc[type]) acc[type] = { name: type, value: 0 };
-      acc[type].value += 1;
-      return acc;
-    }, {}),
-  );
+  const chartData = incidentSummary.by_type;
 
   if (loading)
     return (
@@ -149,7 +141,7 @@ export default function AdminDashboard() {
         />
         <KPICard
           label="Active Incidents"
-          value={incidents.filter((i) => !i.resolved).length}
+          value={incidentSummary.open}
           Icon={AlertTriangle}
           color="#f43f5e"
         />

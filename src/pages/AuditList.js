@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auditsApi, sitesApi } from "../api/endpoints";
+import { useFeedback } from "../components/Feedback";
+import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
 import {
   ClipboardCheck,
@@ -18,6 +20,7 @@ import {
 } from "lucide-react";
 
 const AuditsList = () => {
+  const { notify } = useFeedback();
   const { user } = useAuth();
   const navigate = useNavigate();
   const canAdd = true;
@@ -109,10 +112,7 @@ const AuditsList = () => {
       });
       fetchData();
     } catch (err) {
-      alert(
-        "Error saving audit record: " +
-          (err.response?.data?.detail || "Connection lost"),
-      );
+      notify(`Could not save the audit record. ${apiError(err)}`, 'error');
     }
   };
 

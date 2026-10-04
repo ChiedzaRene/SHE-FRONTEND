@@ -101,3 +101,15 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Browser tests
+
+End-to-end tests in `e2e/` drive the real app in Chromium with the API mocked, so no backend or database is needed. They cover sign-in messages, expired sessions, the temporary-password menu, the phone menu, the delete/deactivate dialogs and the dashboard.
+
+```
+npm run build:e2e     # builds the app pointing at the fake API address
+npx playwright install chromium   # first time only
+npm run e2e
+```
+
+They run automatically on every pull request (see `.github/workflows/ci.yml`).

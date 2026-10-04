@@ -3,3 +3,7 @@ build/
 .env
 .env.local
 .env.*.local
+
+# browser test output
+/test-results/
+/playwright-report/

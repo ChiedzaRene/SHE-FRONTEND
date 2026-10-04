@@ -2,12 +2,24 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // 1. Import the verified logo file
+import { apiError } from '../utils/apiError';
+import { SESSION_NOTICE_KEY } from '../api/axios';
 import logo from '../assets/glow-logo-1.jpg'; 
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  // Set when the app signed the user out because their session ended
+  const [notice] = useState(() => {
+    try {
+      const msg = sessionStorage.getItem(SESSION_NOTICE_KEY);
+      sessionStorage.removeItem(SESSION_NOTICE_KEY);
+      return msg || '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -33,8 +45,7 @@ export default function Login() {
         default: navigate('/');
       }
     } catch (err) {
-      const detail = err.response?.data?.detail;
-      setError(typeof detail === 'string' ? detail : 'Invalid email or password. Please try again.');
+      setError(apiError(err, 'Invalid email or password. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -61,6 +72,15 @@ export default function Login() {
             Safety, Health, Environment
           </p>
         </div>
+
+        {notice && !error && (
+          <div role="status" style={{
+            backgroundColor: '#eff6ff', color: '#1e40af', padding: '10px', borderRadius: '6px',
+            marginBottom: '20px', fontSize: '0.85rem', textAlign: 'center', fontWeight: '600'
+          }}>
+            {notice}
+          </div>
+        )}
 
         {error && (
           <div className="error-msg" style={{ 

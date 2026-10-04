@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
+import { FeedbackProvider } from "./components/Feedback";
 
 import Login from "./pages/Login";
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -23,6 +24,7 @@ const Settings = lazy(() => import("./pages/Settings"));
 function App() {
   return (
     <AuthProvider>
+      <FeedbackProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -90,6 +92,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+    </FeedbackProvider>
     </AuthProvider>
   );
 }

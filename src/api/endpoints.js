@@ -47,6 +47,8 @@ export const sitesApi = {
 
 export const incidentsApi = {
   getAll: () => api.get("/incidents/"),
+  // Totals for the dashboards: { total, open, by_type: [{ name, value }] }
+  getSummary: () => api.get("/incidents/summary"),
   getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),

@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { Plus, UserCheck, Users } from "lucide-react";
 import { trainingsApi, sitesApi } from "../api/endpoints";
+import { useFeedback } from "../components/Feedback";
+import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
 
 const Trainings = () => {
+  const { notify } = useFeedback();
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
 
@@ -87,9 +90,7 @@ const Trainings = () => {
       });
       fetchData();
     } catch (err) {
-      alert(
-        "Error saving record. Check if backend model includes trainer fields.",
-      );
+      notify(apiError(err, 'Could not save the training record. Please try again.'), 'error');
     }
   };
 

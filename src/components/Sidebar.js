@@ -136,16 +136,33 @@ export default function Sidebar({ id }) {
 
       {/* Nav Links */}
       <div className="sidebar-nav">
-        {getLinks().map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
-          >
-            <link.icon size={17} className="icon" />
-            {link.label}
-          </NavLink>
-        ))}
+        {getLinks().map((link) => {
+          // Temporary password: only Settings (where the new password is chosen) is usable
+          const locked = user?.mcp && link.to !== "/settings";
+          if (locked) {
+            return (
+              <span
+                key={link.to}
+                className="nav-link nav-link-disabled"
+                aria-disabled="true"
+                title="Choose a new password first"
+              >
+                <link.icon size={17} className="icon" />
+                {link.label}
+              </span>
+            );
+          }
+          return (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+            >
+              <link.icon size={17} className="icon" />
+              {link.label}
+            </NavLink>
+          );
+        })}
       </div>
 
       {/* Footer */}
