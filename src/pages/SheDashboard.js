@@ -275,7 +275,7 @@ export default function AdminDashboard() {
                 No incidents recorded yet
               </div>
             ) : (
-              <ResponsiveContainer>
+              <ResponsiveContainer width="100%" height={220} minWidth={0} initialDimension={{ width: 400, height: 220 }}>
                 <PieChart>
                   <Pie
                     data={chartData}
