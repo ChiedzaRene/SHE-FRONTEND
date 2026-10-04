@@ -18,7 +18,7 @@ npm run build
 * **Reports** page: monthly performance, compliance status, incident register and site comparison,
   viewable on screen or downloaded as PDF / CSV. Site managers see only their own site.
 * **Settings** page: *My account* (everyone: name and password), *Safety targets* (admins: the TRIR/LTIFR
-  warning limits the dashboards and reports use) and *Audit log* (super admins, with an Export PDF button that uses the current filters).
+  warning limits the dashboards and reports use) and *Audit log* (super admins: pick a person to see everything they did and when).
 * A user on a temporary password (new account, or reset by an admin) is sent to **Settings > My account**
   and cannot use anything else until they choose their own password. Changing a password signs the user out
   of their other devices.

@@ -161,12 +161,9 @@ export const settingsApi = {
 };
 
 export const auditApi = {
-  // params: { user, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
+  // params: { email, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
   list: (params = {}) => api.get("/audit-logs/", { params }),
   facets: () => api.get("/audit-logs/facets"),
-  // Same filters as list (no paging); the PDF holds the newest 2000 matching entries
-  exportPdf: async (params = {}) => {
-    const res = await api.get("/audit-logs/export", { params, responseType: "blob" });
-    saveBlobResponse(res, "she-audit-log.pdf");
-  },
+  // One person's trail at a glance: totals, first/last activity, last sign-in, what they did
+  person: (email) => api.get("/audit-logs/person", { params: { email } }),
 };
