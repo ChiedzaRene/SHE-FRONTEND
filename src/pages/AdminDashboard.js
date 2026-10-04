@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { bucketWidth } from "../utils/breakpoint";
-import { fmtRate, siteStatus, STATUS_STYLE, TRIR_LIMIT, LTIFR_LIMIT } from "../utils/rates";
+import { fmtRate, siteStatus, STATUS_STYLE } from "../utils/rates";
+import useSafetyTargets from "../hooks/useSafetyTargets";
 import {
   Building2,
   AlertTriangle,
@@ -46,6 +47,7 @@ const getBubbleColor = (incidentCount, maxCount) => {
 const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
 
 export default function AdminDashboard() {
+  const limits = useSafetyTargets();
   const [metrics, setMetrics] = useState({
     total_incidents: 0,
     trir: null,
@@ -212,7 +214,7 @@ export default function AdminDashboard() {
               gap: "8px",
             }}
           >
-            <Info size={16} /> Understanding TRIR (Target &lt; 1.5)
+            <Info size={16} /> Understanding TRIR (Target &lt; {limits.trir_limit})
           </h4>
           <p
             style={{
@@ -243,7 +245,7 @@ export default function AdminDashboard() {
               gap: "8px",
             }}
           >
-            <Info size={16} /> Understanding LTIFR (Target &lt; 0.5)
+            <Info size={16} /> Understanding LTIFR (Target &lt; {limits.ltifr_limit})
           </h4>
           <p
             style={{
@@ -281,14 +283,14 @@ export default function AdminDashboard() {
             <ProgressBar
               label="Average TRIR"
               val={metrics.trir}
-              target={1.5}
-              max={3}
+              target={limits.trir_limit}
+              max={limits.trir_limit * 2}
             />
             <ProgressBar
               label="Average LTIFR"
               val={metrics.ltifr}
-              target={0.5}
-              max={1}
+              target={limits.ltifr_limit}
+              max={limits.ltifr_limit * 2}
             />
           </div>
         </Section>
@@ -485,11 +487,11 @@ export default function AdminDashboard() {
                         Status:{" "}
                         <span
                           style={{
-                            color: STATUS_STYLE[siteStatus(site)].color,
+                            color: STATUS_STYLE[siteStatus(site, limits)].color,
                             fontWeight: 700,
                           }}
                         >
-                          {STATUS_STYLE[siteStatus(site)].label}
+                          {STATUS_STYLE[siteStatus(site, limits)].label}
                         </span>
                       </Popup>
                     </CircleMarker>
@@ -515,8 +517,8 @@ export default function AdminDashboard() {
               <tr style={{ borderBottom: "2px solid #f1f5f9" }}>
                 <th style={thStyle}>Station</th>
                 <th style={thStyle}>Incidents</th>
-                <th style={thStyle}>TRIR (1.5)</th>
-                <th style={thStyle}>LTIFR (0.5)</th>
+                <th style={thStyle}>TRIR ({limits.trir_limit})</th>
+                <th style={thStyle}>LTIFR ({limits.ltifr_limit})</th>
                 <th style={thStyle}>Status</th>
               </tr>
             </thead>
@@ -536,7 +538,7 @@ export default function AdminDashboard() {
                       }}
                     >
                       {fmtRate(site.trir)}{" "}
-                      {site.trir == null ? null : site.trir > TRIR_LIMIT ? (
+                      {site.trir == null ? null : site.trir > limits.trir_limit ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -552,7 +554,7 @@ export default function AdminDashboard() {
                       }}
                     >
                       {fmtRate(site.ltifr)}{" "}
-                      {site.ltifr == null ? null : site.ltifr > LTIFR_LIMIT ? (
+                      {site.ltifr == null ? null : site.ltifr > limits.ltifr_limit ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -566,11 +568,11 @@ export default function AdminDashboard() {
                         borderRadius: "20px",
                         fontSize: "0.7rem",
                         fontWeight: "800",
-                        backgroundColor: STATUS_STYLE[siteStatus(site)].bg,
-                        color: STATUS_STYLE[siteStatus(site)].color,
+                        backgroundColor: STATUS_STYLE[siteStatus(site, limits)].bg,
+                        color: STATUS_STYLE[siteStatus(site, limits)].color,
                       }}
                     >
-                      {STATUS_STYLE[siteStatus(site)].label}
+                      {STATUS_STYLE[siteStatus(site, limits)].label}
                     </span>
                   </td>
                 </tr>

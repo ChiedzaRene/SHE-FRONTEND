@@ -55,9 +55,11 @@ export default function Sidebar() {
     if (role === "admin") {
       baseLinks.push(
         { to: "/users", icon: Users, label: "Users" },
-        { to: "/settings", icon: Settings, label: "Settings" },
       );
     }
+
+    // Every role has a Settings page (at least "My account")
+    baseLinks.push({ to: "/settings", icon: Settings, label: "Settings" });
 
     return baseLinks;
   };

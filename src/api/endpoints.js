@@ -155,3 +155,21 @@ export const reportsApi = {
     URL.revokeObjectURL(url);
   },
 };
+
+// Settings: the signed-in user's own account, the TRIR/LTIFR limits, and the audit log
+export const accountApi = {
+  me: () => api.get("/users/me"),
+  updateMe: (data) => api.patch("/users/me", data), // { full_name }
+  changePassword: (data) => api.post("/auth/change-password", data), // { current_password, new_password }
+};
+
+export const settingsApi = {
+  getTargets: () => api.get("/settings/safety-targets"),
+  saveTargets: (data) => api.put("/settings/safety-targets", data), // { trir_limit, ltifr_limit }
+};
+
+export const auditApi = {
+  // params: { user, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
+  list: (params = {}) => api.get("/audit-logs/", { params }),
+  facets: () => api.get("/audit-logs/facets"),
+};

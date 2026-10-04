@@ -18,6 +18,7 @@ const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
 const SiteHours = lazy(() => import("./pages/SiteHours"));
 const Reports = lazy(() => import("./pages/Reports"));
+const Settings = lazy(() => import("./pages/Settings"));
 
 function App() {
   return (
@@ -31,12 +32,6 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={["admin", "super_admin"]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/users" element={<UserManagement />} />
-              <Route
-                path="/settings"
-                element={
-                  <div style={{ padding: "20px" }}>Settings placeholder</div>
-                }
-              />
             </Route>
 
             {/* Admin, SHE Team & Site Manager (Read-only for Site Manager in page logic) */}
@@ -82,6 +77,7 @@ function App() {
             {/* General Protected Routes */}
             <Route element={<ProtectedRoute />}>
               <Route path="/reports" element={<Reports />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/incidents" element={<Incidents />} />
               <Route
                 path="/corrective-actions"

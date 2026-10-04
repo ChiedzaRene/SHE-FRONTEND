@@ -1,0 +1,153 @@
+import React, { useEffect, useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { auditApi } from "../../api/endpoints";
+import { apiError } from "../../utils/apiError";
+
+const PAGE_SIZE = 50;
+const fmtTime = (ts) => (ts ? new Date(ts).toLocaleString() : "");
+
+export default function AuditLogTab() {
+  const [facets, setFacets] = useState({ actions: [], resources: [] });
+  const [userText, setUserText] = useState("");
+  const [user, setUser] = useState(""); // debounced copy of userText
+  const [action, setAction] = useState("");
+  const [resource, setResource] = useState("");
+  const [start, setStart] = useState("");
+  const [end, setEnd] = useState("");
+  const [page, setPage] = useState(0);
+  const [refresh, setRefresh] = useState(0);
+
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    auditApi.facets().then((res) => setFacets(res.data)).catch(() => {});
+  }, [refresh]);
+
+  // Wait for a pause in typing before searching
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setUser(userText.trim());
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [userText]);
+
+  useEffect(() => {
+    let stale = false;
+    setLoading(true);
+    setError("");
+    const params = { limit: PAGE_SIZE, offset: page * PAGE_SIZE };
+    if (user) params.user = user;
+    if (action) params.action = action;
+    if (resource) params.resource = resource;
+    if (start) params.start = start;
+    if (end) params.end = end;
+    auditApi
+      .list(params)
+      .then((res) => {
+        if (stale) return;
+        setRows(res.data);
+        setTotal(Number(res.headers["x-total-count"] || res.data.length));
+      })
+      .catch((err) => !stale && setError(apiError(err, "Could not load the audit log.")))
+      .finally(() => !stale && setLoading(false));
+    return () => {
+      stale = true;
+    };
+  }, [user, action, resource, start, end, page, refresh]);
+
+  const change = (setter) => (e) => {
+    setter(e.target.value);
+    setPage(0);
+  };
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const from = total === 0 ? 0 : page * PAGE_SIZE + 1;
+  const to = Math.min(total, (page + 1) * PAGE_SIZE);
+
+  return (
+    <div>
+      <div className="card" style={{ padding: 16, marginBottom: 20 }}>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
+            <label className="form-label" htmlFor="audit-user">User (email)</label>
+            <input id="audit-user" className="form-control" placeholder="Search..." value={userText}
+              onChange={(e) => setUserText(e.target.value)} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="audit-action">Action</label>
+            <select id="audit-action" className="form-control" value={action} onChange={change(setAction)}>
+              <option value="">All actions</option>
+              {facets.actions.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="audit-resource">Area</label>
+            <select id="audit-resource" className="form-control" value={resource} onChange={change(setResource)}>
+              <option value="">All areas</option>
+              {facets.resources.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="audit-from">From</label>
+            <input id="audit-from" type="date" className="form-control" value={start} max={end || undefined}
+              onChange={change(setStart)} />
+          </div>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" htmlFor="audit-to">To</label>
+            <input id="audit-to" type="date" className="form-control" value={end} min={start || undefined}
+              onChange={change(setEnd)} />
+          </div>
+          <button className="btn btn-outline" type="button" onClick={() => setRefresh((n) => n + 1)}>
+            <RefreshCw size={16} /> Refresh
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="card" role="alert" style={{ padding: 16, marginBottom: 16, color: "#991B1B", background: "#FEF2F2" }}>
+          {error}
+        </div>
+      )}
+
+      <div className="card" style={{ opacity: loading ? 0.6 : 1, transition: "opacity .15s" }}>
+        <div className="card-header">
+          <div className="card-title">
+            {total === 0 ? "No matching entries" : `Showing ${from}-${to} of ${total.toLocaleString()}`}
+          </div>
+        </div>
+        {rows.length > 0 && (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>When</th><th>User</th><th>Role</th><th>Action</th><th>Area</th><th>Details</th><th>IP</th></tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id}>
+                    <td style={{ whiteSpace: "nowrap" }}>{fmtTime(r.timestamp)}</td>
+                    <td>{r.user_email}</td>
+                    <td>{(r.user_role || "").replace(/_/g, " ")}</td>
+                    <td><span className="badge badge-pending">{r.action}</span></td>
+                    <td>{r.resource}{r.resource_id ? ` #${r.resource_id}` : ""}</td>
+                    <td style={{ maxWidth: 360 }}>{r.details}</td>
+                    <td>{r.ip_address}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16 }}>
+          <button className="btn btn-outline" type="button" disabled={page === 0 || loading}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}>Previous</button>
+          <span style={{ color: "#64748b", fontSize: "0.85rem" }}>Page {page + 1} of {pages}</span>
+          <button className="btn btn-outline" type="button" disabled={page + 1 >= pages || loading}
+            onClick={() => setPage((p) => p + 1)}>Next</button>
+        </div>
+      </div>
+    </div>
+  );
+}
