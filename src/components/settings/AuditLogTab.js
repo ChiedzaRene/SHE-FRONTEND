@@ -7,7 +7,12 @@ const PAGE_SIZE = 50;
 const fmtTime = (ts) => (ts ? new Date(ts).toLocaleString() : "");
 
 export default function AuditLogTab() {
-  const [facets, setFacets] = useState({ actions: [], resources: [] });
+  const [facets, setFacets] = useState({
+    actions: [], resources: [], users: [], action_labels: {}, resource_labels: {},
+  });
+  // Plain-English names come from the server; anything unknown falls back to the raw code
+  const actionName = (code) => facets.action_labels[code] || code;
+  const areaName = (code) => facets.resource_labels[code] || code;
   const [userText, setUserText] = useState("");
   const [user, setUser] = useState(""); // debounced copy of userText
   const [action, setAction] = useState("");
@@ -96,22 +101,25 @@ export default function AuditLogTab() {
       <div className="card" style={{ padding: 16, marginBottom: 20 }}>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
-            <label className="form-label" htmlFor="audit-user">User (email)</label>
-            <input id="audit-user" className="form-control" placeholder="Search..." value={userText}
-              onChange={(e) => setUserText(e.target.value)} />
+            <label className="form-label" htmlFor="audit-user">User</label>
+            <input id="audit-user" className="form-control" placeholder="Type or pick an email" value={userText}
+              list="audit-user-options" autoComplete="off" onChange={(e) => setUserText(e.target.value)} />
+            <datalist id="audit-user-options">
+              {facets.users.map((email) => <option key={email} value={email} />)}
+            </datalist>
           </div>
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" htmlFor="audit-action">Action</label>
+            <label className="form-label" htmlFor="audit-action">Activity</label>
             <select id="audit-action" className="form-control" value={action} onChange={change(setAction)}>
-              <option value="">All actions</option>
-              {facets.actions.map((a) => <option key={a} value={a}>{a}</option>)}
+              <option value="">All activity</option>
+              {facets.actions.map((a) => <option key={a} value={a}>{actionName(a)}</option>)}
             </select>
           </div>
           <div className="form-group" style={{ margin: 0 }}>
-            <label className="form-label" htmlFor="audit-resource">Area</label>
+            <label className="form-label" htmlFor="audit-resource">Section</label>
             <select id="audit-resource" className="form-control" value={resource} onChange={change(setResource)}>
-              <option value="">All areas</option>
-              {facets.resources.map((r) => <option key={r} value={r}>{r}</option>)}
+              <option value="">All sections</option>
+              {facets.resources.map((r) => <option key={r} value={r}>{areaName(r)}</option>)}
             </select>
           </div>
           <div className="form-group" style={{ margin: 0 }}>
@@ -132,6 +140,11 @@ export default function AuditLogTab() {
             <FileText size={16} /> {exporting ? "Preparing..." : "Export PDF"}
           </button>
         </div>
+        <p style={{ margin: "12px 0 0", color: "#64748b", fontSize: "0.8rem" }}>
+          Everything people do in the system is recorded here. <strong>Activity</strong> is what they did (for example
+          "Password reset by an admin"), and <strong>Section</strong> is the part of the system it happened in. Leave a
+          filter on "All" to see everything. Export PDF saves what the filters currently show.
+        </p>
       </div>
 
       {error && (
@@ -150,7 +163,7 @@ export default function AuditLogTab() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>When</th><th>User</th><th>Role</th><th>Action</th><th>Area</th><th>Details</th><th>IP</th></tr>
+                <tr><th>When</th><th>User</th><th>Role</th><th>Activity</th><th>Section</th><th>Details</th><th>IP</th></tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
@@ -158,8 +171,8 @@ export default function AuditLogTab() {
                     <td style={{ whiteSpace: "nowrap" }}>{fmtTime(r.timestamp)}</td>
                     <td>{r.user_email}</td>
                     <td>{(r.user_role || "").replace(/_/g, " ")}</td>
-                    <td><span className="badge badge-pending">{r.action}</span></td>
-                    <td>{r.resource}{r.resource_id ? ` #${r.resource_id}` : ""}</td>
+                    <td><span className="badge badge-pending" title={r.action} style={{ textTransform: "none", whiteSpace: "normal" }}>{actionName(r.action)}</span></td>
+                    <td>{areaName(r.resource)}{r.resource_id ? ` #${r.resource_id}` : ""}</td>
                     <td style={{ maxWidth: 360 }}>{r.details}</td>
                     <td>{r.ip_address}</td>
                   </tr>
