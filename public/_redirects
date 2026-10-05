@@ -1,0 +1,2 @@
+# Single-page app: every address is handled by the app itself (so refreshing /admin or /settings works)
+/*    /index.html   200
