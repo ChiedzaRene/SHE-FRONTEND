@@ -193,3 +193,15 @@ export const auditApi = {
   // One person's trail at a glance: totals, first/last activity, last sign-in, what they did
   person: (email) => api.get("/audit-logs/person", { params: { email } }),
 };
+
+// Notifications for the signed-in person (newest first) and marking them read.
+// markRead body: { ids: [..] } | { resource: "incidents" } | { all: true }
+export const notificationsApi = {
+  list: (params = {}) => api.get("/notifications/", { params }),
+  markRead: (body) => api.post("/notifications/read", body),
+};
+
+// Active staff (name + email), for choosing who a corrective action is assigned to
+export const staffApi = {
+  directory: () => api.get("/users/directory"),
+};

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { auditsApi, sitesApi } from "../api/endpoints";
+import useNewItems, { newestFirst } from "../hooks/useNewItems";
+import NewBadge from "../components/NewBadge";
 import { useFeedback } from "../components/Feedback";
 import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
@@ -20,6 +22,7 @@ import {
 } from "lucide-react";
 
 const AuditsList = () => {
+  const newIds = useNewItems("audits");
   const { notify } = useFeedback();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -173,7 +176,7 @@ const AuditsList = () => {
   };
 
   const filteredAudits = Array.isArray(audits)
-    ? audits.filter((a) =>
+    ? newestFirst(audits).filter((a) =>
         (a.criteria || "").toLowerCase().includes(search.toLowerCase()),
       )
     : [];
@@ -487,7 +490,7 @@ const AuditsList = () => {
                   return (
                     <tr
                       key={audit.id}
-                      className="table-row-hover"
+                      className={`table-row-hover${newIds.has(audit.id) ? " row-new" : ""}`}
                       style={{ borderBottom: "1px solid #f1f5f9" }}
                     >
                       <td style={{ padding: "16px 24px" }}>
@@ -498,6 +501,7 @@ const AuditsList = () => {
                             gap: "4px",
                           }}
                         >
+                          {newIds.has(audit.id) && <span><NewBadge /></span>}
                           <span
                             style={{
                               display: "flex",

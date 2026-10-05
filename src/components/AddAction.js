@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { actionsApi, sitesApi } from '../api/endpoints';
+import { actionsApi, sitesApi, staffApi } from '../api/endpoints';
 import { useFeedback } from './Feedback';
 import { apiError } from '../utils/apiError';
 import { X, Lock, AlertCircle } from 'lucide-react';
@@ -27,6 +27,11 @@ const normalizeSites = (payload) => {
 
 const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = null }) => {
   const { notify } = useFeedback();
+  // Staff names to pick from: assigning to someone with an account sends them a notification
+  const [staff, setStaff] = useState([]);
+  useEffect(() => {
+    staffApi.directory().then((res) => setStaff(Array.isArray(res.data) ? res.data : [])).catch(() => setStaff([]));
+  }, []);
   const location = useLocation();
   const { user } = useAuth();
   const isSiteManager = user?.role === 'site_manager';
@@ -157,9 +162,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
         <div className="grid-3">
           <div className="form-group">
-            <label className="form-label">Location / Site</label>
+            <label className="form-label" htmlFor="action-site">Location / Site</label>
             {isSiteManager ? (
               <input
+                id="action-site"
                 type="text"
                 className="form-control"
                 value={internalSites.find(s => String(s.id) === String(formData.site_id))?.name || 'Your Site'}
@@ -167,7 +173,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
                 style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
               />
             ) : (
-              <select className="form-control" required value={formData.site_id} onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}>
+              <select id="action-site" className="form-control" required value={formData.site_id} onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}>
                 <option value="">-- {internalSites.length ? 'Select Site' : 'No Sites Available'} --</option>
                 {internalSites.map((site) => (
                   <option key={site.id} value={String(site.id)}>{site.name}</option>
@@ -177,8 +183,8 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
 
           <div className="form-group">
-            <label className="form-label">Designation</label>
-            <select className="form-control" value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })}>
+            <label className="form-label" htmlFor="action-designation">Designation</label>
+            <select id="action-designation" className="form-control" value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })}>
               <option value="Safety">Safety</option>
               <option value="Health">Health</option>
               <option value="Environment">Environment</option>
@@ -189,8 +195,16 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
 
           <div className="form-group">
-            <label className="form-label">Assigned Personnel</label>
-            <input type="text" className="form-control" required placeholder="Name" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
+            <label className="form-label" htmlFor="action-assigned-to">Assigned Personnel</label>
+            <input id="action-assigned-to" type="text" className="form-control" required list="action-staff" autoComplete="off"
+              placeholder="Start typing a name" value={formData.assigned_to}
+              onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
+            <datalist id="action-staff">
+              {staff.map((p) => (
+                <option key={p.email} value={p.name || p.email}>{p.name ? p.email : ''}</option>
+              ))}
+            </datalist>
+            <small style={{ color: '#64748b' }}>Pick someone from the list to notify them. Anyone else (e.g. a contractor) can be typed in.</small>
           </div>
         </div>
 
@@ -200,8 +214,8 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
             <input type="date" className="form-control" readOnly value={formData.due_date} style={{ background: '#f1f5f9', cursor: 'not-allowed' }} />
           </div>
           <div className="form-group">
-            <label className="form-label">Priority</label>
-            <select className="form-control" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
+            <label className="form-label" htmlFor="action-priority">Priority</label>
+            <select id="action-priority" className="form-control" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -210,8 +224,8 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
         </div>
 
         <div className="form-group" style={{ marginTop: '20px' }}>
-          <label className="form-label">Action Plan / Description</label>
-          <textarea className="form-control" rows="4" required value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}></textarea>
+          <label className="form-label" htmlFor="action-description">Action Plan / Description</label>
+          <textarea id="action-description" className="form-control" rows="4" required value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}></textarea>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>

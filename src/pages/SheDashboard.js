@@ -22,6 +22,7 @@ import {
 } from "recharts";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 import LoadingScreen from "../components/LoadingScreen";
+import RateCoverageNotice from "../components/RateCoverageNotice";
 
 
 const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
@@ -162,6 +163,8 @@ export default function AdminDashboard() {
           showInfo
         />
       </div>
+
+      <RateCoverageNotice metrics={metrics} />
 
       {/* --- GLOSSARY / EXPLANATION BOX --- */}
       <div
