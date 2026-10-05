@@ -102,6 +102,10 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
+## Signing out after inactivity
+
+People are signed out after **30 minutes** without mouse, keyboard, touch or scrolling, with a one-minute "Are you still there?" warning first. Coming back to a closed browser after longer than that also means signing in again, and signing out in one tab signs out the others. To change the limit, set `REACT_APP_IDLE_MINUTES` (e.g. `15`) in Netlify's environment variables and redeploy. Separately, every sign-in ends after 8 hours (`ACCESS_TOKEN_EXPIRE_MINUTES` on the server).
+
 ## UI tests
 
 The app is tested the way people use it: signing in through the sign-in form, clicking the menu, filling in forms and checking what appears on screen. Nothing skips the screens.

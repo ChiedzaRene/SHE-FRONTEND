@@ -56,7 +56,8 @@ export default function AdminDashboard() {
 
       setMetrics(mRes.data);
       setSites(fetchedSites);
-      setIncidentSummary(iRes.data);
+      // never let an unexpected reply blank the page
+      setIncidentSummary({ total: 0, open: 0, by_type: [], by_site: [], ...(iRes.data && !Array.isArray(iRes.data) ? iRes.data : {}) });
 
       // --- Site leaderboard: rates are calculated on the server (200,000-hour basis) ---
       const ratesBySite = new Map((bsRes.data || []).map((m) => [m.site_id, m]));
@@ -89,7 +90,7 @@ export default function AdminDashboard() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;
 
-  const chartData = incidentSummary.by_type;
+  const chartData = Array.isArray(incidentSummary.by_type) ? incidentSummary.by_type : [];
 
   if (loading)
     return (
