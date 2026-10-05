@@ -3,9 +3,15 @@ const { test, expect } = require('@playwright/test');
 const { ADMIN } = require('./settings');
 const { signIn, signOut, openMenu, chooseOwnPassword, toast, localDateTime } = require('./ui');
 
-const MANAGER = { name: 'Tendai Moyo', email: 'tendai.moyo@glowtest.com', temp: 'Welcome-123', own: 'Tendai-own-456' };
+const bell = (page) => page.locator('.notif:visible .notif-button');
+const monthLabel = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1)
+  .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+const MANAGER = { name: 'Tendai Moyo', email: 'tendai.moyo@glowtest.com', temp: 'Welcome-123', own: 'Tendai-own-456', later: 'Tendai-new-789' };
 const SHE = { name: 'Rudo Chikore', email: 'rudo.chikore@glowtest.com', temp: 'Welcome-789', own: 'Rudo-own-321' };
 const INCIDENT = 'Slipped near pump 3 & hurt wrist; first aid in < 5 minutes';
+const INJURED = 'Farai Moyo';
+const ACTION = 'Fix the drainage next to pump 3';
 const when = localDateTime(1);
 
 test.describe.serial('a working day', () => {
@@ -105,6 +111,7 @@ test.describe.serial('a working day', () => {
     await form.getByLabel('Severity').selectOption({ label: 'High' });
     await form.getByLabel('When did it happen?').fill(when.value);
     await form.getByLabel('Description').fill(INCIDENT);
+    await form.getByLabel('Name of injured person').fill(INJURED);
     await form.getByLabel('Lost Time Days').fill('2');
     await form.getByRole('button', { name: 'Log Incident' }).click();
     await expect(form).toHaveCount(0);
@@ -114,11 +121,40 @@ test.describe.serial('a working day', () => {
     await expect(page.getByRole('row').filter({ hasText: 'injury' })).toHaveCount(1);
   });
 
+  test('the admin is notified of the injury, opens it from the bell, and finds it flagged NEW at the top', async ({ page }) => {
+    await signIn(page, ADMIN.email, ADMIN.password);
+    await expect(bell(page)).toHaveAccessibleName('Notifications, 1 unread');
+    await bell(page).click();
+    const item = page.getByRole('dialog', { name: 'Notifications' }).getByRole('button', { name: new RegExp(`New injury at Msasa Depot \\(${INJURED} hurt\\)`) });
+    await expect(item).toContainText('Tendai Moyo recorded a high incident');
+    await item.click();
+
+    await expect(page).toHaveURL(/\/incidents$/);
+    const first = page.locator('tbody tr').first();
+    await expect(first).toContainText('injury');
+    await expect(first.getByText('NEW', { exact: true })).toBeVisible();
+    await expect(bell(page)).toHaveAccessibleName('Notifications');   // read now
+
+    await page.reload();                                                // seen: no longer flagged
+    await expect(page.locator('tbody tr').first()).toContainText('injury');
+    await expect(page.getByText('NEW', { exact: true })).toHaveCount(0);
+  });
+
+  test('the dashboard explains that the injury is not counted until hours are entered for its month', async ({ page }) => {
+    await signIn(page, ADMIN.email, ADMIN.password);
+    const notice = page.getByRole('status').filter({ hasText: 'not counted in TRIR/LTIFR yet' });
+    await expect(notice).toContainText('1 injury is not counted in TRIR/LTIFR yet');
+    await notice.getByRole('link', { name: 'Enter hours worked' }).click();
+    await expect(page.getByRole('heading', { name: 'Hours Worked' })).toBeVisible();
+  });
+
   test('the SHE officer sets their password and enters the month\'s hours; the rates appear', async ({ page }) => {
     await signIn(page, SHE.email, SHE.temp);
     await chooseOwnPassword(page, SHE.temp, SHE.own);
     await openMenu(page, 'Hours Worked');
-    await page.getByLabel('Month').fill(when.month);
+    // the page lists the month that has an injury but no hours; choosing it switches the page to that month
+    await page.getByRole('button', { name: monthLabel(when.month) }).click();
+    await expect(page.getByLabel('Month')).toHaveValue(when.month);
     await page.getByLabel('Hours worked at Msasa Depot').fill('52000');
     await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
     await expect(page.getByRole('row', { name: /Msasa Depot/ }).getByText('Saved')).toBeVisible();
@@ -126,6 +162,7 @@ test.describe.serial('a working day', () => {
     await openMenu(page, 'Dashboard');
     // 1 recordable injury x 200,000 / 52,000 hours = 3.85; 1 lost-time injury -> LTIFR 3.85 too
     await expect(page.getByText('3.85').first()).toBeVisible();
+    await expect(page.getByText('not counted in TRIR/LTIFR yet')).toHaveCount(0); // every injury now counted
   });
 
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {
@@ -136,6 +173,31 @@ test.describe.serial('a working day', () => {
     await openMenu(page, 'Incidents');
     await page.getByRole('row').filter({ hasText: 'injury' }).getByRole('button', { name: 'Details' }).click();
     await expect(page.getByText(INCIDENT, { exact: true })).toBeVisible(); // "&" and "<" shown as typed, not &amp;
+    await expect(page.getByText(`Injured person: ${INJURED}`)).toBeVisible();
+  });
+
+  test('the admin assigns a corrective action to the manager, who is notified and finds it flagged NEW', async ({ page, browser }) => {
+    await signIn(page, ADMIN.email, ADMIN.password);
+    await openMenu(page, 'Corrective Actions');
+    await page.getByRole('button', { name: 'Log Action' }).click();
+    await page.getByLabel('Location / Site').selectOption({ label: 'Msasa Depot' });
+    await page.getByLabel('Assigned Personnel').fill(MANAGER.name);
+    await page.getByLabel('Action Plan / Description').fill(ACTION);
+    await page.getByRole('button', { name: 'Assign Action' }).click();
+    await expect(page.locator('tbody tr').filter({ hasText: 'Msasa Depot' })).toHaveCount(1);
+
+    const manager = await (await browser.newContext()).newPage();
+    await signIn(manager, MANAGER.email, MANAGER.own);
+    await expect(bell(manager)).toHaveAccessibleName('Notifications, 1 unread');
+    await bell(manager).click();
+    const item = manager.getByRole('dialog', { name: 'Notifications' })
+      .getByRole('button', { name: /Corrective action assigned to you at Msasa Depot/ });
+    await expect(item).toContainText(`Grace Admin assigned you: ${ACTION}`);
+    await item.click();
+    await expect(manager).toHaveURL(/\/corrective-actions$/);
+    const row = manager.locator('tbody tr').first();
+    await expect(row).toContainText('Msasa Depot');
+    await expect(row.getByText('NEW', { exact: true })).toBeVisible();
   });
 
   test('the admin views the incident register report', async ({ page }) => {
@@ -162,6 +224,11 @@ test.describe.serial('a working day', () => {
     await manager.getByRole('button', { name: 'Sign In' }).click();
     await expect(manager).toHaveURL(/\/settings$/);
     await expect(manager.getByLabel('Temporary password (from your administrator)')).toBeVisible();
+
+    await chooseOwnPassword(manager, 'Reset-by-admin-1', MANAGER.later);
+    await bell(manager).click();
+    await expect(manager.getByRole('dialog', { name: 'Notifications' }))
+      .toContainText('Your password was reset by an administrator');
   });
 
   test('a person who recorded incidents can\'t be deleted, so the admin deactivates them instead', async ({ page, browser }) => {
@@ -174,7 +241,7 @@ test.describe.serial('a working day', () => {
     await expect(toast(page, 'Account deactivated')).toBeVisible();
 
     const manager = await (await browser.newContext()).newPage();
-    await signIn(manager, MANAGER.email, 'Reset-by-admin-1');
+    await signIn(manager, MANAGER.email, MANAGER.later);
     await expect(manager.getByText('Account is disabled. Contact your administrator.')).toBeVisible();
   });
 

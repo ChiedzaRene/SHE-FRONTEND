@@ -21,6 +21,7 @@ export default function LogIncidentModal({
     description: "",
     severity: "low",
     lost_time_days: "",
+    injured_person: "",
     occurred_at: nowLocal(),
   });
   const [loading, setLoading] = useState(false);
@@ -34,6 +35,7 @@ export default function LogIncidentModal({
       description: prefill?.description || "",
       severity: prefill?.severity || "low",
       lost_time_days: "",
+      injured_person: "",
       occurred_at: nowLocal(),
     });
     setError("");
@@ -75,6 +77,8 @@ export default function LogIncidentModal({
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
         occurred_at: formData.occurred_at || undefined,
+        // only injuries have someone hurt
+        injured_person: formData.type === "injury" ? formData.injured_person.trim() || undefined : undefined,
       };
 
       await incidentsApi.create(payload);
@@ -181,6 +185,22 @@ export default function LogIncidentModal({
                 rows={4}
               />
             </div>
+
+            {isInjury && (
+              <div className="form-group">
+                <label className="form-label" htmlFor="incident-injured-person">Name of injured person</label>
+                <input
+                  id="incident-injured-person"
+                  type="text"
+                  className="form-control"
+                  value={formData.injured_person}
+                  maxLength={150}
+                  autoComplete="off"
+                  onChange={(e) => setFormData({ ...formData, injured_person: e.target.value })}
+                  placeholder="e.g. Farai Moyo (leave blank if not known yet)"
+                />
+              </div>
+            )}
 
             {isInjury && (
               <div className="form-group">

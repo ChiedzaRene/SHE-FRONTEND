@@ -2,6 +2,7 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import emblem from "../assets/glow-emblem.png";
+import NotificationBell from "./NotificationBell";
 import {
   LayoutDashboard,
   Factory,
@@ -131,6 +132,9 @@ export default function Sidebar({ id }) {
             >
               Safety · Health · Environment
             </div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <NotificationBell placement="sidebar" />
           </div>
         </div>
       </div>

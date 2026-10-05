@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import LogIncidentModal from '../components/LogIncidentModal';
 import { incidentsApi, actionsApi, sitesApi } from '../api/endpoints';
 import LoadingScreen from "../components/LoadingScreen";
+import RateCoverageNotice from "../components/RateCoverageNotice";
 
 export default function SiteDashboard() {
   const { user } = useAuth();
@@ -118,6 +119,8 @@ export default function SiteDashboard() {
             <Plus size={20} /> Log Incident
           </button>
         </div>
+
+        <RateCoverageNotice metrics={metrics} />
 
         {/* --- KPI GRID --- */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>

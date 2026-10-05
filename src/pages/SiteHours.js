@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Save, CheckCircle } from "lucide-react";
-import { sitesApi, siteHoursApi } from "../api/endpoints";
+import { incidentsApi, sitesApi, siteHoursApi } from "../api/endpoints";
 
 const toMonthValue = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
@@ -20,6 +20,15 @@ export default function SiteHours() {
   const [status, setStatus] = useState({}); // site_id -> "saving" | "saved" | error text
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Months that have injuries but no hours yet: those injuries are left out of TRIR/LTIFR until hours are entered
+  const [needHours, setNeedHours] = useState([]);
+  const refreshNeeds = useCallback(() => {
+    incidentsApi
+      .getGlobalMetrics()
+      .then((res) => setNeedHours(res.data?.months_missing_hours || []))
+      .catch(() => setNeedHours([]));
+  }, []);
+  useEffect(() => { refreshNeeds(); }, [refreshNeeds]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +76,7 @@ export default function SiteHours() {
         return rest;
       });
       setStatus((s) => ({ ...s, [siteId]: "saved" }));
+      refreshNeeds();
     } catch (err) {
       const detail = err.response?.data?.detail;
       setStatus((s) => ({
@@ -97,6 +107,21 @@ export default function SiteHours() {
           />
         </div>
       </div>
+
+      {needHours.length > 0 && (
+        <div className="rate-notice">
+          <div>
+            <strong>Injuries in these months aren't in TRIR/LTIFR yet</strong> because no hours have been entered for
+            them. Choose a month to enter its hours:{" "}
+            {needHours.map((m) => (
+              <button key={m} type="button" className="btn btn-sm btn-outline" style={{ margin: "4px 6px 0 0" }}
+                onClick={() => setMonth(m)} aria-pressed={month === m}>
+                {new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="card" style={{ padding: 16, marginBottom: 16, color: "#991B1B" }}>

@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { incidentsApi, sitesApi } from "../api/endpoints";
+import useNewItems, { newestFirst } from "../hooks/useNewItems";
+import NewBadge from "../components/NewBadge";
 import { X, CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
 import { useAuth } from "../context/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
 
 export default function Incidents() {
+  const newIds = useNewItems("incidents");
   const navigate = useNavigate();
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
@@ -123,7 +126,7 @@ export default function Incidents() {
       open: result.filter((inc) => !inc.resolved).length,
     };
 
-    setFilteredIncidents(result);
+    setFilteredIncidents(newestFirst(result));
     setReportSummary(summary);
   }, [incidents, reportRange, selectedSite]);
 
@@ -462,9 +465,10 @@ export default function Incidents() {
             </thead>
             <tbody>
               {filteredIncidents.map((inc) => (
-                <tr key={inc.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                <tr key={inc.id} className={newIds.has(inc.id) ? "row-new" : undefined} style={{ borderBottom: "1px solid #f1f5f9" }}>
                   <td style={{ padding: "16px", fontWeight: "600" }}>
                     INC-{inc.id}
+                    {newIds.has(inc.id) && <NewBadge />}
                   </td>
                   <td style={{ padding: "16px" }}>{inc.type}</td>
                   <td style={{ padding: "16px" }}>
@@ -561,6 +565,11 @@ export default function Incidents() {
               <div style={{ marginBottom: "16px" }}>
                 <strong>Type:</strong> {selectedIncident.type}
               </div>
+              {selectedIncident.injured_person && (
+                <div style={{ marginBottom: "16px" }}>
+                  <strong>Injured person:</strong> {selectedIncident.injured_person}
+                </div>
+              )}
               <div style={{ marginBottom: "16px" }}>
                 <strong>Description:</strong>
                 <p style={{ marginTop: "4px", color: "#475569" }}>

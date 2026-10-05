@@ -5,6 +5,8 @@ import emblem from '../assets/glow-emblem.png';
 import Sidebar from './Sidebar';
 import LoadingScreen from './LoadingScreen';
 import IdleGuard from './IdleGuard';
+import NotificationBell from './NotificationBell';
+import { NotificationsProvider } from '../context/NotificationsContext';
 
 export default function Layout() {
   // On phones and tablets the sidebar is a slide-in panel opened from the top bar
@@ -21,6 +23,7 @@ export default function Layout() {
   }, [navOpen]);
 
   return (
+    <NotificationsProvider>
     <div className={`app-layout${navOpen ? ' nav-open' : ''}`}>
       <header className="mobile-topbar">
         <button type="button" className="mobile-topbar-button" aria-label={navOpen ? 'Close menu' : 'Open menu'}
@@ -29,6 +32,7 @@ export default function Layout() {
         </button>
         <span className="mobile-topbar-logo"><img src={emblem} alt="" width={26} height={26} /></span>
         <span className="mobile-topbar-title">Glow SHE</span>
+        <NotificationBell placement="topbar" />
       </header>
 
       <IdleGuard />
@@ -42,5 +46,6 @@ export default function Layout() {
         </Suspense>
       </div>
     </div>
+    </NotificationsProvider>
   );
 }

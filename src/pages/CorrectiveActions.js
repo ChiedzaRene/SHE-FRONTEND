@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { actionsApi, sitesApi } from "../api/endpoints";
+import useNewItems, { newestFirst } from "../hooks/useNewItems";
+import NewBadge from "../components/NewBadge";
 import { useFeedback } from "../components/Feedback";
 import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
@@ -8,6 +10,7 @@ import AddActionForm from "../components/AddAction";
 import { ShieldCheck, Plus, Search, X, Eye } from "lucide-react";
 
 const CorrectiveActions = () => {
+  const newIds = useNewItems("corrective_actions");
   const { notify } = useFeedback();
   const { user } = useAuth();
   const location = useLocation();
@@ -119,7 +122,7 @@ const CorrectiveActions = () => {
     return { text: `${diffDays} days left`, color: `hsl(${hue}, 75%, 45%)` };
   };
 
-  const filteredActions = actions.filter((a) => {
+  const filteredActions = newestFirst(actions).filter((a) => {
     const content = (
       a.action_taken ||
       a.description ||
@@ -285,12 +288,14 @@ const CorrectiveActions = () => {
                   return (
                     <tr
                       key={action.id}
+                      className={newIds.has(action.id) ? "row-new" : undefined}
                       style={{ borderBottom: "1px solid #f1f5f9" }}
                     >
                       <td style={{ padding: "12px 24px" }}>
                         <div
                           style={{ display: "flex", flexDirection: "column" }}
                         >
+                          {newIds.has(action.id) && <span><NewBadge /></span>}
                           <span
                             style={{
                               fontSize: "0.85rem",
