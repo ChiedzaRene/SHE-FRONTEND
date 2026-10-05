@@ -2,12 +2,24 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // 1. Import the verified logo file
+import { apiError } from '../utils/apiError';
+import { SESSION_NOTICE_KEY } from '../api/axios';
 import logo from '../assets/glow-logo-1.jpg'; 
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  // Set when the app signed the user out because their session ended
+  const [notice] = useState(() => {
+    try {
+      const msg = sessionStorage.getItem(SESSION_NOTICE_KEY);
+      sessionStorage.removeItem(SESSION_NOTICE_KEY);
+      return msg || '';
+    } catch (e) {
+      return '';
+    }
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,6 +31,11 @@ export default function Login() {
 
     try {
       const payload = await login(email, password);
+      // Temporary password set by an admin: go straight to choosing a new one
+      if (payload.mcp) {
+        navigate('/settings');
+        return;
+      }
       // Route based on role
       switch (payload.role) {
         case 'admin':
@@ -28,7 +45,7 @@ export default function Login() {
         default: navigate('/');
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Invalid email or password. Please try again.');
+      setError(apiError(err, 'Invalid email or password. Please try again.'));
     } finally {
       setIsLoading(false);
     }
@@ -56,6 +73,15 @@ export default function Login() {
           </p>
         </div>
 
+        {notice && !error && (
+          <div role="status" style={{
+            backgroundColor: '#eff6ff', color: '#1e40af', padding: '10px', borderRadius: '6px',
+            marginBottom: '20px', fontSize: '0.85rem', textAlign: 'center', fontWeight: '600'
+          }}>
+            {notice}
+          </div>
+        )}
+
         {error && (
           <div className="error-msg" style={{ 
             backgroundColor: 'var(--danger-light)', 
@@ -73,8 +99,10 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email Address</label>
+            <label className="form-label" htmlFor="login-email">Email Address</label>
             <input
+              id="login-email"
+              autoComplete="username"
               type="email"
               className="form-control"
               value={email}
@@ -85,8 +113,10 @@ export default function Login() {
           </div>
 
           <div className="form-group" style={{ marginBottom: '32px' }}>
-            <label className="form-label">Password</label>
+            <label className="form-label" htmlFor="login-password">Password</label>
             <input
+              id="login-password"
+              autoComplete="current-password"
               type="password"
               className="form-control"
               value={password}

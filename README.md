@@ -17,6 +17,16 @@ npm run build
   entered on the **Hours Worked** page (SHE team and admins).
 * **Reports** page: monthly performance, compliance status, incident register and site comparison,
   viewable on screen or downloaded as PDF / CSV. Site managers see only their own site.
+* **Settings** page: *My account* (everyone: name and password), *Safety targets* (admins: the TRIR/LTIFR
+  warning limits the dashboards and reports use) and *Audit log* (super admins: pick a person to see everything they did and when).
+* A user on a temporary password (new account, or reset by an admin) is sent to **Settings > My account**
+  and cannot use anything else until they choose their own password. Changing a password signs the user out
+  of their other devices.
+* On screens up to 900px wide the sidebar becomes a slide-in menu opened from a top bar (`components/Layout.js`,
+  the RESPONSIVE section of `index.css`).
+* The dashboard site map is one shared component (`components/SitesMap.js`): it zooms to fit the sites, falls
+  back from the Carto to the OpenStreetMap background (and shows a message if neither loads), and lists any
+  site that has no coordinates.
 * The list of sites is cached for 60 seconds across pages (`src/api/endpoints.js`).
 
 ---
@@ -91,3 +101,28 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## UI tests
+
+The app is tested the way people use it: signing in through the sign-in form, clicking the menu, filling in forms and checking what appears on screen. Nothing skips the screens.
+
+**Real-server tests** (`e2e/full/`) start the real backend on a fresh, empty database (one admin account is created to begin with) and walk through a working day: the admin adds sites and users; a site manager signs in with a temporary password, chooses their own and logs an incident; the SHE officer enters hours and sees TRIR/LTIFR; the admin reads the incident, runs a report, resets a password, deactivates an account and checks the audit log; plus the phone menu and the account lock after repeated wrong passwords.
+
+They need the backend folder next to this one (or set `BACKEND_DIR`) with its Python packages installed:
+
+```
+npx playwright install chromium     # first time only
+npm run build:ui-tests
+npm run ui-tests
+```
+
+In PowerShell, if the backend is somewhere else: `$env:BACKEND_DIR = "C:\path\to\SHE-BACKEND"` before `npm run ui-tests`.
+
+**Simulated-server tests** (`e2e/*.spec.js`) cover what a real server can't do on demand: being unreachable, very slow, or an older version. They still drive the screens.
+
+```
+npm run build:ui-tests:simulated
+npm run ui-tests:simulated
+```
+
+Both run automatically on every pull request (see `.github/workflows/ci.yml`). When the real-server tests fail there, the report with screenshots is attached to the run as `ui-test-report`.

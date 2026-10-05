@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { bucketWidth } from "../utils/breakpoint";
-import { fmtRate, siteStatus, STATUS_STYLE, TRIR_LIMIT, LTIFR_LIMIT } from "../utils/rates";
+import { fmtRate, siteStatus, STATUS_STYLE } from "../utils/rates";
+import useSafetyTargets from "../hooks/useSafetyTargets";
+import SitesMap from "../components/SitesMap";
 import {
   Building2,
   AlertTriangle,
@@ -18,41 +20,21 @@ import {
   Legend,
   Tooltip,
 } from "recharts";
-import {
-  MapContainer,
-  TileLayer,
-  CircleMarker,
-  Popup,
-  Tooltip as LeafletTooltip,
-} from "react-leaflet";
-import "leaflet/dist/leaflet.css";
 import { incidentsApi, sitesApi } from "../api/endpoints";
+import LoadingScreen from "../components/LoadingScreen";
 
-// Bubble radius: min 8px, max 40px, scaled by incident count
-const getBubbleRadius = (incidentCount, maxCount) => {
-  if (maxCount === 0) return 8;
-  return 8 + (incidentCount / maxCount) * 32;
-};
-
-// Color: green (0 incidents) → amber → red (high incidents)
-const getBubbleColor = (incidentCount, maxCount) => {
-  if (maxCount === 0 || incidentCount === 0) return "#10b981";
-  const ratio = incidentCount / maxCount;
-  if (ratio < 0.4) return "#10b981"; // green
-  if (ratio < 0.7) return "#f59e0b"; // amber
-  return "#ef4444"; // red
-};
 
 const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
 
 export default function AdminDashboard() {
+  const limits = useSafetyTargets();
   const [metrics, setMetrics] = useState({
     total_incidents: 0,
     trir: null,
     ltifr: null,
   });
   const [sites, setSites] = useState([]);
-  const [incidents, setIncidents] = useState([]);
+  const [incidentSummary, setIncidentSummary] = useState({ total: 0, open: 0, by_type: [], by_site: [] });
   const [siteMetrics, setSiteMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -66,26 +48,27 @@ export default function AdminDashboard() {
           .getGlobalMetrics()
           .catch(() => ({ data: { trir: null, ltifr: null } })),
         sitesApi.getAll().catch(() => ({ data: [] })),
-        incidentsApi.getAll().catch(() => ({ data: [] })),
+        incidentsApi.getSummary().catch(() => ({ data: { total: 0, open: 0, by_type: [], by_site: [] } })),
         incidentsApi.getMetricsBySite().catch(() => ({ data: [] })),
       ]);
 
       const fetchedSites = sRes.data || [];
-      const fetchedIncidents = iRes.data || [];
 
       setMetrics(mRes.data);
       setSites(fetchedSites);
-      setIncidents(fetchedIncidents);
+      setIncidentSummary(iRes.data);
 
       // --- Site leaderboard: rates are calculated on the server (200,000-hour basis) ---
       const ratesBySite = new Map((bsRes.data || []).map((m) => [m.site_id, m]));
+      // Map bubbles show every incident recorded at the site, not only the last 12 months
+      const countBySite = new Map((iRes.data?.by_site || []).map((c) => [c.site_id, c.value]));
       const perSiteData = fetchedSites.map((site) => {
         const m = ratesBySite.get(site.id);
         return {
           ...site,
           trir: m?.trir ?? null,
           ltifr: m?.ltifr ?? null,
-          incidentCount: m?.total_incidents ?? 0,
+          incidentCount: countBySite.get(site.id) ?? m?.total_incidents ?? 0,
         };
       });
       setSiteMetrics(perSiteData);
@@ -106,20 +89,11 @@ export default function AdminDashboard() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;
 
-  const chartData = Object.values(
-    incidents.reduce((acc, curr) => {
-      const type = curr.type || "Other";
-      if (!acc[type]) acc[type] = { name: type, value: 0 };
-      acc[type].value += 1;
-      return acc;
-    }, {}),
-  );
+  const chartData = incidentSummary.by_type;
 
   if (loading)
     return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
+      <LoadingScreen message="Loading dashboard..." />
     );
 
   return (
@@ -168,7 +142,7 @@ export default function AdminDashboard() {
         />
         <KPICard
           label="Active Incidents"
-          value={incidents.filter((i) => !i.resolved).length}
+          value={incidentSummary.open}
           Icon={AlertTriangle}
           color="#f43f5e"
         />
@@ -212,7 +186,7 @@ export default function AdminDashboard() {
               gap: "8px",
             }}
           >
-            <Info size={16} /> Understanding TRIR (Target &lt; 1.5)
+            <Info size={16} /> Understanding TRIR (Target &lt; {limits.trir_limit})
           </h4>
           <p
             style={{
@@ -243,7 +217,7 @@ export default function AdminDashboard() {
               gap: "8px",
             }}
           >
-            <Info size={16} /> Understanding LTIFR (Target &lt; 0.5)
+            <Info size={16} /> Understanding LTIFR (Target &lt; {limits.ltifr_limit})
           </h4>
           <p
             style={{
@@ -281,41 +255,49 @@ export default function AdminDashboard() {
             <ProgressBar
               label="Average TRIR"
               val={metrics.trir}
-              target={1.5}
-              max={3}
+              target={limits.trir_limit}
+              max={limits.trir_limit * 2}
             />
             <ProgressBar
               label="Average LTIFR"
               val={metrics.ltifr}
-              target={0.5}
-              max={1}
+              target={limits.ltifr_limit}
+              max={limits.ltifr_limit * 2}
             />
           </div>
         </Section>
 
         <Section title="Incident Distribution">
           <div style={{ height: "220px" }}>
-            <ResponsiveContainer>
-              <PieChart>
-                <Pie
-                  data={chartData}
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={8}
-                  dataKey="value"
-                >
-                  {chartData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % 5]} stroke="none" />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend
-                  verticalAlign="middle"
-                  align="right"
-                  layout="vertical"
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {chartData.length === 0 ? (
+              <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#94a3b8" }}>
+                No incidents recorded yet
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={220} minWidth={0} initialDimension={{ width: 400, height: 220 }}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={chartData.length > 1 ? 8 : 0}
+                    dataKey="value"
+                    nameKey="name"
+                  >
+                    {chartData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} stroke="none" />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v) => [`${v} incident${v === 1 ? "" : "s"}`]} />
+                  <Legend
+                    verticalAlign="middle"
+                    align="right"
+                    layout="vertical"
+                    formatter={(name, entry) => `${name} (${entry.payload.value})`}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Section>
       </div>
@@ -350,7 +332,7 @@ export default function AdminDashboard() {
                 color: "#94a3b8",
               }}
             >
-              Bubble size = incident volume
+              Bubble size = incidents recorded at the site
             </span>
           </div>
           <div
@@ -415,7 +397,7 @@ export default function AdminDashboard() {
               </span>
             </div>
             <input
-              placeholder="Filter by city..."
+              placeholder="Find a site..." aria-label="Find a site on the map"
               style={{
                 padding: "8px 12px",
                 borderRadius: "8px",
@@ -426,78 +408,8 @@ export default function AdminDashboard() {
             />
           </div>
         </div>
-        <div style={{ height: "420px" }}>
-          {(() => {
-            const filteredSiteMetrics = siteMetrics.filter((s) =>
-              s.name.toLowerCase().includes(mapSearch.toLowerCase()),
-            );
-            const maxCount = Math.max(
-              ...filteredSiteMetrics.map((s) => s.incidentCount),
-              1,
-            );
-            return (
-              <MapContainer
-                center={[-19.0154, 29.1549]}
-                zoom={6}
-                style={{ height: "100%", width: "100%" }}
-              >
-                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-                {filteredSiteMetrics.map((site) => {
-                  const radius = getBubbleRadius(site.incidentCount, maxCount);
-                  const color = getBubbleColor(site.incidentCount, maxCount);
-                  return (
-                    <CircleMarker
-                      key={site.id}
-                      center={[site.latitude || -19, site.longitude || 29]}
-                      radius={radius}
-                      pathOptions={{
-                        fillColor: color,
-                        fillOpacity: 0.55,
-                        color: color,
-                        weight: 2,
-                        opacity: 0.9,
-                      }}
-                    >
-                      <LeafletTooltip
-                        direction="top"
-                        offset={[0, -radius]}
-                        permanent={false}
-                      >
-                        <div style={{ textAlign: "center", lineHeight: "1.4" }}>
-                          <strong>{site.name}</strong>
-                          <br />
-                          {site.incidentCount} incident
-                          {site.incidentCount !== 1 ? "s" : ""}
-                          <br />
-                          TRIR: {fmtRate(site.trir)} &nbsp;|&nbsp; LTIFR:{" "}
-                          {fmtRate(site.ltifr)}
-                        </div>
-                      </LeafletTooltip>
-                      <Popup>
-                        <strong>{site.name}</strong>
-                        <br />
-                        Incidents: <strong>{site.incidentCount}</strong>
-                        <br />
-                        TRIR: {fmtRate(site.trir)}
-                        <br />
-                        LTIFR: {fmtRate(site.ltifr)}
-                        <br />
-                        Status:{" "}
-                        <span
-                          style={{
-                            color: STATUS_STYLE[siteStatus(site)].color,
-                            fontWeight: 700,
-                          }}
-                        >
-                          {STATUS_STYLE[siteStatus(site)].label}
-                        </span>
-                      </Popup>
-                    </CircleMarker>
-                  );
-                })}
-              </MapContainer>
-            );
-          })()}
+        <div style={{ height: isMobile ? "380px" : "420px" }}>
+          <SitesMap sites={siteMetrics} search={mapSearch} limits={limits} />
         </div>
       </div>
 
@@ -515,8 +427,8 @@ export default function AdminDashboard() {
               <tr style={{ borderBottom: "2px solid #f1f5f9" }}>
                 <th style={thStyle}>Station</th>
                 <th style={thStyle}>Incidents</th>
-                <th style={thStyle}>TRIR (1.5)</th>
-                <th style={thStyle}>LTIFR (0.5)</th>
+                <th style={thStyle}>TRIR ({limits.trir_limit})</th>
+                <th style={thStyle}>LTIFR ({limits.ltifr_limit})</th>
                 <th style={thStyle}>Status</th>
               </tr>
             </thead>
@@ -536,7 +448,7 @@ export default function AdminDashboard() {
                       }}
                     >
                       {fmtRate(site.trir)}{" "}
-                      {site.trir == null ? null : site.trir > TRIR_LIMIT ? (
+                      {site.trir == null ? null : site.trir > limits.trir_limit ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -552,7 +464,7 @@ export default function AdminDashboard() {
                       }}
                     >
                       {fmtRate(site.ltifr)}{" "}
-                      {site.ltifr == null ? null : site.ltifr > LTIFR_LIMIT ? (
+                      {site.ltifr == null ? null : site.ltifr > limits.ltifr_limit ? (
                         <ArrowUpRight size={14} color="#ef4444" />
                       ) : (
                         <ArrowDownRight size={14} color="#10b981" />
@@ -566,11 +478,11 @@ export default function AdminDashboard() {
                         borderRadius: "20px",
                         fontSize: "0.7rem",
                         fontWeight: "800",
-                        backgroundColor: STATUS_STYLE[siteStatus(site)].bg,
-                        color: STATUS_STYLE[siteStatus(site)].color,
+                        backgroundColor: STATUS_STYLE[siteStatus(site, limits)].bg,
+                        color: STATUS_STYLE[siteStatus(site, limits)].color,
                       }}
                     >
-                      {STATUS_STYLE[siteStatus(site)].label}
+                      {STATUS_STYLE[siteStatus(site, limits)].label}
                     </span>
                   </td>
                 </tr>

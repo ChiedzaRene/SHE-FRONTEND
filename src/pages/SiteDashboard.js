@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import LogIncidentModal from '../components/LogIncidentModal';
 import { incidentsApi, actionsApi, sitesApi } from '../api/endpoints';
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function SiteDashboard() {
   const { user } = useAuth();
@@ -96,7 +97,7 @@ export default function SiteDashboard() {
     return days < 0 ? 0 : days;
   };
 
-  if (loading) return <div className="loading-screen"><div className="spinner"></div></div>;
+  if (loading) return <LoadingScreen message="Loading dashboard..." />;
 
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth < 1024;

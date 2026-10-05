@@ -108,8 +108,8 @@ export default function LogIncidentModal({
           )}
           <form id="incident-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="form-label">Site</label>
-              <input
+              <label className="form-label" htmlFor="incident-site">Site</label>
+              <input id="incident-site"
                 type="text"
                 className="form-control"
                 value={site ? site.name : "Loading site..."}
@@ -120,8 +120,8 @@ export default function LogIncidentModal({
 
             <div className="two-col">
               <div className="form-group">
-                <label className="form-label">Incident Type</label>
-                <select
+                <label className="form-label" htmlFor="incident-incident-type">Incident Type</label>
+                <select id="incident-incident-type"
                   className="form-control"
                   value={formData.type}
                   onChange={(e) =>
@@ -137,8 +137,8 @@ export default function LogIncidentModal({
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Severity</label>
-                <select
+                <label className="form-label" htmlFor="incident-severity">Severity</label>
+                <select id="incident-severity"
                   className="form-control"
                   value={formData.severity}
                   onChange={(e) =>
@@ -155,8 +155,8 @@ export default function LogIncidentModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">When did it happen?</label>
-              <input
+              <label className="form-label" htmlFor="incident-when-did-it-happen">When did it happen?</label>
+              <input id="incident-when-did-it-happen"
                 type="datetime-local"
                 className="form-control"
                 value={formData.occurred_at}
@@ -169,8 +169,8 @@ export default function LogIncidentModal({
             </div>
 
             <div className="form-group">
-              <label className="form-label">Description</label>
-              <textarea
+              <label className="form-label" htmlFor="incident-description">Description</label>
+              <textarea id="incident-description"
                 className="form-control"
                 placeholder="Detailed description of the incident..."
                 value={formData.description}
@@ -184,8 +184,8 @@ export default function LogIncidentModal({
 
             {isInjury && (
               <div className="form-group">
-                <label className="form-label">Lost Time Days</label>
-                <input
+                <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days</label>
+                <input id="incident-lost-time-days"
                   type="number"
                   className="form-control"
                   value={formData.lost_time_days}

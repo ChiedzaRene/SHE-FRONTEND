@@ -1,4 +1,5 @@
 import api from "./axios";
+import { saveBlobResponse } from "../utils/download";
 
 export const authApi = {
   login: (email, password) => {
@@ -44,8 +45,34 @@ export const sitesApi = {
   delete: (id) => api.delete(`/sites/${id}`).then(invalidateSites),
 };
 
+const summarise = (incidents) => {
+  const byType = {};
+  const bySite = {};
+  let open = 0;
+  incidents.forEach((i) => {
+    const type = i.type || "Other";
+    byType[type] = (byType[type] || 0) + 1;
+    if (i.site_id != null) bySite[i.site_id] = (bySite[i.site_id] || 0) + 1;
+    if (!i.resolved) open += 1;
+  });
+  return {
+    total: incidents.length,
+    open,
+    by_type: Object.entries(byType).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
+    by_site: Object.entries(bySite).map(([site_id, value]) => ({ site_id: Number(site_id), value })),
+  };
+};
+
 export const incidentsApi = {
   getAll: () => api.get("/incidents/"),
+  // Totals for the dashboards: { total, open, by_type: [{ name, value }], by_site: [{ site_id, value }] }.
+  // An older server without /incidents/summary gets the same numbers worked out from the incident list.
+  getSummary: () =>
+    api.get("/incidents/summary").catch((err) => {
+      // an older server reads "summary" as an incident number (422) or has no such route (404)
+      if (!err.response || ![404, 405, 422].includes(err.response.status)) throw err;
+      return api.get("/incidents/").then((res) => ({ data: summarise(res.data || []) }));
+    }),
   getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),
@@ -143,15 +170,26 @@ export const reportsApi = {
       params: { ...params, format },
       responseType: "blob",
     });
-    const disposition = res.headers["content-disposition"] || "";
-    const match = /filename="?([^";]+)"?/.exec(disposition);
-    const url = URL.createObjectURL(res.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = match ? match[1] : `she-${kind}.${format}`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    saveBlobResponse(res, `she-${kind}.${format}`);
   },
+};
+
+// Settings: the signed-in user's own account, the TRIR/LTIFR limits, and the audit log
+export const accountApi = {
+  me: () => api.get("/users/me"),
+  updateMe: (data) => api.patch("/users/me", data), // { full_name }
+  changePassword: (data) => api.post("/auth/change-password", data), // { current_password, new_password }
+};
+
+export const settingsApi = {
+  getTargets: () => api.get("/settings/safety-targets"),
+  saveTargets: (data) => api.put("/settings/safety-targets", data), // { trir_limit, ltifr_limit }
+};
+
+export const auditApi = {
+  // params: { email, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
+  list: (params = {}) => api.get("/audit-logs/", { params }),
+  facets: () => api.get("/audit-logs/facets"),
+  // One person's trail at a glance: totals, first/last activity, last sign-in, what they did
+  person: (email) => api.get("/audit-logs/person", { params: { email } }),
 };

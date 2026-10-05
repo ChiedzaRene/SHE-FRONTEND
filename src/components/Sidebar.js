@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import emblem from "../assets/glow-emblem.png";
 import {
   LayoutDashboard,
   Factory,
@@ -12,12 +13,11 @@ import {
   Users,
   Settings,
   LogOut,
-  Droplets,
   Clock,
   FileText,
 } from "lucide-react";
 
-export default function Sidebar() {
+export default function Sidebar({ id }) {
   const { user, logout } = useAuth();
 
   const getLinks = () => {
@@ -55,9 +55,11 @@ export default function Sidebar() {
     if (role === "admin") {
       baseLinks.push(
         { to: "/users", icon: Users, label: "Users" },
-        { to: "/settings", icon: Settings, label: "Settings" },
       );
     }
+
+    // Every role has a Settings page (at least "My account")
+    baseLinks.push({ to: "/settings", icon: Settings, label: "Settings" });
 
     return baseLinks;
   };
@@ -79,7 +81,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="sidebar">
+    <div className="sidebar" id={id}>
       {/* Logo */}
       <div className="sidebar-logo">
         <div
@@ -95,15 +97,16 @@ export default function Sidebar() {
               width: "38px",
               height: "38px",
               borderRadius: "10px",
-              background: "linear-gradient(135deg, #CC0000, #ff4444)",
+              background: "#fff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              boxShadow: "0 4px 12px rgba(204,0,0,0.3)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              overflow: "hidden",
             }}
           >
-            <Droplets size={20} color="#fff" strokeWidth={2.5} />
+            <img src={emblem} alt="Glow Petroleum" width={34} height={34} style={{ display: "block" }} />
           </div>
           <div>
             <div
@@ -115,7 +118,7 @@ export default function Sidebar() {
                 lineHeight: 1.2,
               }}
             >
-              GLOW SHE
+              Glow SHE
             </div>
             <div
               style={{
@@ -134,16 +137,33 @@ export default function Sidebar() {
 
       {/* Nav Links */}
       <div className="sidebar-nav">
-        {getLinks().map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
-          >
-            <link.icon size={17} className="icon" />
-            {link.label}
-          </NavLink>
-        ))}
+        {getLinks().map((link) => {
+          // Temporary password: only Settings (where the new password is chosen) is usable
+          const locked = user?.mcp && link.to !== "/settings";
+          if (locked) {
+            return (
+              <span
+                key={link.to}
+                className="nav-link nav-link-disabled"
+                aria-disabled="true"
+                title="Choose a new password first"
+              >
+                <link.icon size={17} className="icon" />
+                {link.label}
+              </span>
+            );
+          }
+          return (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}
+            >
+              <link.icon size={17} className="icon" />
+              {link.label}
+            </NavLink>
+          );
+        })}
       </div>
 
       {/* Footer */}

@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import { actionsApi, sitesApi } from "../api/endpoints";
+import { useFeedback } from "../components/Feedback";
+import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
 import AddActionForm from "../components/AddAction";
 import { ShieldCheck, Plus, Search, X, Eye } from "lucide-react";
 
 const CorrectiveActions = () => {
+  const { notify } = useFeedback();
   const { user } = useAuth();
   const location = useLocation();
   const isSiteManager = user?.role === "site_manager";
@@ -88,7 +91,7 @@ const CorrectiveActions = () => {
       setResNotes("");
     } catch (err) {
       console.error("Resolution failed:", err);
-      alert("Failed to save resolution.");
+      notify(apiError(err, 'Could not save the resolution.'), 'error');
     }
   };
 

@@ -18,3 +18,52 @@ jobs:
         run: npm run build
         env:
           CI: "false"
+
+  ui-tests:
+    # Drives the app through its screens (sign in, click, type) against the real backend and a fresh database
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_DIR: ${{ github.workspace }}/../SHE-BACKEND
+      PYTHON: python
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get the backend (same branch name if it exists, otherwise main)
+        run: |
+          BRANCH="${{ github.head_ref || github.ref_name }}"
+          git clone --depth 1 --branch "$BRANCH" https://github.com/ChiedzaRene/SHE-BACKEND.git "$BACKEND_DIR" \
+            || git clone --depth 1 https://github.com/ChiedzaRene/SHE-BACKEND.git "$BACKEND_DIR"
+          git -C "$BACKEND_DIR" log --oneline -1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r "$BACKEND_DIR/requirements.txt"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:ui-tests
+      - run: npm run ui-tests
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ui-test-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+
+  ui-tests-simulated:
+    # Situations a real server can't produce on demand: unreachable, very slow, or an older version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:ui-tests:simulated
+      - run: npm run ui-tests:simulated

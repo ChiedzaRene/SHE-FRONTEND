@@ -87,8 +87,8 @@ export default function SiteHours() {
           </p>
         </div>
         <div className="form-group" style={{ margin: 0 }}>
-          <label className="form-label">Month</label>
-          <input
+          <label className="form-label" htmlFor="hours-month">Month</label>
+          <input id="hours-month"
             type="month"
             className="form-control"
             value={month}
@@ -141,6 +141,7 @@ export default function SiteHours() {
                         style={{ maxWidth: 180 }}
                         value={value}
                         placeholder="e.g. 5200"
+                        aria-label={`Hours worked at ${site.name}`}
                         onChange={(e) => setDraft((d) => ({ ...d, [site.id]: e.target.value }))}
                         onKeyDown={(e) => e.key === "Enter" && save(site.id)}
                       />
@@ -150,6 +151,7 @@ export default function SiteHours() {
                         className="btn btn-primary"
                         disabled={st === "saving" || draft[site.id] === undefined}
                         onClick={() => save(site.id)}
+                        aria-label={`Save hours for ${site.name}`}
                       >
                         <Save size={16} /> Save
                       </button>

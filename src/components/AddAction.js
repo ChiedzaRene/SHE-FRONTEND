@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { actionsApi, sitesApi } from '../api/endpoints';
+import { useFeedback } from './Feedback';
+import { apiError } from '../utils/apiError';
 import { X, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -24,6 +26,7 @@ const normalizeSites = (payload) => {
 };
 
 const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = null }) => {
+  const { notify } = useFeedback();
   const location = useLocation();
   const { user } = useAuth();
   const isSiteManager = user?.role === 'site_manager';
@@ -112,10 +115,9 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
 
   // Debug — remove after fixing
   console.log("Form Data:", formData);
-  console.log("Sites:", internalSites);
 
   if (!formData.site_id || !formData.action_taken) {
-    alert(`Missing fields: site_id="${formData.site_id}" action_taken="${formData.action_taken}"`);
+    notify('Please choose a site and describe the action taken.', 'error');
     return;
   }
 
@@ -137,7 +139,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
   } catch (err) {
     const serverError = err.response?.data;
     console.error('Submission error:', serverError);
-    alert(`Submission Failed: ${JSON.stringify(serverError?.detail || 'Check console for details')}`);
+    notify(`Could not save the action. ${apiError(err, 'Please check the form and try again.')}`, 'error');
   }
 };
 

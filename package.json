@@ -23,7 +23,11 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "build:ui-tests": "node e2e/build.js full",
+    "ui-tests": "playwright test -c playwright.full.config.js",
+    "build:ui-tests:simulated": "node e2e/build.js",
+    "ui-tests:simulated": "playwright test"
   },
   "eslintConfig": {
     "extends": [
@@ -42,5 +46,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
   }
 }

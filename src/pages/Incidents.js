@@ -4,6 +4,7 @@ import { incidentsApi, sitesApi } from "../api/endpoints";
 import { X, CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
 import { useAuth } from "../context/AuthContext";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function Incidents() {
   const navigate = useNavigate();
@@ -141,9 +142,7 @@ export default function Incidents() {
 
   if (loading && incidents.length === 0) {
     return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
+      <LoadingScreen message="Loading incidents..." />
     );
   }
 
