@@ -86,7 +86,9 @@ export default function SitesMap({ sites, search, limits }) {
   };
 
   return (
-    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column" }}>
+    // isolation keeps the map library's own layers (z-index up to 1000) inside this box, so they can't
+    // cover the phone menu or dialogs that open on top of the page
+    <div style={{ position: "relative", isolation: "isolate", zIndex: 0, height: "100%", display: "flex", flexDirection: "column" }}>
       {failed && (
         <div role="status" style={{ background: "#fffbeb", color: "#92400e", padding: "8px 14px", fontSize: "0.8rem", borderBottom: "1px solid #fcd34d" }}>
           The map background couldn't load (check the internet connection). Your sites are still shown below.
