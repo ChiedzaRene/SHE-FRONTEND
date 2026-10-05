@@ -1221,3 +1221,88 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 /* Menu items that can't be used yet (temporary password still active) */
 .nav-link-disabled { opacity: 0.4; cursor: not-allowed; pointer-events: auto; }
 .nav-link-disabled:hover { background: transparent; color: inherit; }
+
+/* ─── LOADING SPLASH & ACTIVITY BAR ─────── */
+.splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 320px;
+  padding: 40px 16px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.splash-full {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  min-height: 0;
+  background: linear-gradient(160deg, #0b2a6f 0%, #001a4d 100%);
+  color: rgba(255,255,255,0.75);
+}
+.splash-mark {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15,23,42,0.15);
+}
+.splash-mark img { border-radius: 12px; animation: splashPulse 1.6s ease-in-out infinite; }
+.splash-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid rgba(204,0,0,0.15);
+  border-top-color: #CC0000;
+  border-right-color: #0072BC;
+  animation: spin 0.9s linear infinite;
+}
+.splash-title { font-size: 1.4rem; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+.splash-message { font-size: 0.9rem; font-weight: 500; }
+@keyframes splashPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.92); } }
+
+.activity-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 2500;
+  overflow: hidden;
+  background: rgba(0,114,188,0.15);
+}
+.activity-bar::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 35%;
+  background: linear-gradient(90deg, #CC0000, #0072BC);
+  animation: activitySlide 1.1s ease-in-out infinite;
+}
+@keyframes activitySlide { from { left: -35%; } to { left: 100%; } }
+.activity-slow {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2500;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg);
+  text-align: center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .splash-mark img, .splash-ring, .activity-bar::after { animation-duration: 3s; }
+}

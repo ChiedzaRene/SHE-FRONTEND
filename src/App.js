@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import { FeedbackProvider } from "./components/Feedback";
+import ActivityBar from "./components/ActivityBar";
 
 import Login from "./pages/Login";
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
@@ -25,6 +26,7 @@ function App() {
   return (
     <AuthProvider>
       <FeedbackProvider>
+      <ActivityBar />
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />

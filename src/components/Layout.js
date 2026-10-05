@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import emblem from '../assets/glow-emblem.png';
 import Sidebar from './Sidebar';
+import LoadingScreen from './LoadingScreen';
 
 export default function Layout() {
   // On phones and tablets the sidebar is a slide-in panel opened from the top bar
@@ -34,7 +35,7 @@ export default function Layout() {
 
       <div className="main-content">
         {/* Pages are lazy-loaded; keep the sidebar visible while a page's chunk downloads */}
-        <Suspense fallback={<div className="loading-screen"><div className="spinner"></div></div>}>
+        <Suspense fallback={<LoadingScreen message="Loading page..." />}>
           <Outlet />
         </Suspense>
       </div>

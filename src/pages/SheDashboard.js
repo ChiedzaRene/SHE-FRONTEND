@@ -21,6 +21,7 @@ import {
   Tooltip,
 } from "recharts";
 import { incidentsApi, sitesApi } from "../api/endpoints";
+import LoadingScreen from "../components/LoadingScreen";
 
 
 const PIE_COLORS = ["#6366f1", "#f43f5e", "#fbbf24", "#2dd4bf", "#a855f7"];
@@ -92,9 +93,7 @@ export default function AdminDashboard() {
 
   if (loading)
     return (
-      <div className="loading-screen">
-        <div className="spinner"></div>
-      </div>
+      <LoadingScreen message="Loading dashboard..." />
     );
 
   return (
