@@ -4,7 +4,9 @@ import { useAuth } from "./AuthContext";
 
 const POLL_MS = 60 * 1000; // check for new notifications every minute while the app is open
 
-const NotificationsContext = createContext({ items: [], unread: 0, refresh: () => {}, markRead: async () => {} });
+const NotificationsContext = createContext({
+  items: [], unread: 0, refresh: () => {}, markRead: async () => {}, markUnread: async () => {},
+});
 
 export const useNotifications = () => useContext(NotificationsContext);
 
@@ -37,6 +39,15 @@ export function NotificationsProvider({ children }) {
     refresh();
   }, [refresh]);
 
+  const markUnread = useCallback(async (body) => {
+    try {
+      await notificationsApi.markUnread(body);
+    } catch (e) {
+      return;
+    }
+    refresh();
+  }, [refresh]);
+
   useEffect(() => {
     if (!user) {
       setItems([]);
@@ -54,7 +65,7 @@ export function NotificationsProvider({ children }) {
   }, [user, refresh]);
 
   return (
-    <NotificationsContext.Provider value={{ items, unread, refresh, markRead }}>
+    <NotificationsContext.Provider value={{ items, unread, refresh, markRead, markUnread }}>
       {children}
     </NotificationsContext.Provider>
   );

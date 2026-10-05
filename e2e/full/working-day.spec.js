@@ -125,7 +125,7 @@ test.describe.serial('a working day', () => {
     await signIn(page, ADMIN.email, ADMIN.password);
     await expect(bell(page)).toHaveAccessibleName('Notifications, 1 unread');
     await bell(page).click();
-    const item = page.getByRole('dialog', { name: 'Notifications' }).getByRole('button', { name: new RegExp(`New injury at Msasa Depot \\(${INJURED} hurt\\)`) });
+    const item = page.getByRole('dialog', { name: 'Notifications' }).getByRole('button', { name: new RegExp(`^New injury at Msasa Depot \\(${INJURED} hurt\\)`) });
     await expect(item).toContainText('Tendai Moyo recorded a high incident');
     await item.click();
 
@@ -138,6 +138,16 @@ test.describe.serial('a working day', () => {
     await page.reload();                                                // seen: no longer flagged
     await expect(page.locator('tbody tr').first()).toContainText('injury');
     await expect(page.getByText('NEW', { exact: true })).toHaveCount(0);
+
+    // it stays in the list for 24 hours after opening, with when it happened, and can be marked unread again
+    await bell(page).click();
+    const panel = page.getByRole('dialog', { name: 'Notifications' });
+    await expect(panel.locator('time').first()).toHaveText(/^Today, /);
+    await expect(panel).toContainText(/opened, removed in 2[34] h/);
+    await panel.getByRole('button', { name: 'Mark all as unread' }).click();
+    await expect(bell(page)).toHaveAccessibleName('Notifications, 1 unread');
+    await panel.getByRole('button', { name: 'Mark all as read' }).click();
+    await expect(bell(page)).toHaveAccessibleName('Notifications');
   });
 
   test('the dashboard explains that the injury is not counted until hours are entered for its month', async ({ page }) => {
@@ -191,7 +201,7 @@ test.describe.serial('a working day', () => {
     await expect(bell(manager)).toHaveAccessibleName('Notifications, 1 unread');
     await bell(manager).click();
     const item = manager.getByRole('dialog', { name: 'Notifications' })
-      .getByRole('button', { name: /Corrective action assigned to you at Msasa Depot/ });
+      .getByRole('button', { name: /^Corrective action assigned to you at Msasa Depot/ });
     await expect(item).toContainText(`Grace Admin assigned you: ${ACTION}`);
     await item.click();
     await expect(manager).toHaveURL(/\/corrective-actions$/);
