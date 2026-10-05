@@ -1,6 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import emblem from "../assets/glow-emblem.png";
 import {
   LayoutDashboard,
   Factory,
@@ -12,7 +13,6 @@ import {
   Users,
   Settings,
   LogOut,
-  Droplets,
   Clock,
   FileText,
 } from "lucide-react";
@@ -97,15 +97,16 @@ export default function Sidebar({ id }) {
               width: "38px",
               height: "38px",
               borderRadius: "10px",
-              background: "linear-gradient(135deg, #CC0000, #ff4444)",
+              background: "#fff",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               flexShrink: 0,
-              boxShadow: "0 4px 12px rgba(204,0,0,0.3)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.25)",
+              overflow: "hidden",
             }}
           >
-            <Droplets size={20} color="#fff" strokeWidth={2.5} />
+            <img src={emblem} alt="Glow Petroleum" width={34} height={34} style={{ display: "block" }} />
           </div>
           <div>
             <div
@@ -117,7 +118,7 @@ export default function Sidebar({ id }) {
                 lineHeight: 1.2,
               }}
             >
-              GLOW SHE
+              Glow SHE
             </div>
             <div
               style={{

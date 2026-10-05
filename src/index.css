@@ -1127,7 +1127,8 @@ textarea.form-control { resize: vertical; min-height: 100px; }
     width: 30px;
     height: 30px;
     border-radius: 8px;
-    background: linear-gradient(135deg, #CC0000, #ff4444);
+    background: #fff;
+    overflow: hidden;
   }
   .mobile-topbar-title { font-weight: 800; letter-spacing: -0.3px; }
 

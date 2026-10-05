@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Droplets, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
+import emblem from '../assets/glow-emblem.png';
 import Sidebar from './Sidebar';
 
 export default function Layout() {
@@ -24,8 +25,8 @@ export default function Layout() {
           aria-expanded={navOpen} aria-controls="app-sidebar" onClick={() => setNavOpen((open) => !open)}>
           {navOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
-        <span className="mobile-topbar-logo"><Droplets size={18} color="#fff" strokeWidth={2.5} /></span>
-        <span className="mobile-topbar-title">GLOW SHE</span>
+        <span className="mobile-topbar-logo"><img src={emblem} alt="" width={26} height={26} /></span>
+        <span className="mobile-topbar-title">Glow SHE</span>
       </header>
 
       <Sidebar id="app-sidebar" />
