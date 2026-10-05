@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import emblem from '../assets/glow-emblem.png';
 import Sidebar from './Sidebar';
 import LoadingScreen from './LoadingScreen';
+import IdleGuard from './IdleGuard';
 
 export default function Layout() {
   // On phones and tablets the sidebar is a slide-in panel opened from the top bar
@@ -30,6 +31,7 @@ export default function Layout() {
         <span className="mobile-topbar-title">Glow SHE</span>
       </header>
 
+      <IdleGuard />
       <Sidebar id="app-sidebar" />
       <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />
 
