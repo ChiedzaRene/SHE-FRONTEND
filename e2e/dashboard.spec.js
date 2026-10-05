@@ -72,3 +72,43 @@ test('the map background comes from a service that needs no account key, with pl
   await expect(page.getByText(/couldn't load/)).toHaveCount(0);
   await expect(page.locator('.leaflet-control-attribution')).toContainText('Esri');
 });
+
+test('on a narrow screen the open menu sits above the map, and its items can be clicked', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 720 });
+  await page.route(/arcgisonline|openstreetmap|basemaps/, (r) => r.abort());
+  await mockApi(page, {
+    'GET /sites': sites,
+    'GET /incidents/summary': { total: 1, open: 1, by_type: [{ name: 'spill', value: 1 }], by_site: [{ site_id: 1, value: 1 }] },
+  });
+  await signIn(page, { role: 'admin' });
+  const map = page.locator('.leaflet-container');
+  await map.scrollIntoViewIfNeeded();
+
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  const sidebar = page.locator('#app-sidebar');
+  await expect(sidebar).toBeVisible();
+  // wait until the menu has finished sliding in
+  await expect.poll(async () => Math.round((await sidebar.boundingBox()).x)).toBe(0);
+
+  // every part of the map that lies under the open menu (zoom buttons, site bubbles, the map itself)
+  // must be hidden by the menu, not drawn on top of it
+  const onTop = await page.evaluate(() => {
+    const menu = document.querySelector('#app-sidebar').getBoundingClientRect();
+    const parts = [...document.querySelectorAll('.leaflet-control-zoom a, path.leaflet-interactive, .leaflet-container')];
+    return parts
+      .map((el) => {
+        const r = el.getBoundingClientRect();
+        const x = Math.min(Math.max(r.left + r.width / 2, r.left + 2), menu.right - 2);
+        const y = r.top + r.height / 2;
+        if (x < menu.left || x > menu.right || x < r.left || x > r.right || y < menu.top || y > menu.bottom) return null;
+        const hit = document.elementFromPoint(x, y);
+        return hit && !hit.closest('#app-sidebar') ? el.className.baseVal || el.className || el.tagName : null;
+      })
+      .filter(Boolean);
+  });
+  expect(onTop).toEqual([]);
+
+  // a person can click the last menu item even where the map is underneath
+  await sidebar.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page).toHaveURL(/\/settings$/);
+});
