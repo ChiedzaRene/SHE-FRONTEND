@@ -102,14 +102,27 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
 
-## Browser tests
+## UI tests
 
-End-to-end tests in `e2e/` drive the real app in Chromium with the API mocked, so no backend or database is needed. They cover sign-in messages, expired sessions, the temporary-password menu, the phone menu, the delete/deactivate dialogs and the dashboard.
+The app is tested the way people use it: signing in through the sign-in form, clicking the menu, filling in forms and checking what appears on screen. Nothing skips the screens.
+
+**Real-server tests** (`e2e/full/`) start the real backend on a fresh, empty database (one admin account is created to begin with) and walk through a working day: the admin adds sites and users; a site manager signs in with a temporary password, chooses their own and logs an incident; the SHE officer enters hours and sees TRIR/LTIFR; the admin reads the incident, runs a report, resets a password, deactivates an account and checks the audit log; plus the phone menu and the account lock after repeated wrong passwords.
+
+They need the backend folder next to this one (or set `BACKEND_DIR`) with its Python packages installed:
 
 ```
-npm run build:e2e     # builds the app pointing at the fake API address
-npx playwright install chromium   # first time only
-npm run e2e
+npx playwright install chromium     # first time only
+npm run build:ui-tests
+npm run ui-tests
 ```
 
-They run automatically on every pull request (see `.github/workflows/ci.yml`).
+In PowerShell, if the backend is somewhere else: `$env:BACKEND_DIR = "C:\path\to\SHE-BACKEND"` before `npm run ui-tests`.
+
+**Simulated-server tests** (`e2e/*.spec.js`) cover what a real server can't do on demand: being unreachable, very slow, or an older version. They still drive the screens.
+
+```
+npm run build:ui-tests:simulated
+npm run ui-tests:simulated
+```
+
+Both run automatically on every pull request (see `.github/workflows/ci.yml`). When the real-server tests fail there, the report with screenshots is attached to the run as `ui-test-report`.

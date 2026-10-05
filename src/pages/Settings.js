@@ -5,12 +5,14 @@ import { useAuth } from "../context/AuthContext";
 import AccountTab from "../components/settings/AccountTab";
 import TargetsTab from "../components/settings/TargetsTab";
 import AuditLogTab from "../components/settings/AuditLogTab";
+import { useFeedback } from "../components/Feedback";
 
 const HOME = { admin: "/admin", super_admin: "/admin", she_team: "/she-dashboard", site_manager: "/site-dashboard" };
 
 export default function Settings() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { notify } = useFeedback();
   const role = user?.role;
   // An administrator set a temporary password: nothing else works until the user chooses their own
   const forced = Boolean(user?.mcp);
@@ -61,7 +63,15 @@ export default function Settings() {
 
       <Panel
         forced={forced}
-        onPasswordChanged={forced ? () => navigate(HOME[role] || "/") : undefined}
+        onPasswordChanged={
+          forced
+            ? () => {
+                // the page changes straight away, so confirm it where it stays visible
+                notify("Password changed. You can now use Glow SHE.", "success");
+                navigate(HOME[role] || "/");
+              }
+            : undefined
+        }
       />
     </div>
   );

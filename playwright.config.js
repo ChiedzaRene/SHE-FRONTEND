@@ -6,6 +6,7 @@ const { defineConfig } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.js',
+  testIgnore: '**/full/**', // the real-backend UI tests have their own config (playwright.full.config.js)
   timeout: 30000,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? 'github' : 'list',

@@ -160,8 +160,8 @@ export default function Reports() {
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap", alignItems: "flex-end" }}>
           {!isManager && kind !== "leaderboard" && (
             <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
-              <label className="form-label">Site</label>
-              <select className="form-control" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
+              <label className="form-label" htmlFor="report-site">Site</label>
+              <select id="report-site" className="form-control" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
                 <option value="">All sites</option>
                 {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -169,26 +169,26 @@ export default function Reports() {
           )}
           {kind === "performance" && (
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Month</label>
-              <input type="month" className="form-control" value={month} max={thisMonth()}
+              <label className="form-label" htmlFor="report-month">Month</label>
+              <input id="report-month" type="month" className="form-control" value={month} max={thisMonth()}
                 onChange={(e) => e.target.value && setMonth(e.target.value)} />
             </div>
           )}
           {kind === "incidents" && (
             <>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">From</label>
-                <input type="date" className="form-control" value={start} max={end}
+                <label className="form-label" htmlFor="report-from">From</label>
+                <input id="report-from" type="date" className="form-control" value={start} max={end}
                   onChange={(e) => e.target.value && setStart(e.target.value)} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">To</label>
-                <input type="date" className="form-control" value={end} min={start}
+                <label className="form-label" htmlFor="report-to">To</label>
+                <input id="report-to" type="date" className="form-control" value={end} min={start}
                   onChange={(e) => e.target.value && setEnd(e.target.value)} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Type</label>
-                <select className="form-control" value={incType} onChange={(e) => setIncType(e.target.value)}>
+                <label className="form-label" htmlFor="report-type">Type</label>
+                <select id="report-type" className="form-control" value={incType} onChange={(e) => setIncType(e.target.value)}>
                   <option value="">All types</option>
                   <option value="injury">Injury</option>
                   <option value="spill">Spill</option>
@@ -198,8 +198,8 @@ export default function Reports() {
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Severity</label>
-                <select className="form-control" value={severity} onChange={(e) => setSeverity(e.target.value)}>
+                <label className="form-label" htmlFor="report-severity">Severity</label>
+                <select id="report-severity" className="form-control" value={severity} onChange={(e) => setSeverity(e.target.value)}>
                   <option value="">All severities</option>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
@@ -211,8 +211,8 @@ export default function Reports() {
           )}
           {kind === "leaderboard" && (
             <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Period</label>
-              <select className="form-control" value={period} onChange={(e) => setPeriod(e.target.value)}>
+              <label className="form-label" htmlFor="report-period">Period</label>
+              <select id="report-period" className="form-control" value={period} onChange={(e) => setPeriod(e.target.value)}>
                 <option value="12m">Rolling 12 months</option>
                 <option value="ytd">Year to date</option>
               </select>

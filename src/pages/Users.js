@@ -247,7 +247,7 @@ const UserManagement = () => {
                     </td>
                     <td className="users-actions-cell">
                       <div className="users-actions-wrap">
-                        <button className="btn-icon-only" onClick={() => handleEditClick(user)}>
+                        <button className="btn-icon-only" aria-label={`Edit ${user.email}`} onClick={() => handleEditClick(user)}>
                           <Edit2 size={16} color="#6366f1" />
                         </button>
                         <button className="btn-icon-only" aria-label={`Delete ${user.email}`} onClick={() => handleDeleteClick(user.id)}>
@@ -273,19 +273,19 @@ const UserManagement = () => {
             </div>
             <form onSubmit={handleSubmit} className="modal-body">
               <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input name="full_name" className="form-control" value={formData.full_name} onChange={handleInputChange} required />
+                <label className="form-label" htmlFor="user-full-name">Full Name</label>
+                <input id="user-full-name" name="full_name" className="form-control" value={formData.full_name} onChange={handleInputChange} required />
               </div>
               <div className="form-group">
-                <label className="form-label">Email</label>
-                <input name="email" type="email" className="form-control" value={formData.email} onChange={handleInputChange} required />
+                <label className="form-label" htmlFor="user-email">Email</label>
+                <input id="user-email" name="email" type="email" className="form-control" value={formData.email} onChange={handleInputChange} required />
               </div>
               <div className="form-group">
-                <label className="form-label">
+                <label className="form-label" htmlFor="user-password">
                   Password {editingUser && <small>(Leave blank to keep current)</small>}
                 </label>
                 <div className="users-password-wrap">
-                  <input
+                  <input id="user-password"
                     name="password"
                     type={showPassword ? "text" : "password"}
                     className="form-control"
@@ -308,16 +308,16 @@ const UserManagement = () => {
               </div>
               <div className="two-col users-form-two-col">
                 <div className="form-group">
-                  <label className="form-label">Role</label>
-                  <select name="role" className="form-control" value={formData.role} onChange={handleInputChange}>
+                  <label className="form-label" htmlFor="user-role">Role</label>
+                  <select id="user-role" name="role" className="form-control" value={formData.role} onChange={handleInputChange}>
                     <option value="admin">Admin</option>
                     <option value="she_team">SHE Team</option>
                     <option value="site_manager">Site Manager</option>
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Site</label>
-                  <select name="site_id" className="form-control" value={formData.site_id} onChange={handleInputChange}>
+                  <label className="form-label" htmlFor="user-site">Site</label>
+                  <select id="user-site" name="site_id" className="form-control" value={formData.site_id} onChange={handleInputChange}>
                     <option value="">Global</option>
                     {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>

@@ -24,11 +24,10 @@ test('a branded splash shows while the app itself is still downloading', async (
 });
 
 test('the dashboard shows a loading screen, then a slow-server note, instead of a blank page', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await mockApi(page, {
     'GET /incidents/summary': async (route) => { await wait(7500); return route.fulfill(json(200, { total: 0, open: 0, by_type: [], by_site: [] })); },
   });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('Loading dashboard...')).toBeVisible();
   await expect(page.locator('.activity-bar')).toBeVisible();
   await expect(page.getByText(/server may be waking up/)).toBeVisible({ timeout: 8000 });
@@ -39,12 +38,12 @@ test('the dashboard shows a loading screen, then a slow-server note, instead of 
 });
 
 test('saving shows the activity bar until the server answers', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await mockApi(page, {
     'GET /users': [{ id: 7, email: 'busy@glow.com', full_name: 'Busy', role: 'she_team', site_id: null, is_active: true }],
     'PUT /users/7': async (route) => { await wait(1500); return route.fulfill(json(200, {})); },
   });
-  await page.goto('/users');
+  await signIn(page, { role: 'admin' });
+  await page.locator('#app-sidebar').getByRole('link', { name: 'Users', exact: true }).click();
   await page.locator('tr', { hasText: 'busy@glow.com' }).locator('button').first().click();
   await page.getByRole('button', { name: 'Update User' }).click();
   await expect(page.locator('.activity-bar')).toBeVisible();
@@ -53,9 +52,9 @@ test('saving shows the activity bar until the server answers', async ({ page }) 
 });
 
 test('quick requests do not flash the bar', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await mockApi(page, {});
-  await page.goto('/incidents');
+  await signIn(page, { role: 'admin' });
+  await page.locator('#app-sidebar').getByRole('link', { name: 'Incidents', exact: true }).click();
   await page.waitForTimeout(1000);
   await expect(page.locator('.activity-bar')).toHaveCount(0);
 });

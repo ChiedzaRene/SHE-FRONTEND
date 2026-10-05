@@ -32,11 +32,18 @@ async function mockApi(page, routes = {}) {
   return calls;
 }
 
-async function signIn(page, claims) {
-  const token = makeToken(claims);
-  // only on the first page load, so a later sign-out (token removed) isn't undone by the next navigation
-  await page.addInitScript((t) => { if (!sessionStorage.getItem('e2e_seeded')) { sessionStorage.setItem('e2e_seeded', '1'); localStorage.setItem('token', t); } }, token);
-  return token;
+// Sign in through the sign-in form, as a person would. The (simulated) server answers with a token for
+// `claims`. Call after mockApi so this answer wins.
+async function signIn(page, claims = {}) {
+  await page.route(`${API}/auth/login`, (route) =>
+    route.request().method() === 'OPTIONS'
+      ? route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' } })
+      : route.fulfill(json(200, { access_token: makeToken(claims), token_type: 'bearer' })));
+  await page.goto('/login');
+  await page.getByLabel('Email Address').fill('tester@glow.com');
+  await page.getByLabel('Password').fill('a-password-123');
+  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.waitForURL((url) => !url.pathname.endsWith('/login'));
 }
 
 module.exports = { API, json, makeToken, mockApi, signIn };

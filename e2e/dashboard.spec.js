@@ -2,12 +2,11 @@ const { test, expect } = require('@playwright/test');
 const { json, mockApi, signIn } = require('./helpers');
 
 test('the admin dashboard uses the small summary instead of downloading every incident', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   const calls = await mockApi(page, {
     'GET /incidents/summary': { total: 12, open: 5, by_type: [{ name: 'injury', value: 7 }, { name: 'spill', value: 5 }] },
     'GET /incidents/metrics/global': { trir: 0.4, ltifr: 0.1, total_incidents: 12 },
   });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('Overall SHE Dashboard')).toBeVisible();
   await expect(page.getByText('5', { exact: true }).first()).toBeVisible(); // open incidents
   expect(calls).toContain('GET /incidents/summary');
@@ -23,7 +22,6 @@ const bubbleWidths = (page) =>
   page.locator('path.leaflet-interactive').evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().width)));
 
 test('map bubbles are sized by all incidents at each site, and the chart lists counts', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await page.route(/basemaps|openstreetmap|arcgisonline/, (r) => r.abort());
   await mockApi(page, {
     'GET /sites': sites,
@@ -32,7 +30,7 @@ test('map bubbles are sized by all incidents at each site, and the chart lists c
     // the 12-month figures would say 0 for both: the bubbles must not use them
     'GET /incidents/metrics/by-site': [{ site_id: 1, total_incidents: 0 }, { site_id: 2, total_incidents: 0 }],
   });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('injury (3)')).toBeVisible();
   await expect(page.locator('path.leaflet-interactive')).toHaveCount(2);
   const [a, b] = await bubbleWidths(page);
@@ -40,7 +38,6 @@ test('map bubbles are sized by all incidents at each site, and the chart lists c
 });
 
 test('the dashboard still works against an older server without the summary', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await page.route(/basemaps|openstreetmap|arcgisonline/, (r) => r.abort());
   await mockApi(page, {
     'GET /sites': sites,
@@ -50,16 +47,15 @@ test('the dashboard still works against an older server without the summary', as
       { id: 3, site_id: 2, type: 'spill', resolved: false },
     ],
   });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('injury (2)')).toBeVisible();
   await expect(page.getByText('spill (1)')).toBeVisible();
   await expect(page.locator('path.leaflet-interactive')).toHaveCount(2);
 });
 
 test('with no incidents the chart says so instead of showing an empty space', async ({ page }) => {
-  await signIn(page, { role: 'admin' });
   await mockApi(page, { 'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] } });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('No incidents recorded yet')).toBeVisible();
 });
 
@@ -67,9 +63,8 @@ test('the map background comes from a service that needs no account key, with pl
   const tiles = [];
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
   await page.route(/arcgisonline|openstreetmap|basemaps/, (r) => { tiles.push(r.request().url()); r.fulfill({ status: 200, contentType: 'image/png', body: png }); });
-  await signIn(page, { role: 'admin' });
   await mockApi(page, { 'GET /sites': sites, 'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] } });
-  await page.goto('/admin');
+  await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.locator('.leaflet-tile-loaded').first()).toBeAttached();
   expect(tiles.some((u) => u.includes('World_Light_Gray_Base'))).toBe(true);
   expect(tiles.some((u) => u.includes('World_Light_Gray_Reference'))).toBe(true);

@@ -99,8 +99,10 @@ export default function Login() {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label">Email Address</label>
+            <label className="form-label" htmlFor="login-email">Email Address</label>
             <input
+              id="login-email"
+              autoComplete="username"
               type="email"
               className="form-control"
               value={email}
@@ -111,8 +113,10 @@ export default function Login() {
           </div>
 
           <div className="form-group" style={{ marginBottom: '32px' }}>
-            <label className="form-label">Password</label>
+            <label className="form-label" htmlFor="login-password">Password</label>
             <input
+              id="login-password"
+              autoComplete="current-password"
               type="password"
               className="form-control"
               value={password}

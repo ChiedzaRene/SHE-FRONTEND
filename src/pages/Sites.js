@@ -79,7 +79,9 @@ export default function Sites() {
       const payload = {
         ...formData,
         latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude)
+        longitude: parseFloat(formData.longitude),
+        // optional: an empty box means "no number"
+        contact_number: (formData.contact_number || '').trim() || null,
       };
 
       if (editingId) {
@@ -140,8 +142,8 @@ export default function Sites() {
           <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
             <div className="two-col">
               <div className="form-group">
-                <label className="form-label">Site Name</label>
-                <input 
+                <label className="form-label" htmlFor="site-site-name">Site Name</label>
+                <input id="site-site-name" 
                   type="text" 
                   className="form-control" 
                   required 
@@ -151,8 +153,8 @@ export default function Sites() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Contact Number</label>
-                <input 
+                <label className="form-label" htmlFor="site-contact-number">Contact Number</label>
+                <input id="site-contact-number" 
                   type="tel" 
                   className="form-control" 
                   value={formData.contact_number} 
@@ -163,8 +165,8 @@ export default function Sites() {
             </div>
             
             <div className="form-group">
-              <label className="form-label">Physical Address</label>
-              <input 
+              <label className="form-label" htmlFor="site-physical-address">Physical Address</label>
+              <input id="site-physical-address" 
                 type="text" 
                 className="form-control" 
                 required 
@@ -176,8 +178,8 @@ export default function Sites() {
 
             <div className="two-col">
               <div className="form-group">
-                <label className="form-label">Latitude</label>
-                <input 
+                <label className="form-label" htmlFor="site-latitude">Latitude</label>
+                <input id="site-latitude" 
                   type="number" 
                   step="any" 
                   className="form-control" 
@@ -188,8 +190,8 @@ export default function Sites() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">Longitude</label>
-                <input 
+                <label className="form-label" htmlFor="site-longitude">Longitude</label>
+                <input id="site-longitude" 
                   type="number" 
                   step="any" 
                   className="form-control" 
@@ -254,6 +256,7 @@ export default function Sites() {
                           className="btn btn-sm btn-outline btn-icon" 
                           onClick={() => handleEditClick(site)}
                           title="Edit"
+                          aria-label={`Edit ${site.name}`}
                         >
                           <Edit2 size={14} />
                         </button>
@@ -261,6 +264,7 @@ export default function Sites() {
                           className="btn btn-sm btn-outline btn-icon text-danger" 
                           onClick={() => handleDelete(site.id, site.name)}
                           title="Delete"
+                          aria-label={`Delete ${site.name}`}
                         >
                           <Trash2 size={14} />
                         </button>

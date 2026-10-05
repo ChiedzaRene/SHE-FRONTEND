@@ -7,3 +7,4 @@ build/
 # browser test output
 /test-results/
 /playwright-report/
+/build-full/
