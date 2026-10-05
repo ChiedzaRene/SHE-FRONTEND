@@ -27,11 +27,16 @@ jobs:
       PYTHON: python
     steps:
       - uses: actions/checkout@v4
-      - name: Get the backend (same branch name if it exists, otherwise main)
+      - name: Get the backend (a pull request uses the backend branch of the same name if there is one; otherwise main)
         run: |
-          BRANCH="${{ github.head_ref || github.ref_name }}"
-          git clone --depth 1 --branch "$BRANCH" https://github.com/ChiedzaRene/SHE-BACKEND.git "$BACKEND_DIR" \
-            || git clone --depth 1 https://github.com/ChiedzaRene/SHE-BACKEND.git "$BACKEND_DIR"
+          # Always fall back to main, the branch Render deploys. (The backend also has an old "master" branch,
+          # so the frontend's own branch name must never be used after a merge.)
+          BRANCH="${{ github.head_ref }}"
+          if [ -z "$BRANCH" ] || ! git ls-remote --exit-code --heads https://github.com/ChiedzaRene/SHE-BACKEND.git "$BRANCH" >/dev/null; then
+            BRANCH=main
+          fi
+          echo "Backend branch: $BRANCH"
+          git clone --depth 1 --branch "$BRANCH" https://github.com/ChiedzaRene/SHE-BACKEND.git "$BACKEND_DIR"
           git -C "$BACKEND_DIR" log --oneline -1
       - uses: actions/setup-python@v5
         with:
