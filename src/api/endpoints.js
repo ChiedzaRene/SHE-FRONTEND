@@ -199,6 +199,7 @@ export const auditApi = {
 export const notificationsApi = {
   list: (params = {}) => api.get("/notifications/", { params }),
   markRead: (body) => api.post("/notifications/read", body),
+  markUnread: (body) => api.post("/notifications/unread", body),
 };
 
 // Active staff (name + email), for choosing who a corrective action is assigned to
