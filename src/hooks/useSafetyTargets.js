@@ -30,7 +30,7 @@ export default function useSafetyTargets() {
   useEffect(() => {
     let alive = true;
     load()
-      .then((t) => alive && setTargets(t))
+      .then((t) => alive && setTargets(t && !Array.isArray(t) ? { ...DEFAULT_TARGETS, ...t } : DEFAULT_TARGETS))
       .catch(() => {});
     return () => {
       alive = false;

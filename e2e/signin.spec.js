@@ -31,7 +31,7 @@ test('server unreachable says so instead of "wrong password"', async ({ page }) 
 });
 
 test('an expired session returns to sign-in with an explanation', async ({ page }) => {
-  await mockApi(page, { 'GET /incidents/summary': (route) => route.fulfill(json(401, { detail: 'Could not validate credentials' })) });
+  await mockApi(page, { 'GET /dashboard/summary': (route) => route.fulfill(json(401, { detail: 'Could not validate credentials' })) });
   await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByText('Your session has expired. Please sign in again.')).toBeVisible();

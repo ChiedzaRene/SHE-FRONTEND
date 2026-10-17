@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import LoadingScreen from './LoadingScreen';
 import IdleGuard from './IdleGuard';
 import NotificationBell from './NotificationBell';
+import NotificationPopup from './NotificationPopup';
 import { NotificationsProvider } from '../context/NotificationsContext';
 
 export default function Layout() {
@@ -36,6 +37,7 @@ export default function Layout() {
       </header>
 
       <IdleGuard />
+      <NotificationPopup />
       <Sidebar id="app-sidebar" />
       <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} aria-hidden="true" />
 

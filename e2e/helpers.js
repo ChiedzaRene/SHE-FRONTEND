@@ -46,4 +46,24 @@ async function signIn(page, claims = {}) {
   await page.waitForURL((url) => !url.pathname.endsWith('/login'));
 }
 
-module.exports = { API, json, makeToken, mockApi, signIn };
+// A /dashboard/summary answer. `cur` and `prev` override the totals; `sites` are the per-site rows.
+const totals = (over = {}) => ({
+  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, trir: null, ltifr: null,
+  sites_with_hours: 0, sites: 2, uncounted_injuries: 0, months_missing_hours: [], actions_total: 0,
+  actions_completed: 0, actions_completion_pct: null, avg_days_to_close: null, ...over,
+});
+const siteRow = (over = {}) => ({
+  site_id: 1, name: 'Msasa Depot', address: '1 Depot Rd', contact_number: '0242 000 000', managers: [],
+  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, trir: null, ltifr: null,
+  uncounted_injuries: 0, months_missing_hours: [], actions_total: 0, actions_completed: 0,
+  actions_completion_pct: null, avg_days_to_close: null, ...over,
+});
+const dashboardSummary = ({ cur = {}, prev = {}, sites = [], byMonth = [], prevByMonth = [], period = 'quarter', siteId = null } = {}) => ({
+  period, period_name: 'This quarter', site_id: siteId,
+  current: { start: '2026-10-01', end: '2026-12-01', label: 'Oct – Dec 2026', totals: totals(cur), by_type: [],
+    by_month: byMonth.length ? byMonth : [{ month: '2026-10' }, { month: '2026-11' }, { month: '2026-12' }], sites },
+  previous: { start: '2026-07-01', end: '2026-09-01', label: 'Jul – Sep 2026', totals: totals(prev), by_type: [],
+    by_month: prevByMonth.length ? prevByMonth : [{ month: '2026-07' }, { month: '2026-08' }, { month: '2026-09' }], sites: [] },
+});
+
+module.exports = { API, json, makeToken, mockApi, signIn, dashboardSummary, siteRow };

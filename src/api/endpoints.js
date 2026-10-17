@@ -152,11 +152,18 @@ export const scorecardApi = {
   getById: (id) => api.get(`/scorecard/${id}`),
 };
 
-// Monthly hours worked per site: the denominator for TRIR / LTIFR (entered by the SHE team)
+// Monthly hours worked and headcount per site: the denominator for TRIR / LTIFR.
+// Entered by the site's manager (admins can correct them); read-only for the SHE team.
 export const siteHoursApi = {
   list: (params = {}) => api.get("/site-hours/", { params }),
-  // data: { site_id, month: "YYYY-MM", hours_worked }
+  // data: { site_id, month: "YYYY-MM", hours_worked, workers }
   save: (data) => api.put("/site-hours/", data),
+};
+
+// Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
+// params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "ytd" | "12m", site_id }
+export const dashboardApi = {
+  summary: (params = {}) => api.get("/dashboard/summary", { params }),
 };
 
 // Reports: one structured document per kind, as JSON for the screen or a CSV/PDF download.

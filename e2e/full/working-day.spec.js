@@ -23,7 +23,7 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Password').fill(ADMIN.password);
     await page.getByRole('button', { name: 'Sign In' }).click();
     await expect(page.getByRole('heading', { name: 'Overall SHE Dashboard' })).toBeVisible();
-    await expect(page.getByText('No incidents recorded yet')).toBeVisible();
+    await expect(page.getByText('No incidents recorded in this period')).toBeVisible();
   });
 
   test('the admin adds sites (no phone number needed), corrects one, and removes one added by mistake', async ({ page }) => {
@@ -152,32 +152,52 @@ test.describe.serial('a working day', () => {
 
   test('the dashboard explains that the injury is not counted until hours are entered for its month', async ({ page }) => {
     await signIn(page, ADMIN.email, ADMIN.password);
+    await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
     const notice = page.getByRole('status').filter({ hasText: 'not counted in TRIR/LTIFR yet' });
     await expect(notice).toContainText('1 injury is not counted in TRIR/LTIFR yet');
     await notice.getByRole('link', { name: 'Enter hours worked' }).click();
     await expect(page.getByRole('heading', { name: 'Hours Worked' })).toBeVisible();
   });
 
-  test('the SHE officer sets their password and enters the month\'s hours; the rates appear', async ({ page }) => {
-    await signIn(page, SHE.email, SHE.temp);
-    await chooseOwnPassword(page, SHE.temp, SHE.own);
+  test('the site manager enters the month\'s hours and workers; the SHE officer sees them but can\'t change them', async ({ page }) => {
+    await signIn(page, MANAGER.email, MANAGER.own);
     await openMenu(page, 'Hours Worked');
     // the page lists the month that has an injury but no hours; choosing it switches the page to that month
     await page.getByRole('button', { name: monthLabel(when.month) }).click();
     await expect(page.getByLabel('Month')).toHaveValue(when.month);
     await page.getByLabel('Hours worked at Msasa Depot').fill('52000');
+    await page.getByLabel('Number of workers at Msasa Depot').fill('30');
     await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
     await expect(page.getByRole('row', { name: /Msasa Depot/ }).getByText('Saved')).toBeVisible();
+    await openMenu(page, 'Dashboard');
+    await expect(page.locator('.card').filter({ hasText: 'Workers' }).first()).toContainText('30');
+    await signOut(page);
+
+    await signIn(page, SHE.email, SHE.temp);
+    await chooseOwnPassword(page, SHE.temp, SHE.own);
+    await openMenu(page, 'Hours Worked');
+    await page.getByLabel('Month').fill(when.month);
+    const row = page.getByRole('row', { name: /Msasa Depot/ });
+    await expect(row).toContainText('52,000');
+    await expect(row).toContainText('30');
+    await expect(page.getByRole('button', { name: /^Save hours/ })).toHaveCount(0);   // read-only for the SHE team
 
     await openMenu(page, 'Dashboard');
+    await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
     // 1 recordable injury x 200,000 / 52,000 hours = 3.85; 1 lost-time injury -> LTIFR 3.85 too
-    await expect(page.getByText('3.85').first()).toBeVisible();
+    const kpi = (label) => page.locator('.dash-kpi').filter({ has: page.getByText(label, { exact: true }) });
+    await expect(kpi('TRIR (average of sites)')).toContainText('3.85');
+    await expect(kpi('Workers')).toContainText('30');
     await expect(page.getByText('not counted in TRIR/LTIFR yet')).toHaveCount(0); // every injury now counted
+    await page.getByLabel('Site', { exact: true }).selectOption({ label: 'Msasa Depot' });
+    const info = page.getByRole('region', { name: 'Site information' });
+    await expect(info).toContainText('12 Mutare Road, Msasa, Harare');
+    await expect(info).toContainText('Manager: Tendai Moyo');
   });
 
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {
     await signIn(page, ADMIN.email, ADMIN.password);
-    await expect(page.getByText('injury (1)')).toBeVisible();
+    await expect(page.getByRole('list', { name: 'Incident types' })).toContainText('Injury (1)');
     await expect(page.locator('path.leaflet-interactive')).toHaveCount(2); // both sites on the map
 
     await openMenu(page, 'Incidents');

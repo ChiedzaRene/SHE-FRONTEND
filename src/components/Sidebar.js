@@ -50,6 +50,10 @@ export default function Sidebar({ id }) {
 
     if (role === "admin" || role === "she_team") {
       baseLinks.splice(1, 0, { to: "/sites", icon: Factory, label: "Sites" });
+    }
+
+    // Site managers enter their site's hours and headcount each month; SHE and admins can see them
+    if (role === "admin" || role === "she_team" || role === "site_manager") {
       baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
     }
 

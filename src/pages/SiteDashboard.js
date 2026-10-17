@@ -3,11 +3,13 @@ import { bucketWidth } from "../utils/breakpoint";
 import { fmtRate } from "../utils/rates";
 import { 
   Clock, ShieldCheck, Activity, Plus,
-  TrendingDown, TrendingUp, AlertCircle, FileText, Phone 
+  TrendingDown, TrendingUp, AlertCircle, FileText, Phone,
+  Users, CheckCircle2, Timer
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LogIncidentModal from '../components/LogIncidentModal';
-import { incidentsApi, actionsApi, sitesApi } from '../api/endpoints';
+import { incidentsApi, actionsApi, sitesApi, siteHoursApi, dashboardApi } from '../api/endpoints';
 import LoadingScreen from "../components/LoadingScreen";
 import RateCoverageNotice from "../components/RateCoverageNotice";
 
@@ -17,6 +19,8 @@ export default function SiteDashboard() {
   const [incidents, setIncidents] = useState([]);
   const [metrics, setMetrics] = useState({ total_incidents: 0, trir: null });
   const [openActions, setOpenActions] = useState(0);
+  const [latestHours, setLatestHours] = useState(null); // newest month the manager entered: { period, hours_worked, workers }
+  const [actionStats, setActionStats] = useState({}); // corrective actions over the last 12 months
   const [loading, setLoading] = useState(true);
   const [windowWidth, setWindowWidth] = useState(() => bucketWidth(window.innerWidth));
   const [siteName, setSiteName] = useState('Loading...');
@@ -41,11 +45,16 @@ export default function SiteDashboard() {
       const siteRes = await sitesApi.getOne(siteId).catch(() => ({ data: null }));
       if (siteRes.data) setSiteName(siteRes.data.name);
 
-      const [incRes, metRes, actRes] = await Promise.all([
+      const [incRes, metRes, actRes, hoursRes, sumRes] = await Promise.all([
         incidentsApi.getBySite(siteId).catch(() => ({ data: [] })),
         incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, trir: null } })),
-        actionsApi.getAll().catch(() => ({ data: [] }))
+        actionsApi.getAll().catch(() => ({ data: [] })),
+        siteHoursApi.list({ site_id: siteId }).catch(() => ({ data: [] })),
+        dashboardApi.summary({ period: '12m' }).catch(() => ({ data: null })),
       ]);
+
+      setLatestHours((hoursRes.data || [])[0] || null);
+      setActionStats(sumRes.data?.current?.totals || {});
 
       setIncidents(incRes.data || []);
       setMetrics(metRes.data || { total_incidents: 0, trir: null });
@@ -154,6 +163,23 @@ export default function SiteDashboard() {
           </div>
         </div>
 
+        {/* --- PEOPLE, HOURS AND CORRECTIVE ACTIONS --- */}
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
+          <SmallStat label="Workers" Icon={Users} color="#0f766e"
+            value={latestHours?.workers ?? '—'}
+            note={latestHours?.workers != null ? `As entered for ${monthName(latestHours.period)}` : 'Not entered yet'} />
+          <SmallStat label="Hours worked" Icon={Clock} color="#0891b2"
+            value={latestHours ? Number(latestHours.hours_worked).toLocaleString() : '—'}
+            note={latestHours ? monthName(latestHours.period) : 'No hours entered yet'}
+            action={<Link to="/site-hours" style={{ color: '#003087', fontWeight: 700 }}>Enter hours and workers</Link>} />
+          <SmallStat label="Actions completed (12 mo)" Icon={CheckCircle2} color="#16a34a"
+            value={actionStats.actions_completion_pct == null ? '—' : `${Math.round(actionStats.actions_completion_pct)}%`}
+            note={`${actionStats.actions_completed ?? 0} of ${actionStats.actions_total ?? 0} raised`} />
+          <SmallStat label="Avg days to close (12 mo)" Icon={Timer} color="#ea580c"
+            value={actionStats.avg_days_to_close == null ? '—' : `${Number(actionStats.avg_days_to_close).toFixed(1)}`}
+            note="From raising an action to resolving it" />
+        </div>
+
         {/* --- DATA SECTIONS --- */}
         <div style={{ display: 'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 340px', gap: '32px' }}>
           <div className="card" style={{ padding: '0', border: 'none', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)' }}>
@@ -237,3 +263,20 @@ export default function SiteDashboard() {
     </div>
   );
 }
+
+const monthName = (period) => {
+  const [y, m] = String(period).split('-').map(Number);
+  return new Date(y, (m || 1) - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+};
+
+const SmallStat = ({ label, value, note, Icon, color, action }) => (
+  <div className="card" style={{ padding: '20px 24px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+      <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase' }}>{label}</div>
+      <Icon size={20} color={color} aria-hidden="true" />
+    </div>
+    <div style={{ fontSize: '1.6rem', fontWeight: '900', color: '#1e293b' }}>{value}</div>
+    <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '4px' }}>{note}</div>
+    {action ? <div style={{ fontSize: '0.8rem', marginTop: '8px' }}>{action}</div> : null}
+  </div>
+);

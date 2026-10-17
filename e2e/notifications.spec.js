@@ -1,5 +1,5 @@
 const { test, expect } = require('@playwright/test');
-const { mockApi, signIn } = require('./helpers');
+const { json, mockApi, signIn } = require('./helpers');
 
 const inbox = {
   unread: 2,
@@ -16,7 +16,7 @@ test('on a phone the bell sits in the top bar, shows the unread count, and its l
   const reads = [];
   await mockApi(page, {
     'GET /notifications': inbox,
-    'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] },
+    'GET /dashboard/summary': {},
     'POST /notifications/read': (route, req) => { reads.push(req.postDataJSON()); return route.fulfill({ status: 200, contentType: 'application/json', body: '{"marked":1}', headers: { 'access-control-allow-origin': '*' } }); },
   });
   await signIn(page, { role: 'admin' });
@@ -41,7 +41,7 @@ test('on a phone the bell sits in the top bar, shows the unread count, and its l
 test('with nothing new the bell has no count and says so', async ({ page }) => {
   await mockApi(page, {
     'GET /notifications': { unread: 0, items: [] },
-    'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] },
+    'GET /dashboard/summary': {},
   });
   await signIn(page, { role: 'admin' });
   await page.locator('#app-sidebar').getByRole('button', { name: 'Notifications' }).click();
@@ -64,7 +64,7 @@ test('notifications can be marked unread again (all or one), opened ones say whe
           read_at: new Date(now - 2 * 3600e3).toISOString() },
       ],
     },
-    'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] },
+    'GET /dashboard/summary': {},
     'POST /notifications/read': fulfil,
     'POST /notifications/unread': fulfil,
   });
@@ -85,4 +85,62 @@ test('notifications can be marked unread again (all or one), opened ones say whe
     ['/notifications/read', { ids: [5] }],
     ['/notifications/read', { all: true }],
   ]);
+});
+
+test('the newest notification pops up and stays; clicking it opens the list, and it does not pop up again', async ({ page }) => {
+  let inboxNow = inbox;
+  await mockApi(page, { 'GET /notifications': (route) => route.fulfill(json(200, inboxNow)), 'GET /dashboard/summary': {} });
+  await signIn(page, { role: 'admin' });
+
+  const popup = page.locator('.notif-popup');
+  await expect(popup).toContainText('New audit at Msasa Depot: Fire safety');   // only the most recent one
+  await expect(popup).not.toContainText('Your password was reset');
+  await page.waitForTimeout(2500);
+  await expect(popup).toBeVisible();                                            // it stays until dealt with
+
+  await popup.getByRole('button', { name: /^New notification: New audit at Msasa Depot/ }).click();
+  const panel = page.getByRole('dialog', { name: 'Notifications' });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText('Your password was reset by an administrator');
+  await expect(popup).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Overall SHE Dashboard' })).toBeVisible();
+  await expect(page.locator('.notif-popup')).toHaveCount(0);
+
+  // a newer one comes in: it pops up; closing it does not open the list
+  inboxNow = { unread: 3, items: [
+    { id: 3, kind: 'incident_recorded', title: 'New fire at Borrowdale', message: 'Recorded by Tendai Moyo', link: '/incidents',
+      resource: 'incidents', resource_id: 11, created_at: new Date().toISOString(), read_at: null }, ...inbox.items] };
+  await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await expect(page.locator('.notif-popup')).toContainText('New fire at Borrowdale');
+  await page.getByRole('button', { name: 'Dismiss notification' }).click();
+  await expect(page.locator('.notif-popup')).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: 'Notifications' })).toHaveCount(0);
+});
+
+test('a notification that has already been read does not pop up', async ({ page }) => {
+  await mockApi(page, {
+    'GET /notifications': { unread: 0, items: [{ ...inbox.items[0], read_at: new Date().toISOString() }] },
+    'GET /dashboard/summary': {},
+  });
+  await signIn(page, { role: 'admin' });
+  await expect(page.getByRole('heading', { name: 'Overall SHE Dashboard' })).toBeVisible();
+  await page.waitForTimeout(1000);
+  await expect(page.locator('.notif-popup')).toHaveCount(0);
+});
+
+test('on a phone the pop-up sits on screen but never over the open menu', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 });
+  await mockApi(page, { 'GET /notifications': inbox, 'GET /dashboard/summary': {} });
+  await signIn(page, { role: 'admin' });
+  const popup = page.locator('.notif-popup');
+  await expect(popup).toBeVisible();
+  const box = await popup.boundingBox();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  await page.getByRole('button', { name: 'Open menu' }).click();
+  await expect(popup).toBeHidden();
+  await page.locator('#app-sidebar').getByRole('button', { name: 'Logout' }).click();
+  await expect(page).toHaveURL(/\/login$/);
 });
