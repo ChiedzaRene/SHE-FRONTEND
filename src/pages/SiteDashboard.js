@@ -4,12 +4,12 @@ import { fmtRate } from "../utils/rates";
 import { 
   Clock, ShieldCheck, Activity, Plus,
   TrendingDown, TrendingUp, AlertCircle, FileText, Phone,
-  Users, CheckCircle2, Timer
+  Users, CheckCircle2, Timer, MessageSquare
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LogIncidentModal from '../components/LogIncidentModal';
-import { incidentsApi, actionsApi, sitesApi, siteHoursApi, dashboardApi } from '../api/endpoints';
+import { incidentsApi, actionsApi, sitesApi, siteHoursApi, dashboardApi, safetyTalksApi } from '../api/endpoints';
 import LoadingScreen from "../components/LoadingScreen";
 import RateCoverageNotice from "../components/RateCoverageNotice";
 
@@ -21,6 +21,7 @@ export default function SiteDashboard() {
   const [openActions, setOpenActions] = useState(0);
   const [latestHours, setLatestHours] = useState(null); // newest month the manager entered: { period, hours_worked, workers }
   const [actionStats, setActionStats] = useState({}); // corrective actions over the last 12 months
+  const [talks, setTalks] = useState(null); // this week's toolbox talk and the completion rate so far
   const [loading, setLoading] = useState(true);
   const [windowWidth, setWindowWidth] = useState(() => bucketWidth(window.innerWidth));
   const [siteName, setSiteName] = useState('Loading...');
@@ -45,13 +46,16 @@ export default function SiteDashboard() {
       const siteRes = await sitesApi.getOne(siteId).catch(() => ({ data: null }));
       if (siteRes.data) setSiteName(siteRes.data.name);
 
-      const [incRes, metRes, actRes, hoursRes, sumRes] = await Promise.all([
+      const [incRes, metRes, actRes, hoursRes, sumRes, talkRes] = await Promise.all([
         incidentsApi.getBySite(siteId).catch(() => ({ data: [] })),
         incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, trir: null } })),
         actionsApi.getAll().catch(() => ({ data: [] })),
         siteHoursApi.list({ site_id: siteId }).catch(() => ({ data: [] })),
         dashboardApi.summary({ period: '12m' }).catch(() => ({ data: null })),
+        safetyTalksApi.current().catch(() => ({ data: null })),
       ]);
+
+      setTalks(talkRes.data);
 
       setLatestHours((hoursRes.data || [])[0] || null);
       setActionStats(sumRes.data?.current?.totals || {});
@@ -131,6 +135,16 @@ export default function SiteDashboard() {
 
         <RateCoverageNotice metrics={metrics} />
 
+        {talks?.open && !talks.talk && (
+          <div className="rate-notice" role="status">
+            <MessageSquare size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+            <div>
+              <strong>This week's toolbox talk hasn't been submitted yet.</strong> Submissions close at the end of Tuesday;
+              after that the week counts as missed. <Link to="/trainings">Submit the talk</Link>
+            </div>
+          </div>
+        )}
+
         {/* --- KPI GRID --- */}
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(3, 1fr)', gap: '24px', marginBottom: '32px' }}>
           <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
@@ -164,7 +178,7 @@ export default function SiteDashboard() {
         </div>
 
         {/* --- PEOPLE, HOURS AND CORRECTIVE ACTIONS --- */}
-        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(4, 1fr)', gap: '24px', marginBottom: '32px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : 'repeat(5, 1fr)', gap: '24px', marginBottom: '32px' }}>
           <SmallStat label="Workers" Icon={Users} color="#0f766e"
             value={latestHours?.workers ?? '—'}
             note={latestHours?.workers != null ? `As entered for ${monthName(latestHours.period)}` : 'Not entered yet'} />
@@ -175,6 +189,12 @@ export default function SiteDashboard() {
           <SmallStat label="Actions completed (12 mo)" Icon={CheckCircle2} color="#16a34a"
             value={actionStats.actions_completion_pct == null ? '—' : `${Math.round(actionStats.actions_completion_pct)}%`}
             note={`${actionStats.actions_completed ?? 0} of ${actionStats.actions_total ?? 0} raised`} />
+          <SmallStat label="Toolbox talks" Icon={MessageSquare} color="#1d4ed8"
+            value={talks?.cumulative?.rate == null ? '—' : `${Math.round(talks.cumulative.rate)}%`}
+            note={talks?.cumulative ? `${talks.cumulative.done} of ${talks.cumulative.due} weekly talks submitted` : 'Weekly talks submitted'}
+            action={<Link to="/trainings" style={{ color: '#003087', fontWeight: 700 }}>
+              {talks?.open ? (talks.talk ? "This week's talk is in" : "Submit this week's talk") : 'See your talks'}
+            </Link>} />
           <SmallStat label="Avg days to close (12 mo)" Icon={Timer} color="#ea580c"
             value={actionStats.avg_days_to_close == null ? '—' : `${Number(actionStats.avg_days_to_close).toFixed(1)}`}
             note="From raising an action to resolving it" />

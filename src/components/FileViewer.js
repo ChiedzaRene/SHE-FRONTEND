@@ -53,7 +53,11 @@ function PdfPages({ blob, onError }) {
 
 // Opens a shared file inside the app. View-only files get no download button and carry the
 // viewer's name across the page, so a screenshot shows who it came from.
-export default function FileViewer({ file, onClose, onDownload }) {
+// file: { id, title, filename, content_type, view_only, can_download }; load() fetches the file as a blob
+// (SHE files by default).
+export default function FileViewer({ file, onClose, onDownload, load }) {
+  const loader = useRef(load);
+  loader.current = load;
   const { user } = useAuth();
   const [blob, setBlob] = useState(null);
   const [imageUrl, setImageUrl] = useState(null);
@@ -62,8 +66,7 @@ export default function FileViewer({ file, onClose, onDownload }) {
 
   useEffect(() => {
     let live = true;
-    sheFilesApi
-      .view(file.id)
+    (loader.current ? loader.current() : sheFilesApi.view(file.id))
       .then((res) => {
         if (!live) return;
         setBlob(res.data);

@@ -16,6 +16,7 @@ import {
   Phone,
   UserCircle2,
   Info,
+  MessageSquare,
 } from "lucide-react";
 import { dashboardApi, sitesApi } from "../../api/endpoints";
 import { fmtRate, siteStatus, STATUS_STYLE } from "../../utils/rates";
@@ -30,6 +31,8 @@ export const PERIOD_OPTIONS = [
   { value: "last_month", label: "Last month" },
   { value: "quarter", label: "This quarter" },
   { value: "last_quarter", label: "Last quarter" },
+  { value: "3m", label: "Last 3 months" },
+  { value: "6m", label: "Last 6 months" },
   { value: "ytd", label: "Year to date" },
   { value: "12m", label: "Last 12 months" },
 ];
@@ -51,6 +54,7 @@ const MEASURES = {
   actions_total: { label: "Corrective actions raised", fmt: fmtNum, better: null },
   actions_completion_pct: { label: "Corrective actions completed", fmt: fmtPct, better: "up", unit: " pts", digits: 0 },
   avg_days_to_close: { label: "Average days to close an action", fmt: fmtDays, better: "down", unit: " days", digits: 1 },
+  talks_rate: { label: "Weekly toolbox talks submitted", fmt: fmtPct, better: "up", unit: " pts", digits: 0 },
 };
 
 // "▲ 2 vs Apr – Jun 2026", coloured only when the direction is good or bad, always with an arrow and words
@@ -117,6 +121,7 @@ export default function DashboardView({ title, subtitle }) {
   const [params, setParams] = useSearchParams();
   const period = PERIODS.has(params.get("period")) ? params.get("period") : "quarter";
   const siteId = params.get("site") || "";
+  const region = params.get("region") || "";
 
   const [sites, setSites] = useState([]);
   const [data, setData] = useState(null);
@@ -134,7 +139,7 @@ export default function DashboardView({ title, subtitle }) {
     setUpdating(true);
     setError("");
     dashboardApi
-      .summary({ period, ...(siteId ? { site_id: siteId } : {}) })
+      .summary({ period, ...(siteId ? { site_id: siteId } : region ? { region } : {}) })
       .then((res) => live && setData(res.data))
       .catch((err) => {
         if (!live) return;
@@ -147,14 +152,16 @@ export default function DashboardView({ title, subtitle }) {
         setLoading(false);
       });
     return () => { live = false; };
-  }, [period, siteId]);
+  }, [period, siteId, region]);
 
   const setFilter = (key, value) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
+    if (key === "region") next.delete("site"); // a new region starts from all its sites
     setParams(next, { replace: true });
   };
+  const siteChoices = sites.filter((s) => !region || s.region === region);
 
   const cur = data?.current;
   const prev = data?.previous;
@@ -163,12 +170,12 @@ export default function DashboardView({ title, subtitle }) {
   const mapSites = useMemo(() => {
     const rows = new Map((cur?.sites || []).map((r) => [r.site_id, r]));
     return sites
-      .filter((s) => !siteId || String(s.id) === String(siteId))
+      .filter((s) => (siteId ? String(s.id) === String(siteId) : !region || s.region === region))
       .map((s) => {
         const r = rows.get(s.id);
         return { ...s, trir: r?.trir ?? null, ltifr: r?.ltifr ?? null, incidentCount: r?.incidents ?? 0 };
       });
-  }, [sites, cur, siteId]);
+  }, [sites, cur, siteId, region]);
 
   // Chart: the previous period's months next to this one's when they follow on, so the bars compare
   const chartMonths = useMemo(() => {
@@ -205,11 +212,20 @@ export default function DashboardView({ title, subtitle }) {
           <p className="dash-subtitle">{subtitle}</p>
         </div>
         <div className="dash-filters" role="group" aria-label="Dashboard filters">
+          {(data?.regions || []).length > 0 && (
+            <div className="form-group">
+              <label className="form-label" htmlFor="dash-region">Region</label>
+              <select id="dash-region" className="form-control" value={region} onChange={(e) => setFilter("region", e.target.value)}>
+                <option value="">All regions</option>
+                {data.regions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+          )}
           <div className="form-group">
             <label className="form-label" htmlFor="dash-site">Site</label>
             <select id="dash-site" className="form-control" value={siteId} onChange={(e) => setFilter("site", e.target.value)}>
-              <option value="">All sites</option>
-              {sites.map((s) => (
+              <option value="">{region ? `All sites in ${region}` : "All sites"}</option>
+              {siteChoices.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
@@ -235,7 +251,7 @@ export default function DashboardView({ title, subtitle }) {
           <p className="dash-showing" aria-live="polite">
             {updating ? "Updating…" : (
               <>
-                Showing <strong>{selected ? selected.name : "all sites"}</strong> for{" "}
+                Showing <strong>{selected ? selected.name : region ? `sites in ${region}` : "all sites"}</strong> for{" "}
                 <strong>{cur.label}</strong>, compared with <strong>{prevLabel}</strong>.
               </>
             )}
@@ -279,6 +295,8 @@ export default function DashboardView({ title, subtitle }) {
               change={change("hours_worked")} />
             <Kpi label="Workers" value={fmtNum(t.workers)} Icon={Users} color="#0f766e"
               sub="Latest headcount entered" change={change("workers")} />
+            <Kpi label="Weekly toolbox talks" value={fmtPct(t.talks_rate)} Icon={MessageSquare} color="#1d4ed8"
+              sub={`${fmtNum(t.talks_done ?? 0)} of ${fmtNum(t.talks_due ?? 0)} weeks submitted`} change={change("talks_rate")} />
             {!siteId && (
               <Kpi label="Sites" value={fmtNum(t.sites)} Icon={Building2} color="#475569"
                 sub={`${fmtNum(t.lost_time_injuries)} lost-time injur${t.lost_time_injuries === 1 ? "y" : "ies"}`} />
@@ -351,6 +369,7 @@ export default function DashboardView({ title, subtitle }) {
                     <th scope="col">Hours</th>
                     <th scope="col">Actions completed</th>
                     <th scope="col">Avg days to close</th>
+                    <th scope="col">Weekly talks</th>
                     <th scope="col">Status</th>
                   </tr>
                 </thead>
@@ -371,6 +390,7 @@ export default function DashboardView({ title, subtitle }) {
                         <td>{fmtNum(row.hours_worked)}</td>
                         <td>{row.actions_total ? `${fmtPct(row.actions_completion_pct)} (${row.actions_completed}/${row.actions_total})` : "—"}</td>
                         <td>{fmtDays(row.avg_days_to_close)}</td>
+                        <td>{row.talks_due ? `${fmtPct(row.talks_rate)} (${row.talks_done}/${row.talks_due})` : "—"}</td>
                         <td>
                           <span className="dash-status" style={{ backgroundColor: st.bg, color: st.color }}>{st.label}</span>
                         </td>

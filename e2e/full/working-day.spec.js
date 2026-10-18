@@ -39,6 +39,7 @@ test.describe.serial('a working day', () => {
       await page.getByRole('button', { name: 'Add New Site' }).click();
       await page.getByLabel('Site Name').fill(name);
       await page.getByLabel('Physical Address').fill(address);
+      await page.getByLabel('Region').fill(name.startsWith('Typo') ? '' : 'Harare');
       await page.getByLabel('Latitude').fill(lat);
       await page.getByLabel('Longitude').fill(lng);
       await page.getByRole('button', { name: 'Save Site' }).click();
@@ -229,6 +230,53 @@ test.describe.serial('a working day', () => {
       return res.status;
     }, { api: API_URL });
     expect(status).toBe(403);
+  });
+
+  test('the manager gives the weekly talk; the SHE team tracks it and records a first aid training', async ({ page, browser }) => {
+    await signIn(page, MANAGER.email, MANAGER.own);
+    await openMenu(page, 'Talks & Training');
+    const week = page.getByRole('region', { name: "This week's talk" });
+    const day = new Date().getDay();               // talks can be submitted on Monday (1) and Tuesday (2)
+    const windowOpen = day === 1 || day === 2;
+    if (windowOpen) {
+      const form = page.getByRole('form', { name: "Submit this week's talk" });
+      await form.getByLabel('Title of the talk').fill('Safe refuelling');
+      await form.getByLabel('People present').fill('14');
+      await form.getByLabel('Document').setInputFiles({ name: 'register.pdf', mimeType: 'application/pdf', buffer: makePdf('Register') });
+      await form.getByRole('button', { name: 'Submit talk' }).click();
+      await expect(week).toContainText("This week's talk is in");
+    } else {
+      await expect(week).toContainText('Submissions are closed');
+      await expect(page.getByRole('form', { name: "Submit this week's talk" })).toHaveCount(0);
+    }
+
+    const she = await (await browser.newContext()).newPage();
+    await signIn(she, SHE.email, SHE.own);
+    await openMenu(she, 'Talks & Training');
+    await she.getByLabel('Region').selectOption('Harare');
+    const row = she.getByRole('region', { name: 'Completion by site' }).getByRole('row', { name: /Msasa Depot/ });
+    await expect(row).toContainText(windowOpen ? 'Submitted' : 'Closed');
+    if (windowOpen) await expect(she.getByRole('region', { name: 'Submitted talks' })).toContainText('Safe refuelling');
+
+    await she.getByRole('tab', { name: 'SHE trainings' }).click();
+    await she.getByRole('button', { name: 'Record a training' }).click();
+    const form = she.getByRole('form', { name: 'Record a training' });
+    await form.getByLabel('Site').selectOption({ label: 'Msasa Depot' });
+    await form.getByLabel('Name of training').fill('First aid');
+    await form.getByLabel('Trainer').fill(SHE.name);
+    await form.getByLabel('Personnel trained').fill(`${MANAGER.name}, ${INJURED}`);
+    await form.getByLabel('Number trained').fill('2');
+    await form.getByLabel('Supporting document').setInputFiles({ name: 'first-aid.pdf', mimeType: 'application/pdf', buffer: makePdf('First aid') });
+    await form.getByRole('button', { name: 'Record training' }).click();
+    await expect(she.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ })).toContainText(SHE.name);
+
+    // the manager sees it at their site and can open the document
+    await page.getByRole('tab', { name: 'SHE trainings' }).click();
+    await page.reload();
+    const training = page.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ });
+    await expect(training.getByText('NEW', { exact: true })).toBeVisible();
+    await training.getByRole('button', { name: 'Open First aid' }).click();
+    await expect(page.getByRole('dialog', { name: 'First aid' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
   });
 
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {

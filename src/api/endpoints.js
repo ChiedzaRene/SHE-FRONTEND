@@ -113,6 +113,28 @@ export const trainingsApi = {
   getOne: (id) => api.get(`/trainings/${id}`),
   create: (data) => api.post("/trainings/", data),
   update: (id, data) => api.put(`/trainings/${id}`, data),
+  // SHE team / admins: a training they gave, with its supporting document.
+  // form: FormData with site_id, date, training_module, trainer_name, personnel, trained_employees, type, comments, file
+  record: (form, onUploadProgress) => api.post("/trainings/record", form, { onUploadProgress }),
+  viewDocument: (id) => api.get(`/trainings/${id}/document/view`, { responseType: "blob" }),
+  downloadDocument: async (id, filename) => {
+    const res = await api.get(`/trainings/${id}/document`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+};
+
+// Weekly toolbox talks: site managers submit Monday or Tuesday; the SHE team tracks every site
+export const safetyTalksApi = {
+  current: () => api.get("/safety-talks/current"),
+  // form: FormData with title, attendees, notes, file
+  submit: (form, onUploadProgress) => api.post("/safety-talks/", form, { onUploadProgress }),
+  // params: { period, site_id, region }
+  overview: (params = {}) => api.get("/safety-talks/overview", { params }),
+  view: (id) => api.get(`/safety-talks/${id}/view`, { responseType: "blob" }),
+  download: async (id, filename) => {
+    const res = await api.get(`/safety-talks/${id}/download`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
 };
 
 export const usersApi = {
@@ -175,7 +197,7 @@ export const sheFilesApi = {
 };
 
 // Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
-// params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "ytd" | "12m", site_id }
+// params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "3m" | "6m" | "ytd" | "12m", site_id, region }
 export const dashboardApi = {
   summary: (params = {}) => api.get("/dashboard/summary", { params }),
 };

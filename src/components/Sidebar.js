@@ -45,7 +45,7 @@ export default function Sidebar({ id }) {
       baseLinks.push(
         { to: "/audits", icon: ClipboardCheck, label: "Audits" },
         { to: "/legal", icon: Scale, label: "Legal" },
-        { to: "/trainings", icon: GraduationCap, label: "Trainings" },
+        { to: "/trainings", icon: GraduationCap, label: "Talks & Training" },
       );
     }
 

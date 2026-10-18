@@ -27,6 +27,7 @@ export default function Sites() {
     name: '', 
     address: '', 
     contact_number: '', 
+    region: '',
     latitude: '', 
     longitude: '' 
   });
@@ -56,6 +57,7 @@ export default function Sites() {
       name: site.name,
       address: site.address,
       contact_number: site.contact_number || '',
+      region: site.region || '',
       latitude: site.latitude,
       longitude: site.longitude
     });
@@ -67,7 +69,7 @@ export default function Sites() {
   const closeForm = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', address: '', contact_number: '', latitude: '', longitude: '' });
+    setFormData({ name: '', address: '', contact_number: '', region: '', latitude: '', longitude: '' });
   };
 
   // Submit Logic (Handles both Create and Update)
@@ -82,6 +84,7 @@ export default function Sites() {
         longitude: parseFloat(formData.longitude),
         // optional: an empty box means "no number"
         contact_number: (formData.contact_number || '').trim() || null,
+        region: (formData.region || '').trim() || null,
       };
 
       if (editingId) {
@@ -176,6 +179,22 @@ export default function Sites() {
               />
             </div>
 
+            <div className="form-group">
+              <label className="form-label" htmlFor="site-region">Region</label>
+              <input id="site-region"
+                type="text"
+                className="form-control"
+                list="site-regions"
+                maxLength={100}
+                value={formData.region}
+                onChange={e => setFormData({...formData, region: e.target.value})}
+                placeholder="e.g. Harare, Bulawayo, Manicaland (used to group and filter sites)"
+              />
+              <datalist id="site-regions">
+                {[...new Set(sites.map(s => s.region).filter(Boolean))].sort().map(r => <option key={r} value={r} />)}
+              </datalist>
+            </div>
+
             <div className="two-col">
               <div className="form-group">
                 <label className="form-label" htmlFor="site-latitude">Latitude</label>
@@ -241,6 +260,9 @@ export default function Sites() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
                         <MapPin size={14} style={{ color: '#007ACC' }} /> {site.address}
                       </div>
+                      {site.region && (
+                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>Region: {site.region}</div>
+                      )}
                       {site.contact_number && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#64748b', marginTop: 4 }}>
                           <Phone size={14} /> {site.contact_number}
