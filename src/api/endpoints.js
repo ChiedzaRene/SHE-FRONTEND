@@ -160,6 +160,20 @@ export const siteHoursApi = {
   save: (data) => api.put("/site-hours/", data),
 };
 
+// SHE files: documents the SHE team or admins share with other roles. A view-only file opens in the app
+// (view) but its download is refused by the server for everyone except the person who shared it.
+export const sheFilesApi = {
+  list: () => api.get("/she-files/"),
+  // form: FormData with title, description, audience ("site_manager,she_team,admin"), site_id, view_only, file
+  upload: (form, onUploadProgress) => api.post("/she-files/", form, { onUploadProgress }),
+  view: (id) => api.get(`/she-files/${id}/view`, { responseType: "blob" }),
+  download: async (id, filename) => {
+    const res = await api.get(`/she-files/${id}/download`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+  delete: (id) => api.delete(`/she-files/${id}`),
+};
+
 // Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
 // params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "ytd" | "12m", site_id }
 export const dashboardApi = {

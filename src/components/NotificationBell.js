@@ -64,7 +64,7 @@ export default function NotificationBell({ placement = "sidebar" }) {
 
   // Pages that flag NEW records mark their notifications read themselves (after showing the flag),
   // so opening one of those from here must leave it unread until the page has loaded.
-  const FLAGGING_PAGES = { incidents: "/incidents", corrective_actions: "/corrective-actions", audits: "/audits" };
+  const FLAGGING_PAGES = { incidents: "/incidents", corrective_actions: "/corrective-actions", audits: "/audits", she_files: "/she-files" };
 
   const openItem = (n) => {
     setOpen(false);

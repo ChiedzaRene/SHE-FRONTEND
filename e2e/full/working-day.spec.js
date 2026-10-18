@@ -1,7 +1,9 @@
 // A working day in Glow SHE, done entirely through the screens against the real server and a fresh database.
 const { test, expect } = require('@playwright/test');
-const { ADMIN } = require('./settings');
+const { ADMIN, API_PORT } = require('./settings');
+const API_URL = `http://127.0.0.1:${API_PORT}`;
 const { signIn, signOut, openMenu, chooseOwnPassword, toast, localDateTime } = require('./ui');
+const { makePdf } = require('../pdf');
 
 const bell = (page) => page.locator('.notif:visible .notif-button');
 const monthLabel = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)) - 1, 1)
@@ -193,6 +195,40 @@ test.describe.serial('a working day', () => {
     const info = page.getByRole('region', { name: 'Site information' });
     await expect(info).toContainText('12 Mutare Road, Msasa, Harare');
     await expect(info).toContainText('Manager: Tendai Moyo');
+  });
+
+  test('the SHE officer shares a view-only PDF with site managers; the manager can open it but not download it', async ({ page, browser }) => {
+    await signIn(page, SHE.email, SHE.own);
+    await openMenu(page, 'SHE Files');
+    await page.getByRole('button', { name: 'Share a file' }).click();
+    const form = page.getByRole('form', { name: 'Share a file' });
+    await form.getByLabel('File').setInputFiles({ name: 'spill-procedure.pdf', mimeType: 'application/pdf', buffer: makePdf('Spill procedure') });
+    await form.getByLabel('Title').fill('Spill response procedure');
+    await form.getByLabel('Which site managers?').selectOption({ label: 'Msasa Depot only' });
+    await form.getByRole('checkbox', { name: /View only/ }).check();
+    await form.getByRole('button', { name: 'Share file' }).click();
+    await expect(page.locator('.files-row').first()).toContainText('View only');
+    await expect(page.getByRole('button', { name: 'Download Spill response procedure' })).toBeVisible(); // the sharer keeps a copy
+
+    const manager = await (await browser.newContext()).newPage();
+    await signIn(manager, MANAGER.email, MANAGER.own);
+    await expect(manager.locator('.notif-popup')).toContainText('New SHE file: Spill response procedure');
+    await openMenu(manager, 'SHE Files');
+    const row = manager.locator('.files-row').filter({ hasText: 'Spill response procedure' });
+    await expect(row.getByText('NEW', { exact: true })).toBeVisible();
+    await expect(row.getByRole('button', { name: /^Download/ })).toHaveCount(0);
+    await row.getByRole('button', { name: 'Open Spill response procedure' }).click();
+    const viewer = manager.getByRole('dialog', { name: 'Spill response procedure' });
+    await expect(viewer.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+    await expect(viewer.getByRole('button', { name: 'Download' })).toHaveCount(0);
+    await expect(viewer.locator('.viewer-watermark')).toContainText(MANAGER.email);
+    // and the server itself refuses the download, whatever the screen shows
+    const status = await manager.evaluate(async ({ api }) => {
+      const list = await fetch(`${api}/she-files/`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }).then((r) => r.json());
+      const res = await fetch(`${api}/she-files/${list[0].id}/download`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
+      return res.status;
+    }, { api: API_URL });
+    expect(status).toBe(403);
   });
 
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {

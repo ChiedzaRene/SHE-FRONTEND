@@ -19,6 +19,7 @@ const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
 const SiteHours = lazy(() => import("./pages/SiteHours"));
+const SheFiles = lazy(() => import("./pages/SheFiles"));
 const Reports = lazy(() => import("./pages/Reports"));
 const Settings = lazy(() => import("./pages/Settings"));
 
@@ -71,6 +72,7 @@ function App() {
               }
             >
               <Route path="/site-hours" element={<SiteHours />} />
+              <Route path="/she-files" element={<SheFiles />} />
             </Route>
 
             {/* Site Manager Routes */}

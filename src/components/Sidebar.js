@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   Clock,
+  FolderOpen,
   FileText,
 } from "lucide-react";
 
@@ -55,6 +56,7 @@ export default function Sidebar({ id }) {
     // Site managers enter their site's hours and headcount each month; SHE and admins can see them
     if (role === "admin" || role === "she_team" || role === "site_manager") {
       baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
+      baseLinks.push({ to: "/she-files", icon: FolderOpen, label: "SHE Files" });
     }
 
     if (role === "admin") {
