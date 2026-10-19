@@ -329,9 +329,12 @@ test.describe.serial('a working day', () => {
     await ncForm.getByLabel('Requirement breached').fill('ZWS 970:2020 Clause 17(F)');
     await ncForm.getByRole('button', { name: 'Add NC' }).click();
     const card = (p) => p.getByRole('article', { name: 'NC 1/MSA/01' });
-    await card(she).getByLabel('Photo for 1/MSA/01').setInputFiles({ name: 'separator.png', mimeType: 'image/png',
+    await card(she).getByLabel('Proof for 1/MSA/01').setInputFiles({ name: 'separator.png', mimeType: 'image/png',
       buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') });
     await expect(card(she).getByRole('button', { name: 'Enlarge separator.png' })).toBeVisible();
+    // proof of the inspection itself: the signed checklist as a PDF
+    await she.getByLabel('Supporting document for the report').setInputFiles({ name: 'signed-checklist.pdf', mimeType: 'application/pdf', buffer: makePdf('Checklist') });
+    await expect(she.getByRole('region', { name: 'Supporting documents' })).toContainText('signed-checklist.pdf');
     await she.getByRole('button', { name: 'Submit to regional office' }).click();
     await she.getByRole('alertdialog').getByRole('button', { name: 'Submit report' }).click();
     await expect(card(she)).toContainText('With regional office');
@@ -361,11 +364,21 @@ test.describe.serial('a working day', () => {
     await expect(manager.getByRole('region', { name: 'Introduction' }).locator('b')).toHaveText('comprehensive');
     await expect(card(manager)).toContainText('Drain and clean the oil separator.');
     await card(manager).getByLabel('How was it closed?').fill('Separator drained and cleaned by Clean Co; receipt in the SHE file.');
+    await card(manager).getByLabel(/^Proof: photos or documents/).setInputFiles([
+      { name: 'receipt.pdf', mimeType: 'application/pdf', buffer: makePdf('Receipt') },
+      { name: 'after.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') },
+    ]);
+    // the site sees the inspection's proof too
+    await manager.getByRole('region', { name: 'Supporting documents' }).getByRole('button', { name: 'Open signed-checklist.pdf' }).click();
+    await expect(manager.getByRole('dialog', { name: 'signed-checklist.pdf' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+    await manager.getByRole('button', { name: 'Close viewer' }).click();
     await card(manager).getByRole('button', { name: 'Mark as completed' }).click();
     await expect(card(manager)).toContainText('Awaiting SHE review');
 
-    // the SHE officer verifies it and closes it; the reviewer and date are recorded
+    // the SHE officer checks the proof, then closes it; the reviewer and date are recorded
     await she.reload();
+    await expect(card(she).getByRole('button', { name: 'Open receipt.pdf' })).toBeVisible();
+    await expect(card(she).getByRole('button', { name: 'Enlarge after.png' })).toBeVisible();
     await card(she).getByRole('button', { name: 'Close NC' }).click();
     await expect(card(she)).toContainText(`Reviewed by: ${SHE.name}`);
     await expect(card(she)).toContainText('NC status after review: Closed');

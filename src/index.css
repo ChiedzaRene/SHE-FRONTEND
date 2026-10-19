@@ -1702,3 +1702,10 @@ tr.row-new { background: #fffbeb; }
   .main-content { margin: 0 !important; padding: 0 !important; }
   .insp-section, .insp-cover, .insp-nc { box-shadow: none; break-inside: avoid; }
 }
+.insp-doc { position: relative; margin: 0; display: flex; align-items: center; gap: 8px; padding: 10px 36px 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: #fff; max-width: 360px; flex-wrap: wrap; }
+.insp-doc > svg { color: var(--primary); flex-shrink: 0; }
+.insp-doc.evidence { border-color: #86efac; }
+.insp-doc-name { font-size: 0.85rem; font-weight: 600; color: #1e293b; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.insp-doc figcaption { width: 100%; font-size: 0.72rem; color: #166534; font-weight: 700; }
+.insp-doc-actions { display: inline-flex; gap: 6px; }
+.insp-photo.evidence figcaption { color: #166534; }

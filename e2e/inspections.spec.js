@@ -14,7 +14,7 @@ const report = (over = {}) => ({
   submitted_by_name: 'Rudo Chikore', closed_at: null, nc_counts: { total: 1, raised: 1, assigned: 0, completed: 0, closed: 0, draft: 0, overdue: 0 },
   introduction: '<p>The SHE Department conducted a <b>comprehensive</b> inspection.</p>', criteria: null,
   objectives: '<ul><li><i>Detect</i> hazards</li></ul>', findings_summary: '<p>Performing well.</p>', conformities: null,
-  ncs: [nc()], previous_ncs: [], can: { edit: false, submit: false, delete: false }, ...over,
+  ncs: [nc()], previous_ncs: [], attachments: [], can: { edit: false, submit: false, delete: false }, ...over,
 });
 
 test('the SHE team writes the report with bold, italic and underline, and adds an NC', async ({ page }) => {
@@ -118,4 +118,46 @@ test('the site completes the action, and the SHE team sees who reviewed it and w
   await expect(card).toContainText('Reviewed by: Rudo Chikore');
   await expect(card).toContainText(/Date of review: (Oct 21, 2026|21 Oct 2026)/);
   await expect(card).toContainText('NC status after review: Closed');
+});
+
+test('the site attaches photos and documents as proof of the corrective action; PDFs open in the app', async ({ page }) => {
+  let sent = null;
+  const { makePdf } = require('./pdf');
+  const pdf = makePdf('Receipt');
+  await mockApi(page, {
+    'GET /site-inspections/5': report({
+      attachments: [{ id: 70, kind: 'report', filename: 'signed-checklist.docx', content_type: 'application/msword', is_image: false, viewable: false }],
+      ncs: [nc({ status: 'assigned', recommendation: '<p>Drain it</p>', assigned_to_name: 'Tendai Moyo', due_date: '2026-11-02', can: { complete: true } })],
+    }),
+    'POST /site-inspections/ncs/11/complete': (route, req) => {
+      sent = req.postDataBuffer().toString('latin1');
+      return route.fulfill(json(200, report({ ncs: [nc({ status: 'completed', recommendation: '<p>Drain it</p>', assigned_to_name: 'Tendai Moyo',
+        completion_notes: 'Drained', completed_by_name: 'Tendai Moyo', completed_at: '2026-10-20T08:00:00Z',
+        photos: [{ id: 81, kind: 'evidence', filename: 'receipt.pdf', content_type: 'application/pdf', is_image: false, viewable: true }] })] })));
+    },
+    'GET /site-inspections/photos/81': (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: pdf, headers: { 'access-control-allow-origin': '*' } }),
+  });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.goto('/inspections/5');
+  // a Word document is downloaded rather than opened
+  const docs = page.getByRole('region', { name: 'Supporting documents' });
+  await expect(docs.getByRole('button', { name: 'Download signed-checklist.docx' })).toBeVisible();
+  await expect(docs.getByRole('button', { name: 'Open signed-checklist.docx' })).toHaveCount(0);
+
+  const form = page.getByRole('form', { name: 'Complete 15/CBD/01' });
+  await form.getByLabel('How was it closed?').fill('Drained');
+  await form.getByLabel(/^Proof: photos or documents/).setInputFiles([
+    { name: 'receipt.pdf', mimeType: 'application/pdf', buffer: pdf },
+    { name: 'after.png', mimeType: 'image/png', buffer: Buffer.from('png') },
+  ]);
+  await expect(form).toContainText('receipt.pdf, after.png');
+  await form.getByRole('button', { name: 'Mark as completed' }).click();
+  await expect.poll(() => sent).toContain('filename="receipt.pdf"');
+  expect(sent).toContain('filename="after.png"');
+  expect(sent.match(/name="files"/g)).toHaveLength(2);
+
+  const card = page.getByRole('article', { name: 'NC 15/CBD/01' });
+  await expect(card).toContainText('Proof of the action');
+  await card.getByRole('button', { name: 'Open receipt.pdf' }).click();
+  await expect(page.getByRole('dialog', { name: 'receipt.pdf' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
 });

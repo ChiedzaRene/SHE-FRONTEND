@@ -216,13 +216,24 @@ export const inspectionsApi = {
     form.append("file", file);
     return api.post(`/site-inspections/ncs/${ncId}/photos`, form);
   },
+  // proof of the inspection itself (photo, PDF or document)
+  addReportFile: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/site-inspections/${id}/attachments`, form);
+  },
   deletePhoto: (photoId) => api.delete(`/site-inspections/photos/${photoId}`),
   photo: (photoId) => api.get(`/site-inspections/photos/${photoId}`, { responseType: "blob" }),
+  downloadFile: async (photoId, filename) => {
+    const res = await api.get(`/site-inspections/photos/${photoId}`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
   acknowledge: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/acknowledge`, data),
-  complete: (ncId, notes, file) => {
+  // files: photos, PDFs or documents proving the corrective action was done (up to 5)
+  complete: (ncId, notes, files = []) => {
     const form = new FormData();
     form.append("notes", notes);
-    if (file) form.append("file", file);
+    files.forEach((f) => form.append("files", f));
     return api.post(`/site-inspections/ncs/${ncId}/complete`, form);
   },
   review: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/review`, data), // { outcome: "closed" | "open", comment }

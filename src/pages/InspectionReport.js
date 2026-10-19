@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Save, Send, Plus, Trash2, Camera, CheckCircle2, RotateCcw, Printer, Pencil, X, Clock } from "lucide-react";
+import {
+  ArrowLeft, Save, Send, Plus, Trash2, Paperclip, CheckCircle2, RotateCcw, Printer, Pencil, X, Clock, FileText, Eye, Download,
+} from "lucide-react";
 import { inspectionsApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { useFeedback } from "../components/Feedback";
 import { useNotifications } from "../context/NotificationsContext";
 import LoadingScreen from "../components/LoadingScreen";
 import RichTextEditor, { RichText } from "../components/RichTextEditor";
+import FileViewer from "../components/FileViewer";
 import { apiError } from "../utils/apiError";
 import { NC_STATUS, STATUS_LABEL, fmtDay } from "./Inspections";
 
@@ -17,38 +20,96 @@ const SECTIONS = [
   { key: "findings_summary", title: "Inspection overall observations", placeholder: "Summary of the findings" },
   { key: "conformities", title: "Positive observations (conformities)", placeholder: "What the site is doing well" },
 ];
-const IMAGE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp";
+// photos, PDFs and office documents (the server checks the type)
+const PROOF_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt";
+const MAX_EVIDENCE = 5;
 const addDays = (n) => {
   const d = new Date();
   d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
-function Photo({ photo, onDelete }) {
+// A proof file: photos show as pictures; PDFs open in the viewer; other documents download
+function Proof({ photo, onDelete }) {
+  const { notify } = useFeedback();
   const [url, setUrl] = useState(null);
   const [big, setBig] = useState(false);
+  const [viewing, setViewing] = useState(false);
   useEffect(() => {
+    if (!photo.is_image) return undefined;
     let made = null;
     inspectionsApi.photo(photo.id).then((r) => { made = URL.createObjectURL(r.data); setUrl(made); }).catch(() => {});
     return () => made && URL.revokeObjectURL(made);
-  }, [photo.id]);
+  }, [photo.id, photo.is_image]);
+  const download = () => inspectionsApi.downloadFile(photo.id, photo.filename)
+    .catch((err) => notify(apiError(err, "The file couldn't be downloaded."), "error"));
+  const remove = onDelete && (
+    <button type="button" className="insp-photo-del" onClick={onDelete} aria-label={`Remove ${photo.filename}`}><X size={14} /></button>
+  );
+  const caption = photo.kind === "evidence" ? "Proof of the action" : null;
+
+  if (!photo.is_image) {
+    return (
+      <figure className={`insp-doc ${photo.kind}`}>
+        <FileText size={20} aria-hidden="true" />
+        <span className="insp-doc-name" title={photo.filename}>{photo.filename}</span>
+        {caption && <figcaption>{caption}</figcaption>}
+        <span className="insp-doc-actions">
+          {photo.viewable && (
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setViewing(true)} aria-label={`Open ${photo.filename}`}>
+              <Eye size={14} /> Open
+            </button>
+          )}
+          <button type="button" className="btn btn-outline btn-sm" onClick={download} aria-label={`Download ${photo.filename}`}>
+            <Download size={14} />
+          </button>
+        </span>
+        {remove}
+        {viewing && (
+          <FileViewer file={{ id: photo.id, title: photo.filename, filename: photo.filename, content_type: photo.content_type, can_download: true }}
+            onClose={() => setViewing(false)} onDownload={download} load={() => inspectionsApi.photo(photo.id)} />
+        )}
+      </figure>
+    );
+  }
   return (
     <figure className={`insp-photo ${photo.kind}`}>
       {url ? (
         <button type="button" className="insp-photo-btn" onClick={() => setBig(true)} aria-label={`Enlarge ${photo.filename}`}>
-          <img src={url} alt={photo.kind === "evidence" ? `Evidence: ${photo.filename}` : photo.filename} />
+          <img src={url} alt={caption ? `${caption}: ${photo.filename}` : photo.filename} />
         </button>
       ) : <div className="insp-photo-wait">Loading…</div>}
-      {photo.kind === "evidence" && <figcaption>Evidence</figcaption>}
-      {onDelete && (
-        <button type="button" className="insp-photo-del" onClick={onDelete} aria-label={`Remove ${photo.filename}`}><X size={14} /></button>
-      )}
+      {caption && <figcaption>{caption}</figcaption>}
+      {remove}
       {big && url && (
         <div className="modal-overlay viewer-overlay" onClick={() => setBig(false)} role="dialog" aria-label={photo.filename}>
           <img src={url} alt={photo.filename} className="insp-photo-big" />
         </div>
       )}
     </figure>
+  );
+}
+
+// Lists proof files, with an "add" button while they can still be added
+function ProofList({ files, canAdd, label, onAdd, onDelete }) {
+  const input = useRef(null);
+  return (
+    <>
+      {files.length > 0 && (
+        <div className="insp-photos">
+          {files.map((p) => <Proof key={p.id} photo={p} onDelete={onDelete ? () => onDelete(p) : null} />)}
+        </div>
+      )}
+      {canAdd && (
+        <>
+          <button type="button" className="btn btn-outline btn-sm" onClick={() => input.current?.click()}>
+            <Paperclip size={14} /> Add photo or document
+          </button>
+          <input ref={input} type="file" accept={PROOF_ACCEPT} hidden aria-label={label}
+            onChange={(e) => { const f = e.target.files[0]; e.target.value = ""; if (f) onAdd(f); }} />
+        </>
+      )}
+    </>
   );
 }
 
@@ -148,14 +209,15 @@ function AcknowledgeForm({ nc, inspectionId, onDone }) {
 function CompleteForm({ nc, onDone }) {
   const { notify } = useFeedback();
   const [notes, setNotes] = useState("");
-  const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
   const [busy, setBusy] = useState(false);
   const submit = async (e) => {
     e.preventDefault();
     if (notes.trim().length < 3) return notify("Say how the corrective action was closed.", "error");
+    if (files.length > MAX_EVIDENCE) return notify(`Attach up to ${MAX_EVIDENCE} photos or documents.`, "error");
     setBusy(true);
     try {
-      const res = await inspectionsApi.complete(nc.id, notes.trim(), file);
+      const res = await inspectionsApi.complete(nc.id, notes.trim(), files);
       notify(`${nc.serial} sent to the SHE team for review`, "success");
       onDone(res.data);
     } catch (err) {
@@ -172,8 +234,10 @@ function CompleteForm({ nc, onDone }) {
           placeholder="What was done, by whom and when" />
       </div>
       <div className="form-group">
-        <label className="form-label" htmlFor={`done-photo-${nc.id}`}>Photo of the fix (optional)</label>
-        <input id={`done-photo-${nc.id}`} type="file" className="form-control" accept={IMAGE_ACCEPT} onChange={(e) => setFile(e.target.files[0] || null)} />
+        <label className="form-label" htmlFor={`done-photo-${nc.id}`}>Proof: photos or documents (optional, up to {MAX_EVIDENCE})</label>
+        <input id={`done-photo-${nc.id}`} type="file" multiple className="form-control" accept={PROOF_ACCEPT}
+          onChange={(e) => setFiles(Array.from(e.target.files || []))} />
+        {files.length > 0 && <small className="share-hint">{files.map((f) => f.name).join(", ")}</small>}
       </div>
       <div className="tt-form-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}><CheckCircle2 size={16} /> {busy ? "Sending…" : "Mark as completed"}</button>
@@ -216,7 +280,6 @@ function ReviewForm({ nc, onDone }) {
 function NcCard({ nc, inspectionId, previous, onChange, reload }) {
   const { notify, confirm } = useFeedback();
   const [editing, setEditing] = useState(false);
-  const photoInput = useRef(null);
   const st = NC_STATUS[nc.status] || NC_STATUS.draft;
   const findings = nc.photos.filter((p) => p.kind === "finding");
   const evidence = nc.photos.filter((p) => p.kind === "evidence");
@@ -254,19 +317,13 @@ function NcCard({ nc, inspectionId, previous, onChange, reload }) {
             <h3 className="insp-nc-title">{nc.title}</h3>
             <RichText html={nc.details} empty="" />
             {nc.reference && <p className="insp-ref">Requirement breached: <strong>{nc.reference}</strong></p>}
-            {findings.length > 0 && (
-              <div className="insp-photos">
-                {findings.map((p) => (
-                  <Photo key={p.id} photo={p} onDelete={nc.can.edit ? () => call(() => inspectionsApi.deletePhoto(p.id), "The photo couldn't be removed.") : null} />
-                ))}
-              </div>
-            )}
+            <ProofList files={findings} canAdd={false} label={`Proof for ${nc.serial}`}
+              onDelete={nc.can.edit ? (p) => call(() => inspectionsApi.deletePhoto(p.id), "The file couldn't be removed.") : null} />
             {nc.can.edit && (
               <div className="insp-nc-tools">
                 <button type="button" className="btn btn-outline btn-sm" onClick={() => setEditing(true)}><Pencil size={14} /> Edit</button>
-                <button type="button" className="btn btn-outline btn-sm" onClick={() => photoInput.current?.click()}><Camera size={14} /> Add photo</button>
-                <input ref={photoInput} type="file" accept={IMAGE_ACCEPT} hidden aria-label={`Photo for ${nc.serial}`}
-                  onChange={(e) => { const f = e.target.files[0]; e.target.value = ""; if (f) call(() => inspectionsApi.addPhoto(nc.id, f), "The photo couldn't be added."); }} />
+                <ProofList files={[]} canAdd label={`Proof for ${nc.serial}`}
+                  onAdd={(f) => call(() => inspectionsApi.addPhoto(nc.id, f), "The file couldn't be added.")} />
                 <button type="button" className="btn btn-outline btn-sm files-delete" onClick={remove}><Trash2 size={14} /> Remove</button>
               </div>
             )}
@@ -290,7 +347,7 @@ function NcCard({ nc, inspectionId, previous, onChange, reload }) {
                 <dd>
                   <p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{nc.completion_notes}</p>
                   <span className="tt-muted">{nc.completed_by_name} on {fmtDay(nc.completed_at)}</span>
-                  {evidence.length > 0 && <div className="insp-photos">{evidence.map((p) => <Photo key={p.id} photo={p} />)}</div>}
+                  <ProofList files={evidence} canAdd={false} />
                 </dd>
               </div>
             )}
@@ -441,6 +498,22 @@ export default function InspectionReport() {
         <div className="tt-form-actions no-print" style={{ marginBottom: 24 }}>
           <button type="button" className="btn btn-primary" onClick={saveSections} disabled={!dirty}><Save size={16} /> {dirty ? "Save report" : "Saved"}</button>
         </div>
+      )}
+
+      {(editable || report.attachments.length > 0) && (
+        <section className="insp-section" aria-label="Supporting documents">
+          <h2>Supporting documents</h2>
+          <p className="tt-muted">Proof of the inspection: photos of the visit, the signed checklist and other documents.</p>
+          <ProofList files={report.attachments} canAdd={editable} label="Supporting document for the report"
+            onAdd={async (f) => {
+              try { takeKeeping((await inspectionsApi.addReportFile(report.id, f)).data); }
+              catch (err) { notify(apiError(err, "The file couldn't be added."), "error"); }
+            }}
+            onDelete={editable ? async (p) => {
+              try { takeKeeping((await inspectionsApi.deletePhoto(p.id)).data); }
+              catch (err) { notify(apiError(err, "The file couldn't be removed."), "error"); }
+            } : null} />
+        </section>
       )}
 
       {report.previous_ncs.length > 0 && (
