@@ -196,6 +196,38 @@ export const sheFilesApi = {
   delete: (id) => api.delete(`/she-files/${id}`),
 };
 
+// Inspection reports and their non-conformities (NCs).
+// SHE team: create/update/addNc/updateNc/deleteNc/addPhoto/deletePhoto/submit/review
+// Regional office: acknowledge (recommendation, assigned_to, due_date). Responsible person: complete.
+export const inspectionsApi = {
+  list: (params = {}) => api.get("/site-inspections/", { params }),
+  myNcs: () => api.get("/site-inspections/my-ncs"),
+  get: (id) => api.get(`/site-inspections/${id}`),
+  create: (data) => api.post("/site-inspections/", data),
+  update: (id, data) => api.put(`/site-inspections/${id}`, data),
+  remove: (id) => api.delete(`/site-inspections/${id}`),
+  submit: (id) => api.post(`/site-inspections/${id}/submit`),
+  assignees: (id) => api.get(`/site-inspections/${id}/assignees`),
+  addNc: (id, data) => api.post(`/site-inspections/${id}/ncs`, data),
+  updateNc: (ncId, data) => api.put(`/site-inspections/ncs/${ncId}`, data),
+  deleteNc: (ncId) => api.delete(`/site-inspections/ncs/${ncId}`),
+  addPhoto: (ncId, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/site-inspections/ncs/${ncId}/photos`, form);
+  },
+  deletePhoto: (photoId) => api.delete(`/site-inspections/photos/${photoId}`),
+  photo: (photoId) => api.get(`/site-inspections/photos/${photoId}`, { responseType: "blob" }),
+  acknowledge: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/acknowledge`, data),
+  complete: (ncId, notes, file) => {
+    const form = new FormData();
+    form.append("notes", notes);
+    if (file) form.append("file", file);
+    return api.post(`/site-inspections/ncs/${ncId}/complete`, form);
+  },
+  review: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/review`, data), // { outcome: "closed" | "open", comment }
+};
+
 // Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
 // params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "3m" | "6m" | "ytd" | "12m", site_id, region }
 export const dashboardApi = {

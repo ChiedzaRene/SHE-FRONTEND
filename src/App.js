@@ -15,6 +15,8 @@ const Sites = lazy(() => import("./pages/Sites"));
 const CorrectiveActions = lazy(() => import("./pages/CorrectiveActions"));
 const Incidents = lazy(() => import("./pages/Incidents"));
 const AuditList = lazy(() => import("./pages/AuditList"));
+const Inspections = lazy(() => import("./pages/Inspections"));
+const InspectionReport = lazy(() => import("./pages/InspectionReport"));
 const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
@@ -49,6 +51,7 @@ function App() {
             >
               <Route path="/she-dashboard" element={<SheDashboard />} />
               <Route path="/command-center" element={<CommandCenter />} />
+              {/* the earlier audit records; new inspections live under /inspections */}
               <Route path="/audits" element={<AuditList />} />
               <Route path="/legal" element={<LegalCompliance />} />
             </Route>
@@ -73,6 +76,16 @@ function App() {
             >
               <Route path="/site-hours" element={<SiteHours />} />
               <Route path="/she-files" element={<SheFiles />} />
+            </Route>
+
+            {/* Inspection reports: written by the SHE team, acknowledged by the regional office, actioned by sites */}
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager"]} />
+              }
+            >
+              <Route path="/inspections" element={<Inspections />} />
+              <Route path="/inspections/:id" element={<InspectionReport />} />
             </Route>
 
             {/* Site Manager Routes */}

@@ -7,7 +7,7 @@ import TargetsTab from "../components/settings/TargetsTab";
 import AuditLogTab from "../components/settings/AuditLogTab";
 import { useFeedback } from "../components/Feedback";
 
-const HOME = { admin: "/admin", super_admin: "/admin", she_team: "/she-dashboard", site_manager: "/site-dashboard" };
+import { homeFor } from "../utils/home";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -68,7 +68,7 @@ export default function Settings() {
             ? () => {
                 // the page changes straight away, so confirm it where it stays visible
                 notify("Password changed. You can now use Glow SHE.", "success");
-                navigate(HOME[role] || "/");
+                navigate(homeFor(role) === "/login" ? "/" : homeFor(role));
               }
             : undefined
         }

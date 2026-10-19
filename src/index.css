@@ -1633,3 +1633,72 @@ tr.row-new { background: #fffbeb; }
   .tt-filters .form-group { flex: 1 1 140px; min-width: 0; }
   .tt-pad, .tt-week { padding: 16px; }
 }
+
+/* ---- Formatted text (inspection reports) ---- */
+.rte { border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
+.rte:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,48,135,0.12); }
+.rte-toolbar { display: flex; gap: 2px; padding: 4px; border-bottom: 1px solid var(--border); background: #f8fafc; border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.rte-toolbar button { width: 32px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: #334155; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.rte-toolbar button:hover { background: #e2e8f0; }
+.rte-toolbar button.on { background: #dbeafe; color: var(--primary); }
+.rte-box { padding: 10px 14px; outline: none; font-size: 0.92rem; line-height: 1.55; }
+.rte-box:empty::before { content: attr(data-placeholder); color: #9ca3af; }
+.rich-text p, .rich-text div { margin: 0 0 8px; }
+.rich-text ul, .rich-text ol { margin: 0 0 8px; padding-left: 22px; }
+.rich-text li { margin: 2px 0; }
+
+/* ---- Inspection reports ---- */
+.badge-gray { background: #f1f5f9; color: #475569; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.badge-purple { background: #ede9fe; color: #5b21b6; }
+.insp-link { font-weight: 800; color: var(--primary); }
+.insp-waiting { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.insp-waiting a { color: var(--primary); }
+.insp-report { max-width: 1100px; }
+.insp-topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.insp-cover { background: #fff; border-radius: 16px; padding: 28px 32px; box-shadow: var(--shadow-sm); border-top: 6px solid var(--primary); margin-bottom: 20px; }
+.insp-cover-dept { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.insp-cover h1 { font-size: 1.6rem; font-weight: 900; margin: 6px 0 10px; color: #0f172a; text-transform: uppercase; }
+.insp-cover-meta { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; color: #334155; font-size: 0.9rem; margin-top: 4px; }
+.insp-hint { display: flex; gap: 8px; align-items: center; background: #eff6ff; border: 1px solid #dbeafe; color: #1e40af; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.88rem; }
+.insp-section { background: #fff; border-radius: 16px; padding: 20px 24px; box-shadow: var(--shadow-sm); margin-bottom: 16px; }
+.insp-section > h2 { font-size: 0.95rem; font-weight: 900; text-transform: uppercase; text-decoration: underline; text-underline-offset: 3px; margin: 0 0 12px; color: #0f172a; }
+.insp-nc { display: grid; grid-template-columns: 150px minmax(0, 1fr); border: 1px solid var(--border); border-radius: 12px; margin: 12px 0; overflow: hidden; background: #fff; }
+.insp-nc.overdue { border-color: #fca5a5; }
+.insp-nc-serial { background: #f8fafc; border-right: 1px solid var(--border); padding: 14px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.insp-nc-serial strong { font-size: 1rem; color: #0f172a; }
+.insp-prev { font-size: 0.72rem; font-weight: 800; color: var(--accent); text-transform: uppercase; }
+.insp-nc-body { padding: 14px 18px; min-width: 0; }
+.insp-nc-title { font-size: 1rem; font-weight: 800; margin: 0 0 8px; color: #0f172a; }
+.insp-ref { font-size: 0.86rem; color: #334155; margin: 6px 0; }
+.insp-nc-tools { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.insp-photos { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+.insp-photo { position: relative; margin: 0; width: 150px; }
+.insp-photo-btn { padding: 0; border: 0; background: none; cursor: zoom-in; display: block; width: 100%; }
+.insp-photo img { width: 150px; height: 110px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border); display: block; }
+.insp-photo.evidence img { border-color: #86efac; }
+.insp-photo figcaption { font-size: 0.72rem; color: #166534; font-weight: 700; margin-top: 2px; }
+.insp-photo-wait { width: 150px; height: 110px; border-radius: 8px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 0.8rem; }
+.insp-photo-del { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgba(15,23,42,0.7); color: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.insp-photo-big { max-width: 92vw; max-height: 88vh; border-radius: 8px; background: #fff; }
+.insp-ca { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; margin: 14px 0 0; padding: 14px; background: #f8fafc; border-radius: 10px; }
+.insp-ca-wide { grid-column: 1 / -1; }
+.insp-ca dt { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 2px; }
+.insp-ca dd { margin: 0; color: #1e293b; font-size: 0.9rem; }
+.insp-verify dd { display: flex; flex-wrap: wrap; gap: 4px 20px; font-style: italic; }
+.insp-step { margin-top: 14px; padding: 14px; border: 1px dashed #93c5fd; border-radius: 10px; background: #f8fbff; }
+.insp-step h4 { margin: 0 0 10px; font-size: 0.92rem; font-weight: 800; color: var(--primary); }
+.insp-ncform { margin-top: 4px; }
+@media (max-width: 700px) {
+  .insp-nc { grid-template-columns: 1fr; }
+  .insp-nc-serial { border-right: 0; border-bottom: 1px solid var(--border); flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .insp-ca { grid-template-columns: 1fr; }
+  .insp-cover { padding: 20px; }
+  .insp-cover h1 { font-size: 1.25rem; }
+  .insp-section { padding: 16px; }
+}
+@media print {
+  .sidebar, .mobile-topbar, .no-print, .notif-popup, .toast-stack, .insp-step, .insp-nc-tools, .rte-toolbar { display: none !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; }
+  .insp-section, .insp-cover, .insp-nc { box-shadow: none; break-inside: avoid; }
+}

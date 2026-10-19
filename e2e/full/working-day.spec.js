@@ -10,6 +10,7 @@ const monthLabel = (ym) => new Date(Number(ym.slice(0, 4)), Number(ym.slice(5, 7
   .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
 const MANAGER = { name: 'Tendai Moyo', email: 'tendai.moyo@glowtest.com', temp: 'Welcome-123', own: 'Tendai-own-456', later: 'Tendai-new-789' };
+const REGIONAL = { name: 'Grace Moyo', email: 'grace.moyo@glowtest.com', temp: 'Welcome-246', own: 'Grace-own-135' };
 const SHE = { name: 'Rudo Chikore', email: 'rudo.chikore@glowtest.com', temp: 'Welcome-789', own: 'Rudo-own-321' };
 const INCIDENT = 'Slipped near pump 3 & hurt wrist; first aid in < 5 minutes';
 const INJURED = 'Farai Moyo';
@@ -40,6 +41,7 @@ test.describe.serial('a working day', () => {
       await page.getByLabel('Site Name').fill(name);
       await page.getByLabel('Physical Address').fill(address);
       await page.getByLabel('Region').fill(name.startsWith('Typo') ? '' : 'Harare');
+      await page.getByLabel('Site code').fill(name === 'Msasa Depot' ? 'MSA' : '');
       await page.getByLabel('Latitude').fill(lat);
       await page.getByLabel('Longitude').fill(lng);
       await page.getByRole('button', { name: 'Save Site' }).click();
@@ -277,6 +279,106 @@ test.describe.serial('a working day', () => {
     await expect(training.getByText('NEW', { exact: true })).toBeVisible();
     await training.getByRole('button', { name: 'Open First aid' }).click();
     await expect(page.getByRole('dialog', { name: 'First aid' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+  });
+
+  test('inspection: SHE writes the report, the regional office assigns the NC, the site completes it, SHE closes it', async ({ page, browser }) => {
+    // wait until signed in, then close the newest-notification pop-up so it doesn't cover the page
+    const pop = async (p) => {
+      await expect(p).not.toHaveURL(/\/login$/);
+      await p.locator('#app-sidebar').waitFor();
+      if (await p.locator('.notif-popup').isVisible()) await p.getByRole('button', { name: 'Dismiss notification' }).click();
+    };
+
+    // the admin adds the regional manager for the Harare region
+    await signIn(page, ADMIN.email, ADMIN.password);
+    await openMenu(page, 'Users');
+    await page.getByRole('button', { name: 'Register New User' }).click();
+    await page.getByLabel('Full Name').fill(REGIONAL.name);
+    await page.getByLabel('Email').fill(REGIONAL.email);
+    await page.getByLabel('Password').fill(REGIONAL.temp);
+    await page.getByLabel('Role').selectOption({ label: 'Regional Manager' });
+    await page.getByLabel('Region').selectOption('Harare');
+    await page.getByRole('button', { name: 'Create User' }).click();
+    await expect(toast(page, `${REGIONAL.email} created`)).toBeVisible();
+
+    // the SHE officer writes the report
+    const she = await (await browser.newContext()).newPage();
+    await signIn(she, SHE.email, SHE.own);
+    await pop(she);
+    await openMenu(she, 'Inspections');
+    await she.getByRole('button', { name: 'New inspection' }).click();
+    await she.getByLabel('Site inspected').selectOption({ label: 'Msasa Depot' });
+    await she.getByLabel('Inspected by').fill(SHE.name);
+    await she.getByRole('button', { name: 'Start report' }).click();
+    await expect(she.getByRole('heading', { name: /Msasa Depot site inspection report No. 1/i })).toBeVisible();
+    await she.getByRole('textbox', { name: 'Introduction' }).click();
+    await she.keyboard.type('The SHE Department conducted a ');
+    await she.keyboard.press('Control+b');
+    await she.keyboard.type('comprehensive');
+    await she.keyboard.press('Control+b');
+    await she.keyboard.type(' inspection.');
+    await she.getByRole('textbox', { name: 'Inspection overall observations' }).click();
+    await she.keyboard.type('Overall the site is performing well.');
+    await she.getByRole('button', { name: 'Save report' }).click();
+    await expect(she.getByRole('button', { name: 'Saved' })).toBeVisible();
+    await she.getByRole('button', { name: 'Add a non-conformity' }).click();
+    const ncForm = she.getByRole('form', { name: 'Add a non-conformity' });
+    await ncForm.getByLabel('Heading').fill('Oil separator');
+    await ncForm.getByRole('textbox', { name: 'Details of the NC' }).click();
+    await she.keyboard.type('Oil separator found nearly full during the inspection.');
+    await ncForm.getByLabel('Requirement breached').fill('ZWS 970:2020 Clause 17(F)');
+    await ncForm.getByRole('button', { name: 'Add NC' }).click();
+    const card = (p) => p.getByRole('article', { name: 'NC 1/MSA/01' });
+    await card(she).getByLabel('Photo for 1/MSA/01').setInputFiles({ name: 'separator.png', mimeType: 'image/png',
+      buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') });
+    await expect(card(she).getByRole('button', { name: 'Enlarge separator.png' })).toBeVisible();
+    await she.getByRole('button', { name: 'Submit to regional office' }).click();
+    await she.getByRole('alertdialog').getByRole('button', { name: 'Submit report' }).click();
+    await expect(card(she)).toContainText('With regional office');
+    const reportUrl = she.url();
+
+    // the regional manager acknowledges it and gives it to the site manager with a deadline
+    const regional = await (await browser.newContext()).newPage();
+    await signIn(regional, REGIONAL.email, REGIONAL.temp);
+    await chooseOwnPassword(regional, REGIONAL.temp, REGIONAL.own);
+    await expect(regional).toHaveURL(/\/inspections$/);
+    await pop(regional);
+    await regional.getByRole('region', { name: 'Waiting on you' }).getByRole('link', { name: /1\/MSA\/01/ }).click();
+    const ack = regional.getByRole('form', { name: 'Acknowledge 1/MSA/01' });
+    await ack.getByRole('textbox', { name: /Recommended corrective action/ }).click();
+    await regional.keyboard.type('Drain and clean the oil separator.');
+    await ack.getByLabel('By who').selectOption({ label: MANAGER.name });
+    const due = new Date(Date.now() + 14 * 86400e3);
+    await ack.getByLabel('By when').fill(`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`);
+    await ack.getByRole('button', { name: 'Acknowledge and assign' }).click();
+    await expect(card(regional)).toContainText('Corrective action open');
+
+    // the site manager sees the whole report and completes the action
+    const manager = await (await browser.newContext()).newPage();
+    await signIn(manager, MANAGER.email, MANAGER.own);
+    await pop(manager);
+    await manager.goto(reportUrl);
+    await expect(manager.getByRole('region', { name: 'Introduction' }).locator('b')).toHaveText('comprehensive');
+    await expect(card(manager)).toContainText('Drain and clean the oil separator.');
+    await card(manager).getByLabel('How was it closed?').fill('Separator drained and cleaned by Clean Co; receipt in the SHE file.');
+    await card(manager).getByRole('button', { name: 'Mark as completed' }).click();
+    await expect(card(manager)).toContainText('Awaiting SHE review');
+
+    // the SHE officer verifies it and closes it; the reviewer and date are recorded
+    await she.reload();
+    await card(she).getByRole('button', { name: 'Close NC' }).click();
+    await expect(card(she)).toContainText(`Reviewed by: ${SHE.name}`);
+    await expect(card(she)).toContainText('NC status after review: Closed');
+    await expect(she.locator('.insp-cover')).toContainText('Closed');
+
+    // the site manager is told it was closed; opening the report reads the report's notifications
+    await manager.reload();
+    await expect(card(manager)).toContainText('NC status after review: Closed');
+    await expect(manager.locator('.notif:visible .notif-button')).toHaveAccessibleName('Notifications');
+
+    // the corrective action shows on the site's corrective actions, linked to the report
+    await openMenu(manager, 'Corrective Actions');
+    await expect(manager.getByRole('row', { name: /Inspection NC 1\/MSA\/01/ }).getByRole('link', { name: 'Open the inspection report' })).toBeVisible();
   });
 
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {

@@ -28,6 +28,7 @@ export default function Sites() {
     address: '', 
     contact_number: '', 
     region: '',
+    code: '',
     latitude: '', 
     longitude: '' 
   });
@@ -58,6 +59,7 @@ export default function Sites() {
       address: site.address,
       contact_number: site.contact_number || '',
       region: site.region || '',
+      code: site.code || '',
       latitude: site.latitude,
       longitude: site.longitude
     });
@@ -69,7 +71,7 @@ export default function Sites() {
   const closeForm = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ name: '', address: '', contact_number: '', region: '', latitude: '', longitude: '' });
+    setFormData({ name: '', address: '', contact_number: '', region: '', code: '', latitude: '', longitude: '' });
   };
 
   // Submit Logic (Handles both Create and Update)
@@ -85,6 +87,7 @@ export default function Sites() {
         // optional: an empty box means "no number"
         contact_number: (formData.contact_number || '').trim() || null,
         region: (formData.region || '').trim() || null,
+        code: (formData.code || '').trim().toUpperCase() || null,
       };
 
       if (editingId) {
@@ -176,6 +179,19 @@ export default function Sites() {
                 value={formData.address} 
                 onChange={e => setFormData({...formData, address: e.target.value})} 
                 placeholder="Street address and city" 
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="site-code">Site code</label>
+              <input id="site-code"
+                type="text"
+                className="form-control"
+                maxLength={12}
+                pattern="[A-Za-z0-9-]*"
+                value={formData.code}
+                onChange={e => setFormData({...formData, code: e.target.value.toUpperCase()})}
+                placeholder="Short code used in NC numbers, e.g. CBD (as in 15/CBD/01)"
               />
             </div>
 

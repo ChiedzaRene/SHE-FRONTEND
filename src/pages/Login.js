@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { homeFor } from '../utils/home';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 // 1. Import the verified logo file
@@ -37,13 +38,7 @@ export default function Login() {
         return;
       }
       // Route based on role
-      switch (payload.role) {
-        case 'admin':
-        case 'super_admin': navigate('/admin'); break;
-        case 'she_team': navigate('/she-dashboard'); break;
-        case 'site_manager': navigate('/site-dashboard'); break;
-        default: navigate('/');
-      }
+      navigate(homeFor(payload.role) === '/login' ? '/' : homeFor(payload.role));
     } catch (err) {
       setError(apiError(err, 'Invalid email or password. Please try again.'));
     } finally {
