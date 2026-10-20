@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams, useNavigate } from "react-router-dom";
 import {
-  ArrowLeft, Save, Send, Plus, Trash2, Paperclip, CheckCircle2, RotateCcw, Printer, Pencil, X, Clock, FileText, Eye, Download,
+  ArrowLeft, Save, Send, Plus, Trash2, Paperclip, CheckCircle2, RotateCcw, Printer, Pencil, X, Clock, Eye, Download,
 } from "lucide-react";
 import { inspectionsApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
@@ -10,6 +10,7 @@ import { useNotifications } from "../context/NotificationsContext";
 import LoadingScreen from "../components/LoadingScreen";
 import RichTextEditor, { RichText } from "../components/RichTextEditor";
 import FileViewer from "../components/FileViewer";
+import GlowFileIcon from "../components/GlowFileIcon";
 import { apiError } from "../utils/apiError";
 import { NC_STATUS, STATUS_LABEL, fmtDay } from "./Inspections";
 
@@ -51,7 +52,7 @@ function Proof({ photo, onDelete }) {
   if (!photo.is_image) {
     return (
       <figure className={`insp-doc ${photo.kind}`}>
-        <FileText size={20} aria-hidden="true" />
+        <GlowFileIcon filename={photo.filename} />
         <span className="insp-doc-name" title={photo.filename}>{photo.filename}</span>
         {caption && <figcaption>{caption}</figcaption>}
         <span className="insp-doc-actions">
@@ -79,6 +80,7 @@ function Proof({ photo, onDelete }) {
           <img src={url} alt={caption ? `${caption}: ${photo.filename}` : photo.filename} />
         </button>
       ) : <div className="insp-photo-wait">Loading…</div>}
+      <span className="insp-photo-tag"><GlowFileIcon filename={photo.filename} image /></span>
       {caption && <figcaption>{caption}</figcaption>}
       {remove}
       {big && url && (

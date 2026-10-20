@@ -134,7 +134,8 @@ test('the site attaches photos and documents as proof of the corrective action; 
       sent = req.postDataBuffer().toString('latin1');
       return route.fulfill(json(200, report({ ncs: [nc({ status: 'completed', recommendation: '<p>Drain it</p>', assigned_to_name: 'Tendai Moyo',
         completion_notes: 'Drained', completed_by_name: 'Tendai Moyo', completed_at: '2026-10-20T08:00:00Z',
-        photos: [{ id: 81, kind: 'evidence', filename: 'receipt.pdf', content_type: 'application/pdf', is_image: false, viewable: true }] })] })));
+        photos: [{ id: 81, kind: 'evidence', filename: 'receipt.pdf', content_type: 'application/pdf', is_image: false, viewable: true },
+          { id: 82, kind: 'evidence', filename: 'after.png', content_type: 'image/png', is_image: true, viewable: true }] })] })));
     },
     'GET /site-inspections/photos/81': (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: pdf, headers: { 'access-control-allow-origin': '*' } }),
   });
@@ -144,6 +145,7 @@ test('the site attaches photos and documents as proof of the corrective action; 
   const docs = page.getByRole('region', { name: 'Supporting documents' });
   await expect(docs.getByRole('button', { name: 'Download signed-checklist.docx' })).toBeVisible();
   await expect(docs.getByRole('button', { name: 'Open signed-checklist.docx' })).toHaveCount(0);
+  await expect(docs.locator('.glow-file-word')).toContainText('DOC');
 
   const form = page.getByRole('form', { name: 'Complete 15/CBD/01' });
   await form.getByLabel('How was it closed?').fill('Drained');
@@ -159,6 +161,9 @@ test('the site attaches photos and documents as proof of the corrective action; 
 
   const card = page.getByRole('article', { name: 'NC 15/CBD/01' });
   await expect(card).toContainText('Proof of the action');
+  // the same Glow file tiles as SHE Files: the PDF and the photo are marked by type
+  await expect(card.locator('.insp-doc .glow-file-pdf')).toContainText('PDF');
+  await expect(card.locator('.insp-photo .glow-file-image')).toContainText('IMG');
   await card.getByRole('button', { name: 'Open receipt.pdf' }).click();
   await expect(page.getByRole('dialog', { name: 'receipt.pdf' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
 });
