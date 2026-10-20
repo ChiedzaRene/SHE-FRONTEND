@@ -239,6 +239,20 @@ export const inspectionsApi = {
   review: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/review`, data), // { outcome: "closed" | "open", comment }
 };
 
+// Site licences: the register of each site's licences and their due dates.
+// record(form): FormData with site_id, licence_type, expiry_date, issue_date, licence_number, amount, notes, file
+export const licencesApi = {
+  register: (params = {}) => api.get("/licences/", { params }),
+  record: (form) => api.post("/licences/", form),
+  correct: (id, form) => api.put(`/licences/${id}`, form),
+  remove: (id) => api.delete(`/licences/${id}`),
+  document: (id) => api.get(`/licences/${id}/document`, { responseType: "blob" }),
+  downloadDocument: async (id, filename) => {
+    const res = await api.get(`/licences/${id}/document`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+};
+
 // Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
 // params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "3m" | "6m" | "ytd" | "12m", site_id, region }
 export const dashboardApi = {

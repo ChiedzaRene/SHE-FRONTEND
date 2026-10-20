@@ -17,7 +17,7 @@ const Incidents = lazy(() => import("./pages/Incidents"));
 const AuditList = lazy(() => import("./pages/AuditList"));
 const Inspections = lazy(() => import("./pages/Inspections"));
 const InspectionReport = lazy(() => import("./pages/InspectionReport"));
-const LegalCompliance = lazy(() => import("./pages/LegalCompliance"));
+const Legal = lazy(() => import("./pages/Legal"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
 const SiteHours = lazy(() => import("./pages/SiteHours"));
@@ -53,7 +53,7 @@ function App() {
               <Route path="/command-center" element={<CommandCenter />} />
               {/* the earlier audit records; new inspections live under /inspections */}
               <Route path="/audits" element={<AuditList />} />
-              <Route path="/legal" element={<LegalCompliance />} />
+              <Route path="/legal" element={<Legal />} />
             </Route>
 
             {/* Admin & SHE Team Routes */}
