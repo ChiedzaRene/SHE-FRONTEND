@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Save, CheckCircle } from "lucide-react";
+import { Save, CheckCircle, Lock } from "lucide-react";
 import { incidentsApi, sitesApi, siteHoursApi } from "../api/endpoints";
+import { useAuth } from "../context/AuthContext";
 
 const toMonthValue = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
-// Default to last month: that is the month the SHE team is normally reporting on
+// Default to last month: hours are entered at the end of the month they cover
 const defaultMonth = () => {
   const d = new Date();
   d.setDate(1);
@@ -12,11 +13,23 @@ const defaultMonth = () => {
   return toMonthValue(d);
 };
 
+const monthLong = (m) =>
+  new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+const fmtNumber = (n) => (n === null || n === undefined ? "—" : Number(n).toLocaleString());
+
+const isWholeNumber = (raw) => /^\d+$/.test(String(raw).trim());
+
 export default function SiteHours() {
+  const { user } = useAuth();
+  // Site managers enter their own site's figures; admins can correct any site; the SHE team only reads them
+  const canEdit = ["site_manager", "admin", "super_admin"].includes(user?.role);
+  const isManager = user?.role === "site_manager";
+
   const [month, setMonth] = useState(defaultMonth);
   const [sites, setSites] = useState([]);
-  const [saved, setSaved] = useState({}); // site_id -> hours already stored for the month
-  const [draft, setDraft] = useState({}); // site_id -> text being typed
+  const [saved, setSaved] = useState({}); // site_id -> { hours_worked, workers, updated_at } stored for the month
+  const [draft, setDraft] = useState({}); // site_id -> { hours, workers } being typed
   const [status, setStatus] = useState({}); // site_id -> "saving" | "saved" | error text
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -41,7 +54,7 @@ export default function SiteHours() {
       ]);
       const stored = {};
       (hoursRes.data || []).forEach((row) => {
-        if (row.period.startsWith(month)) stored[row.site_id] = row.hours_worked;
+        if (row.period.startsWith(month)) stored[row.site_id] = row;
       });
       setSites(sitesRes.data || []);
       setSaved(stored);
@@ -60,17 +73,34 @@ export default function SiteHours() {
 
   const missing = useMemo(() => sites.filter((s) => saved[s.id] === undefined).length, [sites, saved]);
 
+  const valueOf = (siteId, field) => {
+    const typed = draft[siteId]?.[field];
+    if (typed !== undefined) return typed;
+    const stored = saved[siteId]?.[field === "hours" ? "hours_worked" : "workers"];
+    return stored === null || stored === undefined ? "" : String(stored);
+  };
+
+  const type = (siteId, field, value) =>
+    setDraft((d) => ({ ...d, [siteId]: { ...d[siteId], [field]: value } }));
+
   const save = async (siteId) => {
-    const raw = draft[siteId];
-    const hours = Number(raw);
-    if (raw === undefined || raw === "" || !Number.isFinite(hours) || hours < 0) {
-      setStatus((s) => ({ ...s, [siteId]: "Enter a number of hours (0 or more)" }));
+    const rawHours = valueOf(siteId, "hours");
+    const rawWorkers = valueOf(siteId, "workers");
+    const hours = Number(rawHours);
+    if (rawHours === "" || !Number.isFinite(hours) || hours < 0) {
+      setStatus((s) => ({ ...s, [siteId]: "Enter the hours worked (0 or more)" }));
+      return;
+    }
+    if (rawWorkers !== "" && !isWholeNumber(rawWorkers)) {
+      setStatus((s) => ({ ...s, [siteId]: "Enter the number of workers as a whole number" }));
       return;
     }
     setStatus((s) => ({ ...s, [siteId]: "saving" }));
     try {
-      const res = await siteHoursApi.save({ site_id: siteId, month, hours_worked: hours });
-      setSaved((s) => ({ ...s, [siteId]: res.data.hours_worked }));
+      const body = { site_id: siteId, month, hours_worked: hours };
+      if (rawWorkers !== "") body.workers = Number(rawWorkers);
+      const res = await siteHoursApi.save(body);
+      setSaved((s) => ({ ...s, [siteId]: res.data }));
       setDraft((d) => {
         const { [siteId]: _drop, ...rest } = d;
         return rest;
@@ -86,14 +116,32 @@ export default function SiteHours() {
     }
   };
 
+  const statusCell = (siteId) => {
+    const st = status[siteId];
+    if (st === "saved")
+      return (
+        <span style={{ color: "#166534", display: "inline-flex", gap: 4, alignItems: "center" }}>
+          <CheckCircle size={16} /> Saved
+        </span>
+      );
+    if (st && st !== "saving") return <span style={{ color: "#991B1B" }}>{st}</span>;
+    return saved[siteId] !== undefined ? (
+      <span className="badge badge-green">Reported</span>
+    ) : (
+      <span className="badge badge-amber">Missing</span>
+    );
+  };
+
   return (
     <div>
       <div className="page-header">
         <div>
           <h1 className="page-title">Hours Worked</h1>
           <p className="page-subtitle">
-            Monthly hours worked per site. These are the denominator for TRIR and LTIFR
-            (per 200,000 hours); a site without hours shows N/A on the dashboards.
+            {isManager
+              ? "At the end of each month, enter the hours worked at your site and how many people work there. "
+              : "Monthly hours worked and headcount per site, entered by each site's manager at the end of the month. "}
+            The hours are the denominator for TRIR and LTIFR (per 200,000 hours); a site without hours shows N/A on the dashboards.
           </p>
         </div>
         <div className="form-group" style={{ margin: 0 }}>
@@ -108,15 +156,22 @@ export default function SiteHours() {
         </div>
       </div>
 
+      {!canEdit && (
+        <div className="card" role="note" style={{ padding: 14, marginBottom: 16, display: "flex", gap: 10, alignItems: "center", color: "#475569" }}>
+          <Lock size={16} style={{ flexShrink: 0 }} />
+          <span>These figures are entered by the site managers and can't be changed here.</span>
+        </div>
+      )}
+
       {needHours.length > 0 && (
         <div className="rate-notice">
           <div>
             <strong>Injuries in these months aren't in TRIR/LTIFR yet</strong> because no hours have been entered for
-            them. Choose a month to enter its hours:{" "}
+            them. {canEdit ? "Choose a month to enter its hours:" : "Choose a month to see which sites still need to report:"}{" "}
             {needHours.map((m) => (
               <button key={m} type="button" className="btn btn-sm btn-outline" style={{ margin: "4px 6px 0 0" }}
                 onClick={() => setMonth(m)} aria-pressed={month === m}>
-                {new Date(Number(m.slice(0, 4)), Number(m.slice(5, 7)) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+                {monthLong(m)}
               </button>
             ))}
           </div>
@@ -135,8 +190,10 @@ export default function SiteHours() {
             {loading
               ? "Loading..."
               : missing === 0
-                ? "All sites reported for this month"
-                : `${missing} of ${sites.length} sites still need hours for this month`}
+                ? isManager ? `Reported for ${monthLong(month)}` : "All sites reported for this month"
+                : isManager
+                  ? `Hours for ${monthLong(month)} still need to be entered`
+                  : `${missing} of ${sites.length} sites still need hours for this month`}
           </div>
         </div>
         <div className="table-wrap">
@@ -145,55 +202,65 @@ export default function SiteHours() {
               <tr>
                 <th>Site</th>
                 <th>Hours worked</th>
-                <th></th>
+                <th>Workers</th>
+                {canEdit && <th></th>}
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               {sites.map((site) => {
-                const stored = saved[site.id];
-                const value = draft[site.id] ?? (stored !== undefined ? String(stored) : "");
                 const st = status[site.id];
                 return (
                   <tr key={site.id}>
                     <td>{site.name}</td>
-                    <td>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="form-control"
-                        style={{ maxWidth: 180 }}
-                        value={value}
-                        placeholder="e.g. 5200"
-                        aria-label={`Hours worked at ${site.name}`}
-                        onChange={(e) => setDraft((d) => ({ ...d, [site.id]: e.target.value }))}
-                        onKeyDown={(e) => e.key === "Enter" && save(site.id)}
-                      />
-                    </td>
-                    <td>
-                      <button
-                        className="btn btn-primary"
-                        disabled={st === "saving" || draft[site.id] === undefined}
-                        onClick={() => save(site.id)}
-                        aria-label={`Save hours for ${site.name}`}
-                      >
-                        <Save size={16} /> Save
-                      </button>
-                    </td>
-                    <td>
-                      {st === "saved" ? (
-                        <span style={{ color: "#166534", display: "inline-flex", gap: 4, alignItems: "center" }}>
-                          <CheckCircle size={16} /> Saved
-                        </span>
-                      ) : st && st !== "saving" ? (
-                        <span style={{ color: "#991B1B" }}>{st}</span>
-                      ) : stored !== undefined ? (
-                        <span className="badge badge-green">Reported</span>
-                      ) : (
-                        <span className="badge badge-amber">Missing</span>
-                      )}
-                    </td>
+                    {canEdit ? (
+                      <>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            className="form-control"
+                            style={{ maxWidth: 160 }}
+                            value={valueOf(site.id, "hours")}
+                            placeholder="e.g. 5200"
+                            aria-label={`Hours worked at ${site.name}`}
+                            onChange={(e) => type(site.id, "hours", e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && save(site.id)}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            className="form-control"
+                            style={{ maxWidth: 120 }}
+                            value={valueOf(site.id, "workers")}
+                            placeholder="e.g. 25"
+                            aria-label={`Number of workers at ${site.name}`}
+                            onChange={(e) => type(site.id, "workers", e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && save(site.id)}
+                          />
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-primary"
+                            disabled={st === "saving" || draft[site.id] === undefined}
+                            onClick={() => save(site.id)}
+                            aria-label={`Save hours for ${site.name}`}
+                          >
+                            <Save size={16} /> Save
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{fmtNumber(saved[site.id]?.hours_worked)}</td>
+                        <td>{fmtNumber(saved[site.id]?.workers)}</td>
+                      </>
+                    )}
+                    <td>{statusCell(site.id)}</td>
                   </tr>
                 );
               })}

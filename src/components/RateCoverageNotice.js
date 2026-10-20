@@ -17,7 +17,7 @@ export default function RateCoverageNotice({ metrics }) {
   const count = metrics?.uncounted_injuries || 0;
   if (!count) return null;
   const months = list((metrics.months_missing_hours || []).map(monthName));
-  const canEnter = ["admin", "super_admin", "she_team"].includes(user?.role);
+  const canEnter = ["admin", "super_admin", "site_manager"].includes(user?.role);
   return (
     <div role="status" className="rate-notice">
       <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
@@ -29,7 +29,7 @@ export default function RateCoverageNotice({ metrics }) {
         {canEnter ? (
           <Link to="/site-hours">Enter hours worked</Link>
         ) : (
-          "Ask the SHE team to enter the hours worked."
+          "Site managers enter their hours worked at the end of each month."
         )}
       </div>
     </div>

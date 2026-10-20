@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Bell, Mail, MailOpen } from "lucide-react";
 import { useNotifications } from "../context/NotificationsContext";
 import { useAuth } from "../context/AuthContext";
 
-const timeAgo = (iso) => {
+export const timeAgo = (iso) => {
   if (!iso) return "";
   const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
   if (seconds < 60) return "just now";
@@ -42,16 +42,17 @@ const removalNote = (readAt) => {
 
 // placement: "sidebar" (computers) or "topbar" (phones and tablets)
 export default function NotificationBell({ placement = "sidebar" }) {
-  const { items, unread, markRead, markUnread } = useNotifications();
+  // The list's open state is shared, so the pop-up can open it (only one bell shows at a time)
+  const { items, unread, markRead, markUnread, panelOpen: open, setPanelOpen: setOpen } = useNotifications();
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const root = useRef(null);
 
   useEffect(() => {
     if (!open) return undefined;
-    const onClick = (e) => root.current && !root.current.contains(e.target) && setOpen(false);
+    // a click outside every bell and the pop-up closes the list
+    const onClick = (e) => root.current && !e.target.closest?.(".notif, .notif-popup") && setOpen(false);
     const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
@@ -59,11 +60,11 @@ export default function NotificationBell({ placement = "sidebar" }) {
       document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   // Pages that flag NEW records mark their notifications read themselves (after showing the flag),
   // so opening one of those from here must leave it unread until the page has loaded.
-  const FLAGGING_PAGES = { incidents: "/incidents", corrective_actions: "/corrective-actions", audits: "/audits" };
+  const FLAGGING_PAGES = { incidents: "/incidents", corrective_actions: "/corrective-actions", audits: "/audits", she_files: "/she-files", trainings: "/trainings" };
 
   const openItem = (n) => {
     setOpen(false);

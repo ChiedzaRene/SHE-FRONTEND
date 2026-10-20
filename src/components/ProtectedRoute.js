@@ -1,4 +1,5 @@
 import React from 'react';
+import { homeFor } from '../utils/home';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import LoadingScreen from './LoadingScreen';
@@ -20,13 +21,7 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to their respective dashboard
-    switch (user.role) {
-      case 'admin':
-      case 'super_admin': return <Navigate to="/admin" replace />;
-      case 'she_team': return <Navigate to="/she-dashboard" replace />;
-      case 'site_manager': return <Navigate to="/site-dashboard" replace />;
-      default: return <Navigate to="/login" replace />;
-    }
+    return <Navigate to={homeFor(user.role)} replace />;
   }
 
   return <Outlet />;

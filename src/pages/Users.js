@@ -36,6 +36,7 @@ const UserManagement = () => {
     password: '',
     role: 'site_manager',
     site_id: '',
+    region: '',
     is_active: true
   });
 
@@ -69,6 +70,7 @@ const UserManagement = () => {
       password: '', // Keep empty unless changing
       role: user.role || 'site_manager',
       site_id: user.site_id || '',
+      region: user.region || '',
       is_active: user.is_active
     });
     setIsModalOpen(true);
@@ -125,7 +127,7 @@ const UserManagement = () => {
     setFormError('');
     setFormData({
       full_name: '', email: '', password: '',
-      role: 'site_manager', site_id: '', is_active: true
+      role: 'site_manager', site_id: '', region: '', is_active: true
     });
   };
 
@@ -139,8 +141,14 @@ const UserManagement = () => {
     }
     const payload = {
       ...formData,
-      site_id: formData.site_id ? Number(formData.site_id) : null,
+      // a regional manager looks after a region, not one site
+      site_id: formData.role !== 'regional_manager' && formData.site_id ? Number(formData.site_id) : null,
+      region: formData.role === 'regional_manager' ? formData.region || null : null,
     };
+    if (formData.role === 'regional_manager' && !formData.region) {
+      setFormError('Choose the region this regional manager looks after.');
+      return;
+    }
     // If editing and password is empty, remove it from payload so it doesn't overwrite with empty string
     if (editingUser && !payload.password) {
       delete payload.password;
@@ -237,7 +245,10 @@ const UserManagement = () => {
                       <div className="users-name">{user.full_name}</div>
                       <div className="users-email">{user.email}</div>
                     </td>
-                    <td><span className="badge">{user.role}</span></td>
+                    <td>
+                      <span className="badge">{user.role}</span>
+                      {user.region && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>{user.region}</div>}
+                    </td>
                     <td>{getSiteName(user.site_id)}</td>
                     <td>
                       {user.is_active ? 
@@ -312,16 +323,27 @@ const UserManagement = () => {
                   <select id="user-role" name="role" className="form-control" value={formData.role} onChange={handleInputChange}>
                     <option value="admin">Admin</option>
                     <option value="she_team">SHE Team</option>
+                    <option value="regional_manager">Regional Manager</option>
                     <option value="site_manager">Site Manager</option>
                   </select>
                 </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="user-site">Site</label>
-                  <select id="user-site" name="site_id" className="form-control" value={formData.site_id} onChange={handleInputChange}>
-                    <option value="">Global</option>
-                    {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
+                {formData.role === 'regional_manager' ? (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="user-region">Region</label>
+                    <select id="user-region" name="region" className="form-control" value={formData.region} onChange={handleInputChange}>
+                      <option value="">Choose a region</option>
+                      {[...new Set(sites.map(s => s.region).filter(Boolean))].sort().map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="user-site">Site</label>
+                    <select id="user-site" name="site_id" className="form-control" value={formData.site_id} onChange={handleInputChange}>
+                      <option value="">Global</option>
+                      {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="form-group users-active-row">
                 <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleInputChange} />

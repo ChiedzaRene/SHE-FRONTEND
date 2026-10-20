@@ -4,7 +4,7 @@ const { mockApi, signIn } = require('./helpers');
 // The browser's clock is controlled so 30 minutes take no time. Default limit: 30 minutes, warning in the last minute.
 test.beforeEach(async ({ page }) => {
   await page.clock.install();
-  await mockApi(page, { 'GET /incidents/summary': { total: 0, open: 0, by_type: [], by_site: [] } });
+  await mockApi(page, { 'GET /dashboard/summary': {} });
   await signIn(page, { role: 'admin' });
   await expect(page.getByText('Overall SHE Dashboard')).toBeVisible();
 });

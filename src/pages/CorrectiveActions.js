@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { actionsApi, sitesApi } from "../api/endpoints";
 import useNewItems, { newestFirst } from "../hooks/useNewItems";
 import NewBadge from "../components/NewBadge";
@@ -321,6 +321,13 @@ const CorrectiveActions = () => {
                         }}
                       >
                         {action.designation || "General Compliance"}
+                        {action.inspection_id && (
+                          <div>
+                            <Link to={`/inspections/${action.inspection_id}#nc-${action.nc_id}`} style={{ fontSize: "0.78rem", color: "#003087", fontWeight: 700 }}>
+                              Open the inspection report
+                            </Link>
+                          </div>
+                        )}
                       </td>
                       <td>
                         <span
@@ -592,7 +599,12 @@ const CorrectiveActions = () => {
                     >
                       Close
                     </button>
-                    {!selectedAction.is_successful && (
+                    {selectedAction.inspection_id ? (
+                      // NC actions are completed by the site and verified by the SHE team on the report
+                      <Link className="btn btn-primary" to={`/inspections/${selectedAction.inspection_id}#nc-${selectedAction.nc_id}`}>
+                        Open the inspection report
+                      </Link>
+                    ) : !selectedAction.is_successful && (
                       <button
                         className="btn btn-primary"
                         onClick={() => setIsUpdating(true)}

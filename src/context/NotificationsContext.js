@@ -6,7 +6,26 @@ const POLL_MS = 60 * 1000; // check for new notifications every minute while the
 
 const NotificationsContext = createContext({
   items: [], unread: 0, refresh: () => {}, markRead: async () => {}, markUnread: async () => {},
+  panelOpen: false, setPanelOpen: () => {}, popup: null, dismissPopup: () => {},
 });
+
+// The newest notification pops up on screen and stays until it is clicked or closed.
+// Remember (per person, in this browser) the newest one already dealt with, so it doesn't pop up again.
+const poppedKey = (user) => `notif-popped-${user?.user_id ?? user?.sub ?? "anon"}`;
+const readPopped = (user) => {
+  try {
+    return Number(localStorage.getItem(poppedKey(user))) || 0;
+  } catch (e) {
+    return 0;
+  }
+};
+const writePopped = (user, id) => {
+  try {
+    localStorage.setItem(poppedKey(user), String(id));
+  } catch (e) {
+    // private window or storage blocked: the pop-up just shows again next visit
+  }
+};
 
 export const useNotifications = () => useContext(NotificationsContext);
 
@@ -14,7 +33,11 @@ export function NotificationsProvider({ children }) {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [unread, setUnread] = useState(0);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [popped, setPopped] = useState(() => readPopped(user));
   const busy = useRef(false);
+
+  useEffect(() => { setPopped(readPopped(user)); }, [user]);
 
   const refresh = useCallback(async () => {
     if (!user || user.mcp || busy.current) return;
@@ -64,8 +87,18 @@ export function NotificationsProvider({ children }) {
     };
   }, [user, refresh]);
 
+  // Only the most recent notification pops up, and only while it is unread and not yet dismissed
+  const newest = items[0];
+  const popup = newest && !newest.read_at && newest.id > popped ? newest : null;
+  const dismissPopup = useCallback(() => {
+    if (!newest) return;
+    writePopped(user, newest.id);
+    setPopped(newest.id);
+  }, [newest, user]);
+
   return (
-    <NotificationsContext.Provider value={{ items, unread, refresh, markRead, markUnread }}>
+    <NotificationsContext.Provider
+      value={{ items, unread, refresh, markRead, markUnread, panelOpen, setPanelOpen, popup, dismissPopup }}>
       {children}
     </NotificationsContext.Provider>
   );

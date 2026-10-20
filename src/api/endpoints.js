@@ -113,6 +113,28 @@ export const trainingsApi = {
   getOne: (id) => api.get(`/trainings/${id}`),
   create: (data) => api.post("/trainings/", data),
   update: (id, data) => api.put(`/trainings/${id}`, data),
+  // SHE team / admins: a training they gave, with its supporting document.
+  // form: FormData with site_id, date, training_module, trainer_name, personnel, trained_employees, type, comments, file
+  record: (form, onUploadProgress) => api.post("/trainings/record", form, { onUploadProgress }),
+  viewDocument: (id) => api.get(`/trainings/${id}/document/view`, { responseType: "blob" }),
+  downloadDocument: async (id, filename) => {
+    const res = await api.get(`/trainings/${id}/document`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+};
+
+// Weekly toolbox talks: site managers submit Monday or Tuesday; the SHE team tracks every site
+export const safetyTalksApi = {
+  current: () => api.get("/safety-talks/current"),
+  // form: FormData with title, attendees, notes, file
+  submit: (form, onUploadProgress) => api.post("/safety-talks/", form, { onUploadProgress }),
+  // params: { period, site_id, region }
+  overview: (params = {}) => api.get("/safety-talks/overview", { params }),
+  view: (id) => api.get(`/safety-talks/${id}/view`, { responseType: "blob" }),
+  download: async (id, filename) => {
+    const res = await api.get(`/safety-talks/${id}/download`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
 };
 
 export const usersApi = {
@@ -152,11 +174,75 @@ export const scorecardApi = {
   getById: (id) => api.get(`/scorecard/${id}`),
 };
 
-// Monthly hours worked per site: the denominator for TRIR / LTIFR (entered by the SHE team)
+// Monthly hours worked and headcount per site: the denominator for TRIR / LTIFR.
+// Entered by the site's manager (admins can correct them); read-only for the SHE team.
 export const siteHoursApi = {
   list: (params = {}) => api.get("/site-hours/", { params }),
-  // data: { site_id, month: "YYYY-MM", hours_worked }
+  // data: { site_id, month: "YYYY-MM", hours_worked, workers }
   save: (data) => api.put("/site-hours/", data),
+};
+
+// SHE files: documents the SHE team or admins share with other roles. A view-only file opens in the app
+// (view) but its download is refused by the server for everyone except the person who shared it.
+export const sheFilesApi = {
+  list: () => api.get("/she-files/"),
+  // form: FormData with title, description, audience ("site_manager,she_team,admin"), site_id, view_only, file
+  upload: (form, onUploadProgress) => api.post("/she-files/", form, { onUploadProgress }),
+  view: (id) => api.get(`/she-files/${id}/view`, { responseType: "blob" }),
+  download: async (id, filename) => {
+    const res = await api.get(`/she-files/${id}/download`, { responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+  delete: (id) => api.delete(`/she-files/${id}`),
+};
+
+// Inspection reports and their non-conformities (NCs).
+// SHE team: create/update/addNc/updateNc/deleteNc/addPhoto/deletePhoto/submit/review
+// Regional office: acknowledge (recommendation, assigned_to, due_date). Responsible person: complete.
+export const inspectionsApi = {
+  list: (params = {}) => api.get("/site-inspections/", { params }),
+  myNcs: () => api.get("/site-inspections/my-ncs"),
+  get: (id) => api.get(`/site-inspections/${id}`),
+  create: (data) => api.post("/site-inspections/", data),
+  update: (id, data) => api.put(`/site-inspections/${id}`, data),
+  remove: (id) => api.delete(`/site-inspections/${id}`),
+  submit: (id) => api.post(`/site-inspections/${id}/submit`),
+  assignees: (id) => api.get(`/site-inspections/${id}/assignees`),
+  addNc: (id, data) => api.post(`/site-inspections/${id}/ncs`, data),
+  updateNc: (ncId, data) => api.put(`/site-inspections/ncs/${ncId}`, data),
+  deleteNc: (ncId) => api.delete(`/site-inspections/ncs/${ncId}`),
+  addPhoto: (ncId, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/site-inspections/ncs/${ncId}/photos`, form);
+  },
+  // proof of the inspection itself (photo, PDF or document)
+  addReportFile: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/site-inspections/${id}/attachments`, form);
+  },
+  deletePhoto: (photoId) => api.delete(`/site-inspections/photos/${photoId}`),
+  photo: (photoId) => api.get(`/site-inspections/photos/${photoId}`, { responseType: "blob" }),
+  downloadFile: async (photoId, filename) => {
+    const res = await api.get(`/site-inspections/photos/${photoId}`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+  acknowledge: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/acknowledge`, data),
+  // files: photos, PDFs or documents proving the corrective action was done (up to 5)
+  complete: (ncId, notes, files = []) => {
+    const form = new FormData();
+    form.append("notes", notes);
+    files.forEach((f) => form.append("files", f));
+    return api.post(`/site-inspections/ncs/${ncId}/complete`, form);
+  },
+  review: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/review`, data), // { outcome: "closed" | "open", comment }
+};
+
+// Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
+// params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "3m" | "6m" | "ytd" | "12m", site_id, region }
+export const dashboardApi = {
+  summary: (params = {}) => api.get("/dashboard/summary", { params }),
 };
 
 // Reports: one structured document per kind, as JSON for the screen or a CSV/PDF download.

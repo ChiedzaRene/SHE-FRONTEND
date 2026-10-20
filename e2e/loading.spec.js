@@ -25,7 +25,7 @@ test('a branded splash shows while the app itself is still downloading', async (
 
 test('the dashboard shows a loading screen, then a slow-server note, instead of a blank page', async ({ page }) => {
   await mockApi(page, {
-    'GET /incidents/summary': async (route) => { await wait(7500); return route.fulfill(json(200, { total: 0, open: 0, by_type: [], by_site: [] })); },
+    'GET /dashboard/summary': async (route) => { await wait(7500); return route.fulfill(json(200, {})); },
   });
   await signIn(page, { role: 'admin' }); // lands on the admin dashboard
   await expect(page.getByText('Loading dashboard...')).toBeVisible();

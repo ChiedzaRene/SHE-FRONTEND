@@ -1,0 +1,3 @@
+# pdf.js runs its worker as a JavaScript module, which browsers only accept with a JavaScript type
+/static/js/*.mjs
+  Content-Type: text/javascript; charset=utf-8

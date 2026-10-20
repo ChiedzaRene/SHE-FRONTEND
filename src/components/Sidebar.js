@@ -15,6 +15,7 @@ import {
   Settings,
   LogOut,
   Clock,
+  FolderOpen,
   FileText,
 } from "lucide-react";
 
@@ -24,6 +25,14 @@ export default function Sidebar({ id }) {
   const getLinks = () => {
     // super_admin sees the same navigation as admin
     const role = user?.role === "super_admin" ? "admin" : user?.role;
+    // The regional office works on the inspection NCs and corrective actions for its region
+    if (role === "regional_manager") {
+      return [
+        { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
+        { to: "/corrective-actions", icon: Wrench, label: "Corrective Actions" },
+        { to: "/settings", icon: Settings, label: "Settings" },
+      ];
+    }
     const baseLinks = [
       {
         to:
@@ -42,15 +51,20 @@ export default function Sidebar({ id }) {
 
     if (role === "admin" || role === "she_team" || role === "site_manager") {
       baseLinks.push(
-        { to: "/audits", icon: ClipboardCheck, label: "Audits" },
+        { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
         { to: "/legal", icon: Scale, label: "Legal" },
-        { to: "/trainings", icon: GraduationCap, label: "Trainings" },
+        { to: "/trainings", icon: GraduationCap, label: "Talks & Training" },
       );
     }
 
     if (role === "admin" || role === "she_team") {
       baseLinks.splice(1, 0, { to: "/sites", icon: Factory, label: "Sites" });
+    }
+
+    // Site managers enter their site's hours and headcount each month; SHE and admins can see them
+    if (role === "admin" || role === "she_team" || role === "site_manager") {
       baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
+      baseLinks.push({ to: "/she-files", icon: FolderOpen, label: "SHE Files" });
     }
 
     if (role === "admin") {
