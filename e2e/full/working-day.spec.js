@@ -394,6 +394,31 @@ test.describe.serial('a working day', () => {
     await expect(manager.getByRole('row', { name: /Inspection NC 1\/MSA\/01/ }).getByRole('link', { name: 'Open the inspection report' })).toBeVisible();
   });
 
+  test('a licence due within a month: the SHE team records it and the site manager is reminded', async ({ page, browser }) => {
+    await signIn(page, SHE.email, SHE.own);
+    await expect(page).not.toHaveURL(/\/login$/);
+    await openMenu(page, 'Legal');
+    await page.getByRole('button', { name: 'Fire brigade licence at Msasa Depot: Not recorded' }).click();
+    const form = page.getByRole('dialog', { name: 'Fire brigade licence at Msasa Depot' }).getByRole('form', { name: 'Record the licence' });
+    const due = new Date(Date.now() + 20 * 86400e3);
+    await form.getByLabel('Expiry / payment due date').fill(`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`);
+    await form.getByLabel('Licence number').fill('FB-2026-114');
+    await form.getByLabel(/Licence certificate/).setInputFiles({ name: 'fire-licence.pdf', mimeType: 'application/pdf', buffer: makePdf('Fire licence') });
+    await form.getByRole('button', { name: 'Save licence' }).click();
+    await expect(page.getByRole('region', { name: 'Licences due' })).toContainText('Fire brigade licence · Msasa Depot');
+
+    const manager = await (await browser.newContext()).newPage();
+    await signIn(manager, MANAGER.email, MANAGER.own);
+    await bell(manager).click();
+    const reminder = manager.getByRole('dialog', { name: 'Notifications' }).getByRole('button', { name: /^Fire brigade licence for Msasa Depot is due in (19|20) days/ });
+    await expect(reminder).toBeVisible();
+    await reminder.click();
+    await expect(manager).toHaveURL(/\/legal$/);
+    await manager.getByRole('button', { name: /^Fire brigade licence at Msasa Depot: Due within a month/ }).click();
+    await manager.getByRole('button', { name: 'Open fire-licence.pdf' }).click();
+    await expect(manager.getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
+  });
+
   test('the admin reads the incident exactly as it was typed, and sees it on the dashboard', async ({ page }) => {
     await signIn(page, ADMIN.email, ADMIN.password);
     await expect(page.getByRole('list', { name: 'Incident types' })).toContainText('Injury (1)');
