@@ -261,7 +261,7 @@ export default function Sites() {
                 <tr>
                   <th>Site Details</th>
                   <th>Location & Contact</th>
-                  <th className="text-center">Compliance</th>
+                  <th className="text-center">Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
               </thead>
