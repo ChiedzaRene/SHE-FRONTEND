@@ -472,7 +472,7 @@ export default function InspectionReport() {
           <span>Date: <strong>{fmtDay(report.inspection_date)}</strong></span>
           {report.inspectors && <span>Inspected by: <strong>{report.inspectors}</strong></span>}
           {report.region && <span>Region: <strong>{report.region}</strong></span>}
-          <span className={`badge ${report.status === "closed" ? "badge-green" : report.status === "draft" ? "badge-gray" : "badge-amber"}`}>{STATUS_LABEL[report.status]}</span>
+          <span className={`badge ${report.status === "closed" ? "badge-green" : report.status === "draft" ? "badge-gray" : "badge-red"}`}>{STATUS_LABEL[report.status]}</span>
         </div>
         {report.status !== "draft" && (
           <div className="insp-cover-meta tt-muted">

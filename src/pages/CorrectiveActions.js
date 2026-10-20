@@ -339,11 +339,11 @@ const CorrectiveActions = () => {
                             fontWeight: "bold",
                             background: action.is_successful
                               ? "#dcfce7"
-                              : "#fff7ed",
-                            color: action.is_successful ? "#166534" : "#9a3412",
+                              : "#fee2e2",
+                            color: action.is_successful ? "#166534" : "#991b1b",
                           }}
                         >
-                          {action.is_successful ? "Closed" : "Open"}
+                          {action.is_successful ? "Closed" : "Open · incomplete"}
                         </span>
                       </td>
                       <td style={{ textAlign: "right", paddingRight: "24px" }}>

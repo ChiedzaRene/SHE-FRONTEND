@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Upload, FileText, Image as ImageIcon, Lock, Eye, Download, Trash2, Search, X } from "lucide-react";
+import { Upload, Lock, Eye, Download, Trash2, Search, X } from "lucide-react";
 import { sheFilesApi, sitesApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { useFeedback } from "../components/Feedback";
 import FileViewer from "../components/FileViewer";
+import GlowFileIcon from "../components/GlowFileIcon";
 import LoadingScreen from "../components/LoadingScreen";
 import useNewItems from "../hooks/useNewItems";
 
@@ -248,10 +249,9 @@ export default function SheFiles() {
         ) : (
           <ul className="files-list">
             {shown.map((f) => {
-              const Icon = f.content_type.startsWith("image/") ? ImageIcon : FileText;
               return (
                 <li key={f.id} className="files-row">
-                  <span className="files-icon" aria-hidden="true"><Icon size={20} /></span>
+                  <GlowFileIcon filename={f.filename} />
                   <div className="files-main">
                     <div className="files-title">
                       {f.title}

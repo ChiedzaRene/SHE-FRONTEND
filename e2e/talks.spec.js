@@ -91,12 +91,24 @@ test('the SHE team tracks every site: missed weeks, sites still to submit, and f
   await signIn(page, { role: 'she_team' });
   await page.goto('/trainings');
   await expect(page.locator('.dash-kpi').first()).toContainText('75%');
-  await expect(page.getByRole('region', { name: 'This week' })).toContainText('Still to submit this week (1)');
-  await expect(page.getByRole('region', { name: 'This week' })).toContainText('Borrowdale · Rudo Moyo');
+  // missed (deadline passed) and still to submit (before the deadline) are shown together
+  const pending = page.getByRole('region', { name: 'Still to submit' });
   const missed = page.getByRole('region', { name: 'Missed talks' });
-  await expect(missed.getByRole('row')).toHaveCount(3);
+  await expect(pending).toContainText('1 site');
+  await expect(pending.locator('li')).toHaveCount(1);
+  await expect(pending).toContainText('Borrowdale');
+  await expect(pending).toContainText('Rudo Moyo');
+  await expect(missed).toContainText('1 site');
+  await expect(missed.locator('li')).toHaveCount(1);                 // one card per site, its weeks listed inside
+  await expect(missed.locator('li')).toContainText('2 missed');
   await expect(missed).toContainText(/Oct 12|12 Oct/);
-  await expect(page.getByRole('region', { name: 'Completion by site' }).getByRole('row', { name: /Borrowdale/ })).toContainText('2 of 4');
+  await expect(missed).toContainText(/Oct 5|5 Oct/);
+  // one column for how a site is doing, worst first
+  const completion = page.getByRole('region', { name: 'Completion by site' });
+  await expect(completion.locator('thead th')).toHaveText(['Site', 'Region', 'Site manager', 'Talks submitted']);
+  await expect(completion.getByRole('row').nth(1)).toContainText('Borrowdale');
+  await expect(completion.getByRole('row', { name: /Borrowdale/ })).toContainText('2 of 4 · 50%');
+  await expect(completion.getByRole('row', { name: /Msasa Depot/ })).toContainText('4 of 4 · 100%');
   await expect(page.getByRole('region', { name: 'Submitted talks' })).toContainText('Safe refuelling');
 
   await page.getByLabel('Region').selectOption('Bulawayo');

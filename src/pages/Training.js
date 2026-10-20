@@ -31,6 +31,77 @@ const day = (iso, opts = { weekday: "short", day: "numeric", month: "short", yea
   return new Date(y, m - 1, d).toLocaleDateString(undefined, opts);
 };
 const fmtPct = (n) => (n === null || n === undefined ? "—" : `${Math.round(n)}%`);
+
+const rateTone = (rate) => (rate == null ? "" : rate >= 90 ? "good" : rate >= 70 ? "warn" : "bad");
+const nextMonday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
+};
+
+// Deadline passed without a talk: one card per site, most missed weeks first
+function MissedPanel({ missed }) {
+  const bySite = Object.values(
+    missed.reduce((acc, m) => {
+      if (!acc[m.site_id]) acc[m.site_id] = { ...m, weeks: [] };
+      acc[m.site_id].weeks.push(m.week_of);
+      return acc;
+    }, {}),
+  ).sort((a, b) => b.weeks.length - a.weeks.length || a.name.localeCompare(b.name));
+  return (
+    <section className="tt-panel tt-panel-missed" aria-label="Missed talks">
+      <h3 className="tt-panel-head">
+        <AlertTriangle size={18} aria-hidden="true" /> Missed
+        <span className="tt-panel-count">{bySite.length} site{bySite.length === 1 ? "" : "s"}</span>
+      </h3>
+      <p className="tt-panel-note">The deadline passed without a talk ({missed.length} week{missed.length === 1 ? "" : "s"} in this period).</p>
+      {bySite.length ? (
+        <ul className="tt-wanting-list">
+          {bySite.map((s) => (
+            <li key={s.site_id}>
+              <div className="tt-wanting-site">
+                <strong>{s.name}</strong>
+                <span className="tt-wanting-tag">{s.weeks.length} missed</span>
+              </div>
+              <div className="tt-muted">{s.managers.join(", ") || "No manager assigned"}{s.region ? ` · ${s.region}` : ""}</div>
+              <div className="tt-weeks">{s.weeks.map((w) => <span key={w}>Week of {day(w, { day: "numeric", month: "short" })}</span>)}</div>
+            </li>
+          ))}
+        </ul>
+      ) : <div className="tt-panel-empty"><CheckCircle2 size={16} aria-hidden="true" /> No missed talks in this period.</div>}
+    </section>
+  );
+}
+
+// Before the deadline: this week's talk is not in yet
+function PendingPanel({ week }) {
+  const pending = week?.open ? week.pending : [];
+  return (
+    <section className="tt-panel tt-panel-pending" aria-label="Still to submit">
+      <h3 className="tt-panel-head">
+        <Clock size={18} aria-hidden="true" /> Still to submit
+        <span className="tt-panel-count">{pending.length} site{pending.length === 1 ? "" : "s"}</span>
+      </h3>
+      <p className="tt-panel-note">
+        {week?.open
+          ? <>Week of {day(week.week_of, { day: "numeric", month: "short" })} · closes at the end of <strong>{day(week.deadline, { weekday: "long", day: "numeric", month: "short" })}</strong></>
+          : <>No week is open. The next one opens on {nextMonday()}.</>}
+      </p>
+      {pending.length ? (
+        <ul className="tt-wanting-list">
+          {pending.map((p) => (
+            <li key={p.site_id}>
+              <div className="tt-wanting-site"><strong>{p.name}</strong><span className="tt-wanting-tag">Not in yet</span></div>
+              <div className="tt-muted">{p.managers.join(", ") || "No manager assigned"}{p.region ? ` · ${p.region}` : ""}</div>
+            </li>
+          ))}
+        </ul>
+      ) : week?.open
+        ? <div className="tt-panel-empty"><CheckCircle2 size={16} aria-hidden="true" /> Every site has submitted this week's talk.</div>
+        : <div className="tt-panel-empty">Nothing waiting until the next week opens.</div>}
+    </section>
+  );
+}
 const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -353,68 +424,38 @@ function TalksTracker() {
             </div>
           </div>
 
-          <section className={`card tt-pad tt-thisweek ${week?.open ? "open" : ""}`} aria-label="This week">
-            {week?.open ? (
-              week.pending.length ? (
-                <>
-                  <h3 className="tt-h3"><Clock size={16} aria-hidden="true" /> Still to submit this week ({week.pending.length})</h3>
-                  <p className="tt-muted">Week of {day(week.week_of)} · closes at the end of {day(week.deadline, { weekday: "long", day: "numeric", month: "short" })}</p>
-                  <ul className="tt-chips">
-                    {week.pending.map((p) => <li key={p.site_id}>{p.name}{p.managers.length ? ` · ${p.managers.join(", ")}` : ""}</li>)}
-                  </ul>
-                </>
-              ) : <h3 className="tt-h3"><CheckCircle2 size={16} aria-hidden="true" /> Every site has submitted this week's talk</h3>
-            ) : (
-              <p className="tt-muted" style={{ margin: 0 }}>The submission window is closed until Monday. Weeks that closed without a talk are listed below, and the SHE team is notified of each one.</p>
-            )}
-          </section>
-
-          <section className="card" aria-label="Missed talks">
-            <div className="card-header">
-              <div className="card-title"><AlertTriangle size={16} aria-hidden="true" style={{ verticalAlign: -2 }} /> Missed talks ({data.missed.length})</div>
-            </div>
-            {data.missed.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead><tr><th>Site</th><th>Region</th><th>Week of</th><th>Site manager</th></tr></thead>
-                  <tbody>
-                    {data.missed.map((m) => (
-                      <tr key={`${m.site_id}-${m.week_of}`}>
-                        <td><strong>{m.name}</strong></td><td>{m.region || "—"}</td><td>{day(m.week_of)}</td>
-                        <td>{m.managers.join(", ") || "No manager assigned"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : <div className="files-empty">No missed talks in this period.</div>}
-          </section>
+          <div className="tt-wanting">
+            <MissedPanel missed={data.missed} />
+            <PendingPanel week={week} />
+          </div>
 
           <section className="card" aria-label="Completion by site">
-            <div className="card-header"><div className="card-title">Completion by site</div></div>
+            <div className="card-header">
+              <div className="card-title">Completion by site</div>
+              <span className="tt-muted">Weeks with a talk submitted, of the weeks due · worst first</span>
+            </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Site</th><th>Region</th><th>Site manager</th><th>Submitted</th><th>Completion</th><th>This week</th></tr></thead>
+                <thead><tr><th>Site</th><th>Region</th><th>Site manager</th><th>Talks submitted</th></tr></thead>
                 <tbody>
-                  {data.sites.map((s) => (
-                    <tr key={s.site_id}>
-                      <td><strong>{s.name}</strong></td>
-                      <td>{s.region || "—"}</td>
-                      <td>{s.managers.join(", ") || "—"}</td>
-                      <td>{s.done} of {s.due}</td>
-                      <td>
-                        <div className="tt-cellbar">
-                          <div className="tt-meter-track"><div className="tt-meter-fill" style={{ width: `${s.rate ?? 0}%` }} /></div>
-                          <span>{fmtPct(s.rate)}</span>
-                        </div>
-                      </td>
-                      <td>
-                        {!s.this_week_open ? <span className="tt-muted">Closed</span>
-                          : s.this_week_done ? <span className="badge badge-green">Submitted</span>
-                            : <span className="badge badge-amber">Waiting</span>}
-                      </td>
-                    </tr>
-                  ))}
+                  {[...data.sites]
+                    .sort((a, b) => (a.rate ?? 101) - (b.rate ?? 101) || a.name.localeCompare(b.name))
+                    .map((s) => {
+                      const missed = s.missed_weeks?.length || 0;
+                      return (
+                        <tr key={s.site_id} className={missed ? "tt-row-missed" : undefined}>
+                          <td><strong>{s.name}</strong></td>
+                          <td>{s.region || "—"}</td>
+                          <td>{s.managers.join(", ") || "—"}</td>
+                          <td>
+                            <div className="tt-cellbar">
+                              <div className="tt-meter-track"><div className={`tt-meter-fill ${rateTone(s.rate)}`} style={{ width: `${s.rate ?? 0}%` }} /></div>
+                              <span>{s.due ? `${s.done} of ${s.due} · ${fmtPct(s.rate)}` : "None due yet"}</span>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>

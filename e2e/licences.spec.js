@@ -23,7 +23,13 @@ test('the Legal page lists each site against the six licences, with what is due 
   await page.locator('#app-sidebar').getByRole('link', { name: 'Legal' }).click();
   await expect(page.getByRole('heading', { name: 'Licences', exact: true })).toBeVisible();
   const grid = page.getByRole('region', { name: 'Licence register' });
-  for (const [, name] of TYPES) await expect(grid.getByRole('columnheader', { name })).toBeVisible();
+  // one site: shown opened, a row per licence with its status
+  const site = grid.getByRole('button', { name: /^Msasa Depot/ });
+  await expect(site).toHaveAttribute('aria-expanded', 'true');
+  await expect(site).toContainText('0 of 6 valid');
+  await expect(site).toContainText('1 due this month');
+  await expect(site).toContainText('5 not recorded');
+  for (const [, name] of TYPES) await expect(grid.getByRole('button', { name: new RegExp(`^${name} at Msasa Depot`) })).toBeVisible();
   await expect(grid.getByRole('button', { name: /^Fire brigade licence at Msasa Depot: Due within a month/ })).toBeVisible();
   await expect(grid.getByRole('button', { name: 'EMA air emission licence at Msasa Depot: Not recorded' })).toBeVisible();
   const due = page.getByRole('region', { name: 'Licences due' });
@@ -69,4 +75,39 @@ test('a renewal shows the current licence and keeps the earlier ones', async ({ 
   await expect(dialog.locator('.lic-history')).toContainText('FB-001');
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
+});
+
+test('many sites start folded, worst first; the status buttons show only those licences', async ({ page }) => {
+  const one = register({ fire_brigade: { current: lic({ status: 'expired', days_left: -3, expiry_date: '2026-10-17' }), status: 'expired' } });
+  const ok = (key) => ({ licence_type: key, current: lic({ id: 9, licence_type: key, status: 'valid', days_left: 300 }), status: 'valid', history: [] });
+  const data = {
+    ...one,
+    counts: { valid: 6, due_3_months: 0, due_1_month: 0, expired: 1, missing: 5 },
+    sites: [
+      { site_id: 2, name: 'Borrowdale', region: 'Harare', licences: TYPES.map(([key, name, issuer]) => ({ ...ok(key), name, issuer })) },
+      { ...one.sites[0] },
+    ],
+  };
+  await mockApi(page, { 'GET /licences': data });
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/legal');
+  const grid = page.getByRole('region', { name: 'Licence register' });
+  const heads = grid.locator('.lic-site-head');
+  await expect(heads).toHaveCount(2);
+  await expect(heads.first()).toContainText('Msasa Depot');          // the site with an expired licence comes first
+  await expect(heads.nth(1)).toContainText('6 of 6 valid');
+  await expect(heads.first()).toHaveAttribute('aria-expanded', 'false');
+  await expect(grid.getByRole('button', { name: /^Fire brigade licence at Msasa Depot/ })).toHaveCount(0);
+  await heads.first().click();
+  await expect(grid.getByRole('button', { name: /^Fire brigade licence at Msasa Depot: Expired/ })).toBeVisible();
+
+  await page.getByRole('button', { name: /^1 Expired/ }).click();
+  await expect(heads).toHaveCount(1);                                // only sites with an expired licence
+  await expect(grid.locator('.lic-item')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Show all' }).click();
+  await expect(heads).toHaveCount(2);
+
+  await grid.getByRole('searchbox', { name: 'Search sites' }).fill('borrow');
+  await expect(heads).toHaveCount(1);
+  await expect(heads.first()).toContainText('Borrowdale');
 });

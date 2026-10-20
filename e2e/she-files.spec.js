@@ -63,6 +63,9 @@ test('a site manager opens a view-only file in the app, with no way to download 
   await expect(restricted.getByText('NEW', { exact: true })).toBeVisible();
   await expect(restricted.getByRole('button', { name: 'Download Audit findings' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Download Permit form' })).toBeVisible();     // an ordinary file
+  // each kind of file has its own Glow tile
+  await expect(restricted.locator('.glow-file-pdf')).toContainText('PDF');
+  await expect(page.locator('.files-row').filter({ hasText: 'Permit form' }).locator('.glow-file-word')).toContainText('DOC');
   await expect(page.getByRole('button', { name: 'Open Permit form' })).toHaveCount(0);        // Word files are downloaded
 
   await restricted.getByRole('button', { name: 'Open Audit findings' }).click();

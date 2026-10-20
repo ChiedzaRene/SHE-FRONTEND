@@ -258,7 +258,8 @@ test.describe.serial('a working day', () => {
     await openMenu(she, 'Talks & Training');
     await she.getByLabel('Region').selectOption('Harare');
     const row = she.getByRole('region', { name: 'Completion by site' }).getByRole('row', { name: /Msasa Depot/ });
-    await expect(row).toContainText(windowOpen ? 'Submitted' : 'Closed');
+    // the site was added today, so the only week due is this one (if its window is open)
+    await expect(row).toContainText(windowOpen ? '1 of 1 · 100%' : 'None due yet');
     if (windowOpen) await expect(she.getByRole('region', { name: 'Submitted talks' })).toContainText('Safe refuelling');
 
     await she.getByRole('tab', { name: 'SHE trainings' }).click();
@@ -274,8 +275,8 @@ test.describe.serial('a working day', () => {
     await expect(she.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ })).toContainText(SHE.name);
 
     // the manager sees it at their site and can open the document
-    await page.getByRole('tab', { name: 'SHE trainings' }).click();
-    await page.reload();
+    // straight to the tab: opening it marks the training as seen, so a click and a reload would race
+    await page.goto('/trainings?tab=trainings');
     const training = page.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ });
     await expect(training.getByText('NEW', { exact: true })).toBeVisible();
     await training.getByRole('button', { name: 'Open First aid' }).click();
@@ -399,6 +400,7 @@ test.describe.serial('a working day', () => {
     await signIn(page, SHE.email, SHE.own);
     await expect(page).not.toHaveURL(/\/login$/);
     await openMenu(page, 'Legal');
+    await page.locator('.lic-site-head').filter({ hasText: 'Msasa Depot' }).click();   // sites start folded
     await page.getByRole('button', { name: 'Fire brigade licence at Msasa Depot: Not recorded' }).click();
     const form = page.getByRole('dialog', { name: 'Fire brigade licence at Msasa Depot' }).getByRole('form', { name: 'Record the licence' });
     const due = new Date(Date.now() + 20 * 86400e3);
