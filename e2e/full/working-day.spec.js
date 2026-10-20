@@ -275,8 +275,8 @@ test.describe.serial('a working day', () => {
     await expect(she.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ })).toContainText(SHE.name);
 
     // the manager sees it at their site and can open the document
-    await page.getByRole('tab', { name: 'SHE trainings' }).click();
-    await page.reload();
+    // straight to the tab: opening it marks the training as seen, so a click and a reload would race
+    await page.goto('/trainings?tab=trainings');
     const training = page.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid/ });
     await expect(training.getByText('NEW', { exact: true })).toBeVisible();
     await training.getByRole('button', { name: 'Open First aid' }).click();
