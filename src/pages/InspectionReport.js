@@ -438,12 +438,22 @@ export default function InspectionReport() {
     });
     if (!ok) return;
     try {
-      const res = await inspectionsApi.submit(report.id);
-      take(res.data);
+      await inspectionsApi.submit(report.id);
       notify(`Report No. ${report.number} submitted`, "success");
+      navigate("/inspections"); // done with it: back to the list
     } catch (err) {
       notify(apiError(err, "The report couldn't be submitted."), "error");
     }
+  };
+  // once the regional office has assigned every NC, the report is done for now: back to the list
+  const afterNcChange = (data) => {
+    const waiting = (r) => r.ncs.filter((n) => n.status === "raised").length;
+    if (waiting(report) > 0 && waiting(data) === 0) {
+      notify(`Every NC on report No. ${data.number} has been assigned`, "success");
+      navigate("/inspections");
+      return;
+    }
+    takeKeeping(data);
   };
   const removeDraft = async () => {
     if (!(await confirm({ title: "Delete this draft?", message: `Report No. ${report.number} and its NCs will be deleted.`, confirmLabel: "Delete draft", danger: true }))) return;
@@ -529,7 +539,7 @@ export default function InspectionReport() {
       <section className="insp-section" aria-label="Non-conformities">
         <h2>Non-conformities and negative observations ({report.ncs.length})</h2>
         {report.ncs.length === 0 && !adding && <p className="tt-muted">{editable ? "No NCs yet. Add each non-conformity found." : "No non-conformities were raised."}</p>}
-        {report.ncs.map((nc) => <NcCard key={nc.id} nc={nc} inspectionId={report.id} onChange={takeKeeping} reload={load} />)}
+        {report.ncs.map((nc) => <NcCard key={nc.id} nc={nc} inspectionId={report.id} onChange={afterNcChange} reload={load} />)}
         {editable && (adding ? (
           <div className="insp-nc"><div className="insp-nc-body" style={{ gridColumn: "1 / -1" }}>
             <NcForm busyLabel="Add NC" onCancel={() => setAdding(false)} onSave={async (data) => {

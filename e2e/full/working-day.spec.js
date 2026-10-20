@@ -337,10 +337,12 @@ test.describe.serial('a working day', () => {
     // proof of the inspection itself: the signed checklist as a PDF
     await she.getByLabel('Supporting document for the report').setInputFiles({ name: 'signed-checklist.pdf', mimeType: 'application/pdf', buffer: makePdf('Checklist') });
     await expect(she.getByRole('region', { name: 'Supporting documents' })).toContainText('signed-checklist.pdf');
+    const reportUrl = she.url();
     await she.getByRole('button', { name: 'Submit to regional office' }).click();
     await she.getByRole('alertdialog').getByRole('button', { name: 'Submit report' }).click();
+    await expect(she).toHaveURL(/\/inspections$/);                     // submitted: the report closes, back to the list
+    await she.goto(reportUrl);
     await expect(card(she)).toContainText('With regional office');
-    const reportUrl = she.url();
 
     // the regional manager acknowledges it and gives it to the site manager with a deadline
     const regional = await (await browser.newContext()).newPage();
@@ -356,6 +358,8 @@ test.describe.serial('a working day', () => {
     const due = new Date(Date.now() + 14 * 86400e3);
     await ack.getByLabel('By when').fill(`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`);
     await ack.getByRole('button', { name: 'Acknowledge and assign' }).click();
+    await expect(regional).toHaveURL(/\/inspections$/);                // every NC assigned: back to the list
+    await regional.goto(reportUrl);
     await expect(card(regional)).toContainText('Corrective action open');
 
     // the site manager sees the whole report and completes the action

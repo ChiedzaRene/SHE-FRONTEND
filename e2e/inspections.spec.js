@@ -63,19 +63,26 @@ test('the SHE team writes the report with bold, italic and underline, and adds a
   await expect(card.getByRole('button', { name: 'Add photo' })).toBeVisible();
 });
 
-test('the regional office acknowledges an NC: recommendation, who and by when', async ({ page }) => {
-  let sent = null;
+test('the regional office acknowledges each NC; once all are assigned the report closes', async ({ page }) => {
+  const sent = {};
+  const second = { id: 12, seq: 2, serial: '15/CBD/02', title: 'Fire extinguisher' };
+  const assigned = (body) => ({ status: 'assigned', recommendation: body.recommendation, assigned_to: 3, assigned_to_name: 'Tendai Moyo',
+    due_date: body.due_date, acknowledged_by_name: 'Grace Regional', acknowledged_at: '2026-10-19T08:00:00Z' });
   await mockApi(page, {
-    'GET /site-inspections/5': report({ ncs: [nc({ can: { acknowledge: true } })] }),
+    'GET /site-inspections': [],
+    'GET /site-inspections/5': report({ ncs: [nc({ can: { acknowledge: true } }), nc({ ...second, can: { acknowledge: true } })] }),
     'GET /site-inspections/5/assignees': [
       { id: 3, name: 'Tendai Moyo', role: 'site_manager', label: 'Site manager' },
       { id: 40, name: 'Grace Regional', role: 'regional_manager', label: 'Regional office' },
       { id: 4, name: 'Rudo Chikore', role: 'she_team', label: 'SHE office' },
     ],
     'POST /site-inspections/ncs/11/acknowledge': (route, req) => {
-      sent = req.postDataJSON();
-      return route.fulfill(json(200, report({ ncs: [nc({ status: 'assigned', recommendation: sent.recommendation, assigned_to: 3,
-        assigned_to_name: 'Tendai Moyo', due_date: sent.due_date, acknowledged_by_name: 'Grace Regional', acknowledged_at: '2026-10-19T08:00:00Z' })] })));
+      sent[11] = req.postDataJSON();
+      return route.fulfill(json(200, report({ ncs: [nc(assigned(sent[11])), nc({ ...second, can: { acknowledge: true } })] })));
+    },
+    'POST /site-inspections/ncs/12/acknowledge': (route, req) => {
+      sent[12] = req.postDataJSON();
+      return route.fulfill(json(200, report({ ncs: [nc(assigned(sent[11])), nc({ ...second, ...assigned(sent[12]) })] })));
     },
   });
   await signIn(page, { role: 'regional_manager', region: 'Harare' });
@@ -90,11 +97,38 @@ test('the regional office acknowledges an NC: recommendation, who and by when', 
   await expect(form.getByLabel('By who').locator('optgroup')).toHaveCount(3);
   await form.getByLabel('By when').fill('2026-11-02');
   await form.getByRole('button', { name: 'Acknowledge and assign' }).click();
-  await expect.poll(() => sent).toEqual({ recommendation: 'Drain and clean the oil separator', assigned_to: 3, due_date: '2026-11-02' });
+  await expect.poll(() => sent[11]).toEqual({ recommendation: 'Drain and clean the oil separator', assigned_to: 3, due_date: '2026-11-02' });
+  // one NC still waits, so the report stays open
   const card = page.getByRole('article', { name: 'NC 15/CBD/01' });
   await expect(card).toContainText('Corrective action open (unresolved)');
   await expect(card.locator('.badge-red')).toContainText('unresolved');   // open NCs are red, not blue
   await expect(card).toContainText('Tendai Moyo');
+  await expect(page).toHaveURL(/\/inspections\/5$/);
+
+  // assigning the last one closes the report and goes back to the list
+  const last = page.getByRole('form', { name: 'Acknowledge 15/CBD/02' });
+  await last.getByRole('textbox', { name: /Recommended corrective action/ }).click();
+  await page.keyboard.type('Recharge the extinguisher');
+  await last.getByLabel('By who').selectOption({ label: 'Tendai Moyo' });
+  await last.getByRole('button', { name: 'Acknowledge and assign' }).click();
+  await expect(page).toHaveURL(/\/inspections$/);
+  expect(sent[12]).toMatchObject({ recommendation: 'Recharge the extinguisher', assigned_to: 3 });
+});
+
+test('submitting a report to the regional office closes it and goes back to the list', async ({ page }) => {
+  let submitted = false;
+  const draft = report({ status: 'draft', ncs: [nc({ status: 'draft', can: { edit: true } })], can: { edit: true, submit: true, delete: true } });
+  await mockApi(page, {
+    'GET /site-inspections': [],
+    'GET /site-inspections/5': draft,
+    'POST /site-inspections/5/submit': (route) => { submitted = true; return route.fulfill(json(200, report())); },
+  });
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/inspections/5');
+  await page.getByRole('button', { name: 'Submit to regional office' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Submit report' }).click();
+  await expect(page).toHaveURL(/\/inspections$/);
+  expect(submitted).toBe(true);
 });
 
 test('the site completes the action, and the SHE team sees who reviewed it and when', async ({ page }) => {
