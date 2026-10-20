@@ -48,13 +48,13 @@ async function signIn(page, claims = {}) {
 
 // A /dashboard/summary answer. `cur` and `prev` override the totals; `sites` are the per-site rows.
 const totals = (over = {}) => ({
-  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, trir: null, ltifr: null,
+  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, ltifr: null,
   sites_with_hours: 0, sites: 2, uncounted_injuries: 0, months_missing_hours: [], actions_total: 0,
   actions_completed: 0, actions_completion_pct: null, avg_days_to_close: null, ...over,
 });
 const siteRow = (over = {}) => ({
   site_id: 1, name: 'Msasa Depot', address: '1 Depot Rd', contact_number: '0242 000 000', managers: [],
-  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, trir: null, ltifr: null,
+  incidents: 0, injuries: 0, lost_time_injuries: 0, hours_worked: 0, workers: null, ltifr: null,
   uncounted_injuries: 0, months_missing_hours: [], actions_total: 0, actions_completed: 0,
   actions_completion_pct: null, avg_days_to_close: null, ...over,
 });

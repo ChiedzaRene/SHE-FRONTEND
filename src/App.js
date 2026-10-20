@@ -69,7 +69,7 @@ function App() {
               <Route path="/trainings" element={<Trainings />} />
             </Route>
 
-            {/* Monthly hours worked and headcount (TRIR/LTIFR denominator): entered by site managers, read by SHE */}
+            {/* Monthly hours worked and headcount (LTIFR denominator): entered by site managers, read by SHE */}
             <Route
               element={
                 <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]} />

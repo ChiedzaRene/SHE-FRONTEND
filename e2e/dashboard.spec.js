@@ -13,9 +13,9 @@ test('the dashboard shows total incidents and how each figure changed since the 
   const calls = await mockApi(page, {
     'GET /sites': sites,
     'GET /dashboard/summary': dashboardSummary({
-      cur: { incidents: 12, injuries: 7, trir: 1.25, ltifr: 0.4, actions_total: 8, actions_completed: 6,
+      cur: { incidents: 12, injuries: 7, ltifr: 0.4, actions_total: 8, actions_completed: 6,
         actions_completion_pct: 75, avg_days_to_close: 4.5, hours_worked: 160000, workers: 85, sites_with_hours: 2 },
-      prev: { incidents: 9, trir: 2.0, actions_completion_pct: 50, avg_days_to_close: 6 },
+      prev: { incidents: 9, ltifr: 0.8, actions_completion_pct: 50, avg_days_to_close: 6 },
     }),
   });
   await signIn(page, { role: 'admin' }); // lands on the admin dashboard
@@ -25,8 +25,9 @@ test('the dashboard shows total incidents and how each figure changed since the 
   await expect(kpi('Total incidents')).toContainText('12');
   await expect(kpi('Total incidents')).toContainText('+3 vs Jul – Sep 2026');
   await expect(kpi('Total incidents').locator('.dash-change')).toHaveClass(/bad/);      // more incidents is worse
-  await expect(kpi('TRIR (average of sites)')).toContainText('1.25');
-  await expect(kpi('TRIR (average of sites)').locator('.dash-change')).toHaveClass(/good/);
+  await expect(kpi('LTIFR (average of sites)')).toContainText('0.40');
+  await expect(kpi('LTIFR (average of sites)').locator('.dash-change')).toHaveClass(/good/);
+  await expect(page.getByText(/TRIR/)).toHaveCount(0); // TRIR is no longer reported anywhere
   await expect(kpi('Corrective actions completed')).toContainText('75%');
   await expect(kpi('Corrective actions completed')).toContainText('6 of 8 raised in the period');
   await expect(kpi('Average days to close')).toContainText('4.5 days');

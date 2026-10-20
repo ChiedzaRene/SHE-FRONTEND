@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
-  BarChart2,
   Activity,
   CheckCircle2,
   Timer,
@@ -47,7 +46,6 @@ const MEASURES = {
   incidents: { label: "Incidents", fmt: fmtNum, better: "down" },
   injuries: { label: "Injuries", fmt: fmtNum, better: "down" },
   lost_time_injuries: { label: "Lost-time injuries", fmt: fmtNum, better: "down" },
-  trir: { label: "TRIR", fmt: fmtRate, better: "down", digits: 2 },
   ltifr: { label: "LTIFR", fmt: fmtRate, better: "down", digits: 2 },
   hours_worked: { label: "Hours worked", fmt: fmtNum, better: null },
   workers: { label: "Workers", fmt: fmtNum, better: null },
@@ -173,7 +171,7 @@ export default function DashboardView({ title, subtitle }) {
       .filter((s) => (siteId ? String(s.id) === String(siteId) : !region || s.region === region))
       .map((s) => {
         const r = rows.get(s.id);
-        return { ...s, trir: r?.trir ?? null, ltifr: r?.ltifr ?? null, incidentCount: r?.incidents ?? 0 };
+        return { ...s, ltifr: r?.ltifr ?? null, incidentCount: r?.incidents ?? 0 };
       });
   }, [sites, cur, siteId, region]);
 
@@ -281,8 +279,6 @@ export default function DashboardView({ title, subtitle }) {
           <div className="dash-kpis">
             <Kpi label="Total incidents" value={fmtNum(t.incidents)} Icon={AlertTriangle} color="#dc2626"
               sub={`${fmtNum(t.injuries)} injur${t.injuries === 1 ? "y" : "ies"}`} change={change("incidents")} />
-            <Kpi label={`TRIR${scope}`} value={fmtRate(t.trir)} Icon={BarChart2} color="#2563eb"
-              sub={limits.trir_limit != null ? `Target < ${limits.trir_limit}` : null} change={change("trir")} />
             <Kpi label={`LTIFR${scope}`} value={fmtRate(t.ltifr)} Icon={Activity} color="#7c3aed"
               sub={limits.ltifr_limit != null ? `Target < ${limits.ltifr_limit}` : null} change={change("ltifr")} />
             <Kpi label="Corrective actions completed" value={fmtPct(t.actions_completion_pct)} Icon={CheckCircle2}
@@ -338,8 +334,7 @@ export default function DashboardView({ title, subtitle }) {
           <div className="dash-explain">
             <Info size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
             <p>
-              <strong>TRIR</strong> is recordable injuries and <strong>LTIFR</strong> is injuries with lost work days, each per
-              200,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
+              <strong>LTIFR</strong> is injuries with lost work days per 200,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
               the all-sites figure is the average of the sites' rates. <strong>Days to close</strong> runs from when a
               corrective action is raised to when it is resolved.
             </p>
@@ -363,7 +358,6 @@ export default function DashboardView({ title, subtitle }) {
                   <tr>
                     <th scope="col">Site</th>
                     <th scope="col">Incidents</th>
-                    <th scope="col">TRIR ({limits.trir_limit})</th>
                     <th scope="col">LTIFR ({limits.ltifr_limit})</th>
                     <th scope="col">Workers</th>
                     <th scope="col">Hours</th>
@@ -384,7 +378,6 @@ export default function DashboardView({ title, subtitle }) {
                           </button>
                         </td>
                         <td>{row.incidents}</td>
-                        <td>{fmtRate(row.trir)}</td>
                         <td>{fmtRate(row.ltifr)}</td>
                         <td>{fmtNum(row.workers)}</td>
                         <td>{fmtNum(row.hours_worked)}</td>
