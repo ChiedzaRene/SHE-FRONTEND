@@ -85,7 +85,7 @@ export default function IncidentsByMonthChart({ months, counts }) {
   }
 
   return (
-    <div>
+    <div className="dash-chart">
       <ul className="dash-legend" aria-label="Incident types">
         {shown.map((t) => (
           <li key={t.key}>
@@ -94,8 +94,9 @@ export default function IncidentsByMonthChart({ months, counts }) {
           </li>
         ))}
       </ul>
-      <div style={{ height: 260 }}>
-        <ResponsiveContainer width="100%" height={260} minWidth={0} initialDimension={{ width: 500, height: 260 }}>
+      {/* grows to fill the card when the table beside it is taller, so the chart isn't stuck at the top */}
+      <div className="dash-chart-plot">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} initialDimension={{ width: 500, height: 260 }}>
           <BarChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }} barCategoryGap="28%">
             <CartesianGrid vertical={false} stroke="#eef2f6" />
             <XAxis dataKey="month" tickFormatter={monthTick} tick={{ fill: "#64748b", fontSize: 12 }}

@@ -1466,9 +1466,14 @@ tr.row-new { background: #fffbeb; }
 .dash-change.good { color: #15803d; }
 .dash-change.bad { color: #b91c1c; }
 .dash-change.neutral { color: #64748b; font-weight: 600; }
-.dash-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 24px; margin-bottom: 24px; }
+.dash-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 24px; margin-bottom: 24px; }
 .dash-section { background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); margin-bottom: 24px; min-width: 0; }
-.dash-grid .dash-section { margin-bottom: 0; }
+.dash-grid .dash-section { margin-bottom: 0; display: flex; flex-direction: column; }
+/* the chart fills its card: legend on top, bars taking the rest of the height */
+.dash-chart { flex: 1; display: flex; flex-direction: column; min-height: 300px; }
+.dash-chart-plot { position: relative; flex: 1; min-height: 260px; }
+.dash-chart-plot > .recharts-responsive-container { position: absolute; inset: 0; }
+.dash-grid .dash-empty { flex: 1; }
 .dash-section-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .dash-section-head h2 { font-size: 1rem; font-weight: 800; color: #1e293b; margin: 0; }
 .dash-muted { font-size: 0.78rem; color: #64748b; font-weight: 500; margin-left: 6px; }
@@ -1482,8 +1487,9 @@ tr.row-new { background: #fffbeb; }
 .dash-tooltip-title { font-weight: 800; color: #0f172a; margin-bottom: 6px; }
 .dash-tooltip-row { display: grid; grid-template-columns: 10px 1fr auto; align-items: center; gap: 8px; }
 .dash-compare th[scope="row"] { font-weight: 600; color: #334155; text-align: left; }
-.dash-compare td, .dash-compare th { white-space: nowrap; padding: 10px 12px; }
+.dash-compare td, .dash-compare th { white-space: nowrap; padding: 10px 10px; }
 .dash-compare thead th { white-space: normal; }
+.dash-compare th[scope="row"] { white-space: normal; min-width: 130px; }
 @media (max-width: 640px) { .dash-compare td, .dash-compare th { padding: 8px 6px; font-size: 0.82rem; } .dash-compare th[scope="row"] { white-space: normal; } }
 .dash-explain { display: flex; gap: 10px; background: #eff6ff; border: 1px solid #dbeafe; color: #1e40af; border-radius: 16px; padding: 16px 20px; margin-bottom: 24px; font-size: 0.85rem; line-height: 1.5; }
 .dash-explain p { margin: 0; }
@@ -1494,7 +1500,7 @@ tr.row-new { background: #fffbeb; }
 .dash-status { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; white-space: nowrap; }
 .link-button { background: none; border: 0; padding: 0; color: var(--primary); font-weight: 700; cursor: pointer; text-align: left; font: inherit; font-weight: 700; }
 .link-button:hover { text-decoration: underline; }
-@media (max-width: 1024px) { .dash-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) { .dash-grid { grid-template-columns: 1fr; } }
 @media (max-width: 768px) {
   .dash { padding: 16px; }
   .dash-title { font-size: 1.5rem; }
