@@ -17,8 +17,9 @@ export const fileKind = (filename = "") => {
   return { label: typeof k.label === "function" ? k.label(filename) : k.label, kind: k.kind };
 };
 
-export default function GlowFileIcon({ filename }) {
-  const { label, kind } = fileKind(filename);
+// `image` marks a picture whose name has no picture extension (e.g. a camera upload)
+export default function GlowFileIcon({ filename, image = false }) {
+  const { label, kind } = image ? { label: "IMG", kind: "image" } : fileKind(filename);
   return (
     <span className={`glow-file glow-file-${kind}`} aria-hidden="true">
       <img src={emblem} alt="" />
