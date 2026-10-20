@@ -6,6 +6,7 @@ import NewBadge from "../components/NewBadge";
 import { useFeedback } from "../components/Feedback";
 import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
+import { isReadOnly as viewOnlyRole } from "../utils/roles";
 import AddActionForm from "../components/AddAction";
 import { ShieldCheck, Plus, Search, X, Eye } from "lucide-react";
 
@@ -15,7 +16,7 @@ const CorrectiveActions = () => {
   const { user } = useAuth();
   const location = useLocation();
   const isSiteManager = user?.role === "site_manager";
-  const isReadOnly = isSiteManager;
+  const isReadOnly = isSiteManager || viewOnlyRole(user?.role);
 
   const getTokenSiteId = useCallback(() => {
     try {
@@ -604,7 +605,7 @@ const CorrectiveActions = () => {
                       <Link className="btn btn-primary" to={`/inspections/${selectedAction.inspection_id}#nc-${selectedAction.nc_id}`}>
                         Open the inspection report
                       </Link>
-                    ) : !selectedAction.is_successful && (
+                    ) : !selectedAction.is_successful && !viewOnlyRole(user?.role) && (
                       <button
                         className="btn btn-primary"
                         onClick={() => setIsUpdating(true)}

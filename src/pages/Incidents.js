@@ -7,12 +7,16 @@ import { X, CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
 import { useAuth } from "../context/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
+import { useFeedback } from "../components/Feedback";
+import { isReadOnly } from "../utils/roles";
 
 export default function Incidents() {
   const newIds = useNewItems("incidents");
   const navigate = useNavigate();
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
+  const readOnly = isReadOnly(user?.role);
+  const { notify } = useFeedback();
 
   // --- State Management ---
   const [incidents, setIncidents] = useState([]);
@@ -34,6 +38,9 @@ export default function Incidents() {
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [followUpPrefill, setFollowUpPrefill] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [actionPlan, setActionPlan] = useState("");
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planError, setPlanError] = useState("");
 
   const reportRangeOptions = [
     { value: "day", label: "Today" },
@@ -129,6 +136,34 @@ export default function Incidents() {
     setFilteredIncidents(newestFirst(result));
     setReportSummary(summary);
   }, [incidents, reportRange, selectedSite]);
+
+  const siteNameOf = (siteId) =>
+    sites.find((s) => String(s.id) === String(siteId))?.name || (siteId ? `Site ${siteId}` : "—");
+
+  const openDetails = (inc) => {
+    setSelectedIncident(inc);
+    setActionPlan(inc.action_plan || "");
+    setPlanError("");
+    setIsModalOpen(true);
+  };
+
+  // The description is the fixed record of what happened; what is being done about it goes in the action plan
+  const saveActionPlan = async () => {
+    setSavingPlan(true);
+    setPlanError("");
+    try {
+      const res = await incidentsApi.update(selectedIncident.id, { action_plan: actionPlan });
+      setIncidents((all) => all.map((i) => (i.id === res.data.id ? res.data : i)));
+      setSelectedIncident(res.data);
+      setActionPlan(res.data.action_plan || "");
+      notify("Action plan saved");
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setPlanError(typeof detail === "string" ? detail : "Could not save the action plan.");
+    } finally {
+      setSavingPlan(false);
+    }
+  };
 
   // --- Navigate to Corrective Actions page, prefilled from this incident ---
   const handleTakeAction = (incident) => {
@@ -455,6 +490,7 @@ export default function Incidents() {
                 }}
               >
                 <th style={{ textAlign: "left", padding: "16px" }}>ID</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Site</th>
                 <th style={{ textAlign: "left", padding: "16px" }}>Type</th>
                 <th style={{ textAlign: "left", padding: "16px" }}>Severity</th>
                 <th style={{ textAlign: "left", padding: "16px" }}>Date</th>
@@ -470,6 +506,7 @@ export default function Incidents() {
                     INC-{inc.id}
                     {newIds.has(inc.id) && <NewBadge />}
                   </td>
+                  <td style={{ padding: "16px" }}>{siteNameOf(inc.site_id)}</td>
                   <td style={{ padding: "16px" }}>{inc.type}</td>
                   <td style={{ padding: "16px" }}>
                     <span
@@ -488,10 +525,7 @@ export default function Incidents() {
                   <td style={{ padding: "16px", textAlign: "center" }}>
                     <button
                       className="btn btn-sm btn-outline"
-                      onClick={() => {
-                        setSelectedIncident(inc);
-                        setIsModalOpen(true);
-                      }}
+                      onClick={() => openDetails(inc)}
                     >
                       Details
                     </button>
@@ -501,7 +535,7 @@ export default function Incidents() {
               {filteredIncidents.length === 0 && (
                 <tr>
                   <td
-                    colSpan="5"
+                    colSpan="6"
                     style={{
                       textAlign: "center",
                       padding: "40px",
@@ -563,6 +597,9 @@ export default function Incidents() {
             </div>
             <div className="modal-body">
               <div style={{ marginBottom: "16px" }}>
+                <strong>Site:</strong> {siteNameOf(selectedIncident.site_id)}
+              </div>
+              <div style={{ marginBottom: "16px" }}>
                 <strong>Type:</strong> {selectedIncident.type}
               </div>
               {selectedIncident.injured_person && (
@@ -571,23 +608,56 @@ export default function Incidents() {
                 </div>
               )}
               <div style={{ marginBottom: "16px" }}>
-                <strong>Description:</strong>
-                <p style={{ marginTop: "4px", color: "#475569" }}>
+                <strong>Description</strong>{" "}
+                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>(fixed once logged)</span>
+                <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
                   {selectedIncident.description || "No description provided."}
                 </p>
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <label className="form-label" htmlFor="incident-action-plan"><strong>Action plan</strong></label>
+                {readOnly ? (
+                  <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
+                    {selectedIncident.action_plan || "No action plan yet."}
+                  </p>
+                ) : (
+                  <>
+                    <textarea
+                      id="incident-action-plan"
+                      className="form-control"
+                      rows={4}
+                      maxLength={5000}
+                      placeholder="What is being done about this incident, by whom and by when"
+                      value={actionPlan}
+                      onChange={(e) => setActionPlan(e.target.value)}
+                    />
+                    {planError && <div role="alert" style={{ color: "#991B1B", marginTop: 6 }}>{planError}</div>}
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      style={{ marginTop: 8 }}
+                      disabled={savingPlan || actionPlan.trim() === (selectedIncident.action_plan || "").trim()}
+                      onClick={saveActionPlan}
+                    >
+                      {savingPlan ? "Saving..." : "Save action plan"}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             <div
               className="modal-footer"
               style={{ display: "flex", gap: "12px", marginTop: "24px" }}
             >
-              <button
-                className="btn btn-primary"
-                style={{ flex: 1 }}
-                onClick={() => handleTakeAction(selectedIncident)}
-              >
-                Take Action
-              </button>
+              {!readOnly && (
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => handleTakeAction(selectedIncident)}
+                >
+                  Take Action
+                </button>
+              )}
               <button
                 className="btn btn-outline"
                 style={{ flex: 1 }}

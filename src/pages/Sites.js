@@ -13,9 +13,13 @@ import {
 import { sitesApi } from '../api/endpoints';
 import { useFeedback } from '../components/Feedback';
 import { apiError } from '../utils/apiError';
+import { useAuth } from '../context/AuthContext';
+import { isReadOnly } from '../utils/roles';
 
 export default function Sites() {
   const { notify, confirm } = useFeedback();
+  const { user } = useAuth();
+  const readOnly = isReadOnly(user?.role);
   // --- STATE MANAGEMENT ---
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -129,12 +133,14 @@ export default function Sites() {
           <h1 className="page-title">Sites Management</h1>
           <p className="page-subtitle">Manage Glow Petroleum service stations and depots</p>
         </div>
-        <button 
-          className={`btn ${showForm ? 'btn-outline' : 'btn-primary'}`} 
-          onClick={showForm ? closeForm : () => setShowForm(true)}
-        >
-          {showForm ? <><X size={18} /> Close</> : <><Plus size={18} /> Add New Site</>}
-        </button>
+        {!readOnly && (
+          <button
+            className={`btn ${showForm ? 'btn-outline' : 'btn-primary'}`}
+            onClick={showForm ? closeForm : () => setShowForm(true)}
+          >
+            {showForm ? <><X size={18} /> Close</> : <><Plus size={18} /> Add New Site</>}
+          </button>
+        )}
       </div>
 
       {/* --- DYNAMIC FORM (CREATE/EDIT) --- */}
@@ -289,7 +295,7 @@ export default function Sites() {
                       <span className="badge badge-success">Active</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                      {!readOnly && <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
                         <button 
                           className="btn btn-sm btn-outline btn-icon" 
                           onClick={() => handleEditClick(site)}
@@ -306,7 +312,7 @@ export default function Sites() {
                         >
                           <Trash2 size={14} />
                         </button>
-                      </div>
+                      </div>}
                     </td>
                   </tr>
                 ))}

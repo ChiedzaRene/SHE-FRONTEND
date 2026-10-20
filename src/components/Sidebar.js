@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import emblem from "../assets/glow-emblem.png";
 import NotificationBell from "./NotificationBell";
+import { isReadOnly, ROLE_LABELS } from "../utils/roles";
 import {
   LayoutDashboard,
   Factory,
@@ -25,6 +26,8 @@ export default function Sidebar({ id }) {
   const getLinks = () => {
     // super_admin sees the same navigation as admin
     const role = user?.role === "super_admin" ? "admin" : user?.role;
+    // Operations and directors see what the SHE team sees, without changing it
+    const oversight = isReadOnly(role);
     // The regional office works on the inspection NCs and corrective actions for its region
     if (role === "regional_manager") {
       return [
@@ -38,7 +41,7 @@ export default function Sidebar({ id }) {
         to:
           role === "admin"
             ? "/admin"
-            : role === "she_team"
+            : role === "she_team" || oversight
               ? "/she-dashboard"
               : "/site-dashboard",
         icon: LayoutDashboard,
@@ -49,7 +52,7 @@ export default function Sidebar({ id }) {
       { to: "/reports", icon: FileText, label: "Reports" },
     ];
 
-    if (role === "admin" || role === "she_team" || role === "site_manager") {
+    if (role === "admin" || role === "she_team" || role === "site_manager" || oversight) {
       baseLinks.push(
         { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
         { to: "/legal", icon: Scale, label: "Legal" },
@@ -57,12 +60,12 @@ export default function Sidebar({ id }) {
       );
     }
 
-    if (role === "admin" || role === "she_team") {
+    if (role === "admin" || role === "she_team" || oversight) {
       baseLinks.splice(1, 0, { to: "/sites", icon: Factory, label: "Sites" });
     }
 
     // Site managers enter their site's hours and headcount each month; SHE and admins can see them
-    if (role === "admin" || role === "she_team" || role === "site_manager") {
+    if (role === "admin" || role === "she_team" || role === "site_manager" || oversight) {
       baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
       baseLinks.push({ to: "/she-files", icon: FolderOpen, label: "SHE Files" });
     }
@@ -92,7 +95,7 @@ export default function Sidebar({ id }) {
   };
 
   const getRoleLabel = () => {
-    return user?.role?.replace(/_/g, " ") || "User";
+    return ROLE_LABELS[user?.role] || user?.role?.replace(/_/g, " ") || "User";
   };
 
   return (

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { actionsApi, sitesApi, staffApi } from '../api/endpoints';
 import { useFeedback } from './Feedback';
 import { apiError } from '../utils/apiError';
-import { X, Lock, AlertCircle } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const normalizeSites = (payload) => {
@@ -45,10 +45,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     } catch { return ''; }
   };
 
-  const getThirtyDaysFromNow = () => {
-    const date = new Date();
-    date.setDate(date.getDate() + 30);
-    return date.toISOString().split('T')[0];
+  // the earliest deadline that can be chosen (today, in local time)
+  const today = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   };
 
   const [formData, setFormData] = useState({
@@ -56,7 +56,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     action_taken: '',
     assigned_to: '',
     designation: 'Safety',
-    due_date: getThirtyDaysFromNow(),
+    due_date: '', // chosen by whoever opens the action
     priority: 'medium',
     status: 'open'
   });
@@ -125,6 +125,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     notify('Please choose a site and describe the action taken.', 'error');
     return;
   }
+  if (!formData.due_date) {
+    notify('Choose the deadline for this action.', 'error');
+    return;
+  }
 
   try {
     const payload = {
@@ -135,10 +139,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       assigned_to: formData.assigned_to,
       priority: formData.priority,
       status: 'open',
-      due_date: new Date(formData.due_date).toISOString()
+      // end of the chosen day, so an action due today isn't shown as overdue this morning
+      due_date: new Date(`${formData.due_date}T23:59:00`).toISOString()
     };
 
-    console.log("Sending Payload:", payload);
     await actionsApi.create(payload);
     onSuccess();
   } catch (err) {
@@ -210,8 +214,9 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
 
         <div className="grid-2" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Due Date <Lock size={12} /></label>
-            <input type="date" className="form-control" readOnly value={formData.due_date} style={{ background: '#f1f5f9', cursor: 'not-allowed' }} />
+            <label className="form-label" htmlFor="action-due">Deadline</label>
+            <input id="action-due" type="date" className="form-control" required min={today()} value={formData.due_date}
+              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="action-priority">Priority</label>
