@@ -10,9 +10,10 @@ import { apiError } from "../utils/apiError";
 export const STATUS_LABEL = { draft: "Draft", submitted: "Open NCs", closed: "Closed" };
 export const NC_STATUS = {
   draft: { label: "Draft", cls: "badge-gray" },
-  raised: { label: "With regional office", cls: "badge-amber" },
-  assigned: { label: "Corrective action open", cls: "badge-blue" },
-  completed: { label: "Awaiting SHE review", cls: "badge-purple" },
+  // anything not yet fixed is red; done but not yet checked is amber
+  raised: { label: "With regional office (unresolved)", cls: "badge-red" },
+  assigned: { label: "Corrective action open (unresolved)", cls: "badge-red" },
+  completed: { label: "Awaiting SHE review", cls: "badge-amber" },
   closed: { label: "Closed", cls: "badge-green" },
 };
 export const fmtDay = (iso) => {
@@ -207,7 +208,7 @@ export default function Inspections() {
                             </>
                           )}
                         </td>
-                        <td><span className={`badge ${i.status === "closed" ? "badge-green" : i.status === "draft" ? "badge-gray" : "badge-amber"}`}>{STATUS_LABEL[i.status]}</span></td>
+                        <td><span className={`badge ${i.status === "closed" ? "badge-green" : i.status === "draft" ? "badge-gray" : "badge-red"}`}>{STATUS_LABEL[i.status]}</span></td>
                       </tr>
                     );
                   })}

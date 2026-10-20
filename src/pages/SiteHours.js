@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { Save, CheckCircle, Lock } from "lucide-react";
+import { Save, CheckCircle, Lock, Search } from "lucide-react";
 import { incidentsApi, sitesApi, siteHoursApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 
@@ -33,6 +33,7 @@ export default function SiteHours() {
   const [status, setStatus] = useState({}); // site_id -> "saving" | "saved" | error text
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
   // Months that have injuries but no hours yet: those injuries are left out of LTIFR until hours are entered
   const [needHours, setNeedHours] = useState([]);
   const refreshNeeds = useCallback(() => {
@@ -77,6 +78,10 @@ export default function SiteHours() {
 
   const locked = loading || shownMonth !== month;
   const missing = useMemo(() => sites.filter((s) => saved[s.id] === undefined).length, [sites, saved]);
+  const shown = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return q ? sites.filter((s) => `${s.name} ${s.region || ""}`.toLowerCase().includes(q)) : sites;
+  }, [sites, search]);
 
   const valueOf = (siteId, field) => {
     const typed = draft[siteId]?.[field];
@@ -200,6 +205,13 @@ export default function SiteHours() {
                   ? `Hours for ${monthLong(month)} still need to be entered`
                   : `${missing} of ${sites.length} sites still need hours for this month`}
           </div>
+          {!isManager && (
+            <div className="hours-search">
+              <Search size={16} aria-hidden="true" />
+              <input type="search" className="form-control" placeholder="Search sites..." aria-label="Search sites"
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+          )}
         </div>
         <div className="table-wrap">
           <table>
@@ -213,7 +225,14 @@ export default function SiteHours() {
               </tr>
             </thead>
             <tbody>
-              {sites.map((site) => {
+              {shown.length === 0 && sites.length > 0 && (
+                <tr>
+                  <td colSpan={canEdit ? 5 : 4} style={{ textAlign: "center", color: "#64748b", padding: 24 }}>
+                    No site matches "{search.trim()}".
+                  </td>
+                </tr>
+              )}
+              {shown.map((site) => {
                 const st = status[site.id];
                 return (
                   <tr key={site.id}>

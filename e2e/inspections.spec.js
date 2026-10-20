@@ -92,7 +92,8 @@ test('the regional office acknowledges an NC: recommendation, who and by when', 
   await form.getByRole('button', { name: 'Acknowledge and assign' }).click();
   await expect.poll(() => sent).toEqual({ recommendation: 'Drain and clean the oil separator', assigned_to: 3, due_date: '2026-11-02' });
   const card = page.getByRole('article', { name: 'NC 15/CBD/01' });
-  await expect(card).toContainText('Corrective action open');
+  await expect(card).toContainText('Corrective action open (unresolved)');
+  await expect(card.locator('.badge-red')).toContainText('unresolved');   // open NCs are red, not blue
   await expect(card).toContainText('Tendai Moyo');
 });
 

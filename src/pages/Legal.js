@@ -153,12 +153,63 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
   );
 }
 
+// Worst first: what needs doing now comes before what is fine
+const ORDER = ["expired", "due_1_month", "due_3_months", "missing", "valid"];
+const SHORT = { expired: "expired", due_1_month: "due this month", due_3_months: "due within 3 months", missing: "not recorded", valid: "valid" };
+
+function SiteLicences({ site, cells, expanded, onToggle, onOpen }) {
+  const counts = ORDER.reduce((acc, k) => ({ ...acc, [k]: site.licences.filter((c) => c.status === k).length }), {});
+  const total = site.licences.length;
+  const problems = ORDER.filter((k) => k !== "valid" && counts[k]);
+  const worst = problems[0] || "valid";
+  return (
+    <li className={`lic-site lic-site-${worst}`}>
+      <button type="button" className="lic-site-head" aria-expanded={expanded} onClick={onToggle}>
+        <span className="lic-site-name">
+          <strong>{site.name}</strong>
+          {site.region && <span className="tt-muted">{site.region}</span>}
+        </span>
+        <span className="lic-meter" aria-hidden="true">
+          <span style={{ width: `${(100 * counts.valid) / (total || 1)}%` }} />
+        </span>
+        <span className="lic-site-summary">
+          {counts.valid} of {total} valid
+          {problems.map((k) => (
+            <span key={k} className={`badge ${LICENCE_STATUS[k].cls}`}>{counts[k]} {SHORT[k]}</span>
+          ))}
+        </span>
+        <span className="lic-chevron" aria-hidden="true">{expanded ? "▴" : "▾"}</span>
+      </button>
+      {expanded && (
+        <ul className="lic-items">
+          {cells.map((cell) => {
+            const st = LICENCE_STATUS[cell.status];
+            return (
+              <li key={cell.licence_type}>
+                <button type="button" className={`lic-item ${cell.status}`} onClick={() => onOpen(cell)}
+                  aria-label={`${cell.name} at ${site.name}: ${st.label}${cell.current ? `, ${dueText(cell.current)}` : ""}`}>
+                  <span className="lic-item-name">{cell.name}<span className="tt-muted">{cell.issuer}</span></span>
+                  <span className="lic-item-due">{cell.current ? dueText(cell.current) : "No licence recorded"}</span>
+                  <span className={`badge ${st.cls}`}>{st.label}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 function LicenceRegister() {
   const [params, setParams] = useSearchParams();
   const region = params.get("region") || "";
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null); // { site, cell }
+  const [status, setStatus] = useState(""); // show only licences in this state
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState({}); // site_id -> true
 
   const load = useCallback(() => {
     licencesApi.register(region ? { region } : {})
@@ -170,39 +221,37 @@ function LicenceRegister() {
   if (!data && !error) return <LoadingScreen message="Loading licences..." />;
   if (error) return <div className="card" role="alert" style={{ padding: 16, color: "#991B1B" }}>{error}</div>;
   const c = data.counts;
+  const q = search.trim().toLowerCase();
+  const rank = (site) => Math.min(...site.licences.map((x) => ORDER.indexOf(x.status)));
+  const shown = data.sites
+    .filter((s) => !q || `${s.name} ${s.region || ""}`.toLowerCase().includes(q))
+    .map((s) => ({ site: s, cells: status ? s.licences.filter((x) => x.status === status) : s.licences }))
+    .filter((r) => r.cells.length)
+    .sort((a, b) => rank(a.site) - rank(b.site) || a.site.name.localeCompare(b.site.name));
+  // a single site, or a filter that narrows things down, is shown opened
+  const isOpen = (id) => expanded[id] ?? (data.sites.length === 1 || Boolean(status));
 
   return (
     <div className="tt-stack">
-      {data.regions.length > 0 && data.sites.length > 1 && (
-        <div className="tt-filters" role="group" aria-label="Licence filters">
-          <div className="form-group">
-            <label className="form-label" htmlFor="lic-region">Region</label>
-            <select id="lic-region" className="form-control" value={region}
-              onChange={(e) => { const n = new URLSearchParams(params); if (e.target.value) n.set("region", e.target.value); else n.delete("region"); setParams(n, { replace: true }); }}>
-              <option value="">All regions</option>
-              {data.regions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-
-      <div className="dash-kpis lic-kpis" aria-label="Licence summary">
-        {["expired", "due_1_month", "due_3_months", "valid", "missing"].map((k) => (
-          <div className="dash-kpi" key={k}>
-            <div className="dash-kpi-label">{LICENCE_STATUS[k].label}</div>
-            <div className="dash-kpi-value">{c[k]}</div>
-          </div>
+      <div className="lic-chips" role="group" aria-label="Show licences that are">
+        {ORDER.map((k) => (
+          <button key={k} type="button" className={`lic-chip lic-chip-${k}`} aria-pressed={status === k}
+            onClick={() => setStatus(status === k ? "" : k)}>
+            <span className="lic-chip-count">{c[k]}</span> {LICENCE_STATUS[k].label}
+          </button>
         ))}
+        {status && <button type="button" className="btn btn-sm btn-outline" onClick={() => setStatus("")}>Show all</button>}
       </div>
 
-      {data.due.length > 0 && (
+      {data.due.length > 0 && !status && (
         <section className="card tt-pad tt-thisweek open" aria-label="Licences due">
           <h3 className="tt-h3"><AlertTriangle size={16} aria-hidden="true" /> Renew and pay soon ({data.due.length})</h3>
-          <ul className="insp-waiting">
+          <ul className="lic-due-list">
             {data.due.map((d) => (
               <li key={d.id}>
-                <strong>{d.name}</strong> · {d.site_name} · {dueText(d)}{" "}
                 <span className={`badge ${LICENCE_STATUS[d.status].cls}`}>{LICENCE_STATUS[d.status].label}</span>
+                <span><strong>{d.name}</strong> · {d.site_name}</span>
+                <span className="tt-muted">{dueText(d)}</span>
               </li>
             ))}
           </ul>
@@ -210,37 +259,36 @@ function LicenceRegister() {
         </section>
       )}
 
-      <section className="card" aria-label="Licence register">
-        <div className="card-header"><div className="card-title"><BadgeCheck size={16} aria-hidden="true" style={{ verticalAlign: -2 }} /> Licence register</div></div>
-        <div className="table-wrap">
-          <table className="lic-table">
-            <thead>
-              <tr>
-                <th scope="col">Site</th>
-                {data.types.map((t) => <th scope="col" key={t.key}>{t.name}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {data.sites.map((s) => (
-                <tr key={s.site_id}>
-                  <th scope="row">{s.name}{s.region && <div className="tt-muted">{s.region}</div>}</th>
-                  {s.licences.map((cell) => {
-                    const st = LICENCE_STATUS[cell.status];
-                    return (
-                      <td key={cell.licence_type}>
-                        <button type="button" className={`lic-cell ${cell.status}`} onClick={() => setOpen({ site: s, cell })}
-                          aria-label={`${cell.name} at ${s.name}: ${st.label}${cell.current ? `, ${dueText(cell.current)}` : ""}`}>
-                          <span className={`badge ${st.cls}`}>{st.label}</span>
-                          {cell.current && <span className="lic-due">{fmtDay(cell.current.expiry_date)}</span>}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <section className="card lic-card" aria-label="Licence register">
+        <div className="card-header lic-head">
+          <div className="card-title"><BadgeCheck size={16} aria-hidden="true" style={{ verticalAlign: -2 }} /> Sites
+            {status && <span className="tt-muted"> · {LICENCE_STATUS[status].label.toLowerCase()} only</span>}
+          </div>
+          <div className="tt-filters">
+            {data.sites.length > 1 && (
+              <input type="search" className="form-control" placeholder="Search sites..." aria-label="Search sites"
+                value={search} onChange={(e) => setSearch(e.target.value)} />
+            )}
+            {data.regions.length > 0 && data.sites.length > 1 && (
+              <select className="form-control" aria-label="Region" value={region}
+                onChange={(e) => { const n = new URLSearchParams(params); if (e.target.value) n.set("region", e.target.value); else n.delete("region"); setParams(n, { replace: true }); }}>
+                <option value="">All regions</option>
+                {data.regions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            )}
+          </div>
         </div>
+        {shown.length ? (
+          <ul className="lic-sites">
+            {shown.map(({ site, cells }) => (
+              <SiteLicences key={site.site_id} site={site} cells={cells} expanded={isOpen(site.site_id)}
+                onToggle={() => setExpanded((e) => ({ ...e, [site.site_id]: !isOpen(site.site_id) }))}
+                onOpen={(cell) => setOpen({ site, cell })} />
+            ))}
+          </ul>
+        ) : (
+          <div className="files-empty">{status ? `No licences are ${SHORT[status]}.` : "No site matches your search."}</div>
+        )}
       </section>
 
       {open && (
@@ -257,7 +305,7 @@ export default function Legal() {
       <div className="page-header">
         <div>
           <h1 className="page-title">Licences</h1>
-          <p className="page-subtitle">Each site's licences and when they must be renewed and paid. Select a licence to see it, record it or record its renewal.</p>
+          <p className="page-subtitle">Each site's licences and when they must be renewed and paid. Open a site to see its licences; select one to view, record or renew it.</p>
         </div>
       </div>
       <LicenceRegister />

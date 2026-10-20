@@ -43,6 +43,13 @@ test('the SHE team sees the hours and workers the managers entered but cannot ch
   await expect(page.getByRole('row', { name: /Borrowdale/ })).toContainText('Missing');
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Save hours/ })).toHaveCount(0);
+
+  // find a site by typing part of its name
+  await page.getByRole('searchbox', { name: 'Search sites' }).fill('borrow');
+  await expect(page.getByRole('row', { name: /Borrowdale/ })).toBeVisible();
+  await expect(page.getByRole('row', { name: /Msasa Depot/ })).toHaveCount(0);
+  await page.getByRole('searchbox', { name: 'Search sites' }).fill('nowhere');
+  await expect(page.getByText('No site matches "nowhere".')).toBeVisible();
 });
 
 test('when the chosen month is slow to load, typed figures are not wiped by the late answer', async ({ page }) => {
