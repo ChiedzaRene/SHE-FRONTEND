@@ -1,11 +1,10 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { BadgeCheck, Scale, Upload, X, Eye, Download, AlertTriangle } from "lucide-react";
+import { BadgeCheck, Upload, X, Eye, Download, AlertTriangle } from "lucide-react";
 import { licencesApi } from "../api/endpoints";
 import { useFeedback } from "../components/Feedback";
 import LoadingScreen from "../components/LoadingScreen";
 import FileViewer from "../components/FileViewer";
-import LegalCompliance from "./LegalCompliance";
 import { apiError } from "../utils/apiError";
 
 export const LICENCE_STATUS = {
@@ -253,35 +252,15 @@ function LicenceRegister() {
 }
 
 export default function Legal() {
-  const [params, setParams] = useSearchParams();
-  const tab = params.get("tab") === "scorecard" ? "scorecard" : "licences";
-  const choose = (value) => {
-    const next = new URLSearchParams(params);
-    if (value === "licences") next.delete("tab");
-    else next.set("tab", value);
-    setParams(next, { replace: true });
-  };
   return (
     <div>
-      <div className="tt-tabs" role="tablist" aria-label="Legal">
-        <button type="button" role="tab" aria-selected={tab === "licences"} className={tab === "licences" ? "active" : ""} onClick={() => choose("licences")}>
-          <BadgeCheck size={16} aria-hidden="true" /> Licences
-        </button>
-        <button type="button" role="tab" aria-selected={tab === "scorecard"} className={tab === "scorecard" ? "active" : ""} onClick={() => choose("scorecard")}>
-          <Scale size={16} aria-hidden="true" /> Legal compliance scorecard
-        </button>
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Licences</h1>
+          <p className="page-subtitle">Each site's licences and when they must be renewed and paid. Select a licence to see it, record it or record its renewal.</p>
+        </div>
       </div>
-      {tab === "licences" ? (
-        <>
-          <div className="page-header">
-            <div>
-              <h1 className="page-title">Licences</h1>
-              <p className="page-subtitle">Each site's licences and when they must be renewed and paid. Select a licence to see it, record it or record its renewal.</p>
-            </div>
-          </div>
-          <LicenceRegister />
-        </>
-      ) : <LegalCompliance />}
+      <LicenceRegister />
     </div>
   );
 }

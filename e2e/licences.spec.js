@@ -21,7 +21,7 @@ test('the Legal page lists each site against the six licences, with what is due 
   await mockApi(page, { 'GET /licences': register({ fire_brigade: { current: lic(), status: 'due_1_month' } }) });
   await signIn(page, { role: 'she_team' });
   await page.locator('#app-sidebar').getByRole('link', { name: 'Legal' }).click();
-  await expect(page.getByRole('tab', { name: 'Licences' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('heading', { name: 'Licences', exact: true })).toBeVisible();
   const grid = page.getByRole('region', { name: 'Licence register' });
   for (const [, name] of TYPES) await expect(grid.getByRole('columnheader', { name })).toBeVisible();
   await expect(grid.getByRole('button', { name: /^Fire brigade licence at Msasa Depot: Due within a month/ })).toBeVisible();
@@ -29,9 +29,9 @@ test('the Legal page lists each site against the six licences, with what is due 
   const due = page.getByRole('region', { name: 'Licences due' });
   await expect(due).toContainText('Fire brigade licence · Msasa Depot');
   await expect(due).toContainText('reminded 3 months and 1 month before');
-  // the scorecard is still there
-  await page.getByRole('tab', { name: 'Legal compliance scorecard' }).click();
-  await expect(page.getByRole('heading', { name: 'Legal Compliance' })).toBeVisible();
+  // the old legal compliance scorecard is gone: the Legal page is the licence register
+  await expect(page.getByRole('tab')).toHaveCount(0);
+  await expect(page.getByText(/compliance scorecard/i)).toHaveCount(0);
 });
 
 test('recording a licence with its dates, number, fee and certificate', async ({ page }) => {

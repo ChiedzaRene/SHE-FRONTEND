@@ -33,7 +33,7 @@ export default function SiteHours() {
   const [status, setStatus] = useState({}); // site_id -> "saving" | "saved" | error text
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  // Months that have injuries but no hours yet: those injuries are left out of TRIR/LTIFR until hours are entered
+  // Months that have injuries but no hours yet: those injuries are left out of LTIFR until hours are entered
   const [needHours, setNeedHours] = useState([]);
   const refreshNeeds = useCallback(() => {
     incidentsApi
@@ -146,7 +146,7 @@ export default function SiteHours() {
             {isManager
               ? "At the end of each month, enter the hours worked at your site and how many people work there. "
               : "Monthly hours worked and headcount per site, entered by each site's manager at the end of the month. "}
-            The hours are the denominator for TRIR and LTIFR (per 200,000 hours); a site without hours shows N/A on the dashboards.
+            The hours are the denominator for LTIFR (per 200,000 hours); a site without hours shows N/A on the dashboards.
           </p>
         </div>
         <div className="form-group" style={{ margin: 0 }}>
@@ -171,7 +171,7 @@ export default function SiteHours() {
       {needHours.length > 0 && (
         <div className="rate-notice">
           <div>
-            <strong>Injuries in these months aren't in TRIR/LTIFR yet</strong> because no hours have been entered for
+            <strong>Injuries in these months aren't in LTIFR yet</strong> because no hours have been entered for
             them. {canEdit ? "Choose a month to enter its hours:" : "Choose a month to see which sites still need to report:"}{" "}
             {needHours.map((m) => (
               <button key={m} type="button" className="btn btn-sm btn-outline" style={{ margin: "4px 6px 0 0" }}

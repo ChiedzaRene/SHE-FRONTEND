@@ -10,7 +10,7 @@ const monthName = (ym) => {
 
 const list = (items) => (items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`);
 
-// TRIR/LTIFR only count injuries in months that have hours worked entered. Say so when injuries are left out,
+// LTIFR only count injuries in months that have hours worked entered. Say so when injuries are left out,
 // instead of the rates quietly reading N/A or 0.00.
 export default function RateCoverageNotice({ metrics }) {
   const { user } = useAuth();
@@ -23,7 +23,7 @@ export default function RateCoverageNotice({ metrics }) {
       <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: 2 }} />
       <div>
         <strong>
-          {count} injur{count === 1 ? "y is" : "ies are"} not counted in TRIR/LTIFR yet
+          {count} injur{count === 1 ? "y is" : "ies are"} not counted in LTIFR yet
         </strong>{" "}
         because no hours worked have been entered for {months || "that month"}. The rates only include months with hours.{" "}
         {canEnter ? (

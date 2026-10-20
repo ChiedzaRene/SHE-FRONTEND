@@ -1,4 +1,4 @@
-// TRIR / LTIFR come from the server. They are null when a site has no hours worked
+// LTIFR comes from the server. They are null when a site has no hours worked
 // entered for the period, which must read as "N/A" rather than 0.00 (0 would claim a perfect record).
 export const fmtRate = (value) =>
   value === null || value === undefined ? "N/A" : Number(value).toFixed(2);
@@ -6,8 +6,8 @@ export const fmtRate = (value) =>
 // "no-data" when hours haven't been entered, so a site is never shown COMPLIANT by default.
 // `limits` comes from useSafetyTargets() (admin-editable in Settings), per 200,000 hours.
 export const siteStatus = (site, limits) => {
-  if (site.trir == null && site.ltifr == null) return "no-data";
-  return site.trir > limits.trir_limit || site.ltifr > limits.ltifr_limit ? "action" : "ok";
+  if (site.ltifr == null) return "no-data";
+  return site.ltifr > limits.ltifr_limit ? "action" : "ok";
 };
 
 export const STATUS_STYLE = {

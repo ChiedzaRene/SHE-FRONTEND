@@ -101,13 +101,6 @@ export const auditsApi = {
   update: (id, data) => api.put(`/audits/${id}`, data),
 };
 
-export const legalApi = {
-  getAll: () => api.get("/legal/"),
-  getOne: (id) => api.get(`/legal/${id}`),
-  create: (data) => api.post("/legal/", data),
-  update: (id, data) => api.put(`/legal/${id}`, data),
-};
-
 export const trainingsApi = {
   getAll: () => api.get("/trainings/"),
   getOne: (id) => api.get(`/trainings/${id}`),
@@ -154,27 +147,7 @@ export const usersApi = {
   delete: (id) => api.delete(`/users/${id}`),
 };
 
-// Add this to src/api/endpoints.js, alongside legalApi / sitesApi etc.
-
-export const scorecardApi = {
-  // Submit a new scorecard for a site (site_manager: own site only; admin/she_team: any site)
-  submit: (payload) => api.post("/scorecard/", payload),
-
-  // Latest scores across all sites - admin / she_team only. Supports filters.
-  // params: { site_id, min_score, max_score, start_date, end_date }
-  getAllLatest: (params = {}) => api.get("/scorecard/", { params }),
-
-  // Latest submission for one site (site_manager: own site only)
-  getSiteLatest: (siteId) => api.get(`/scorecard/site/${siteId}/latest`),
-
-  // Full history for one site
-  getSiteHistory: (siteId) => api.get(`/scorecard/site/${siteId}`),
-
-  // Single submission by id
-  getById: (id) => api.get(`/scorecard/${id}`),
-};
-
-// Monthly hours worked and headcount per site: the denominator for TRIR / LTIFR.
+// Monthly hours worked and headcount per site: the denominator for LTIFR.
 // Entered by the site's manager (admins can correct them); read-only for the SHE team.
 export const siteHoursApi = {
   list: (params = {}) => api.get("/site-hours/", { params }),
@@ -274,7 +247,7 @@ export const reportsApi = {
   },
 };
 
-// Settings: the signed-in user's own account, the TRIR/LTIFR limits, and the audit log
+// Settings: the signed-in user's own account, the LTIFR limit, and the audit log
 export const accountApi = {
   me: () => api.get("/users/me"),
   updateMe: (data) => api.patch("/users/me", data), // { full_name }
@@ -283,7 +256,7 @@ export const accountApi = {
 
 export const settingsApi = {
   getTargets: () => api.get("/settings/safety-targets"),
-  saveTargets: (data) => api.put("/settings/safety-targets", data), // { trir_limit, ltifr_limit }
+  saveTargets: (data) => api.put("/settings/safety-targets", data), // { ltifr_limit }
 };
 
 export const auditApi = {

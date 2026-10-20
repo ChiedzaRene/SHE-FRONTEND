@@ -4,10 +4,10 @@ import { reportsApi, sitesApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 
 const REPORT_TYPES = [
-  { id: "performance", label: "Monthly SHE performance", icon: TrendingUp, hint: "TRIR, LTIFR, incidents and actions for a month" },
-  { id: "compliance", label: "Compliance status", icon: ShieldCheck, hint: "Audits, legal records and training" },
+  { id: "performance", label: "Monthly SHE performance", icon: TrendingUp, hint: "LTIFR, incidents and actions for a month" },
+  { id: "compliance", label: "Compliance status", icon: ShieldCheck, hint: "Audits, licences and training" },
   { id: "incidents", label: "Incident register", icon: ListChecks, hint: "Every incident in a date range" },
-  { id: "leaderboard", label: "Site comparison", icon: Trophy, hint: "Ranks all sites on TRIR and LTIFR", teamOnly: true },
+  { id: "leaderboard", label: "Site comparison", icon: Trophy, hint: "Ranks all sites on LTIFR", teamOnly: true },
 ];
 
 const lastMonth = () => {

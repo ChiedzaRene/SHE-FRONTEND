@@ -113,13 +113,12 @@ export default function SitesMap({ sites, search, limits }) {
                   <div style={{ textAlign: "center", lineHeight: "1.4" }}>
                     <strong>{site.name}</strong><br />
                     {site.incidentCount} incident{site.incidentCount !== 1 ? "s" : ""}<br />
-                    TRIR: {fmtRate(site.trir)} &nbsp;|&nbsp; LTIFR: {fmtRate(site.ltifr)}
+                    LTIFR: {fmtRate(site.ltifr)}
                   </div>
                 </LeafletTooltip>
                 <Popup>
                   <strong>{site.name}</strong><br />
                   Incidents: <strong>{site.incidentCount}</strong><br />
-                  TRIR: {fmtRate(site.trir)}<br />
                   LTIFR: {fmtRate(site.ltifr)}<br />
                   Status: <span style={{ color: status.color, fontWeight: 700 }}>{status.label}</span>
                 </Popup>

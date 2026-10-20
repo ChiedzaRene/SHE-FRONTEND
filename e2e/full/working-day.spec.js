@@ -158,8 +158,8 @@ test.describe.serial('a working day', () => {
   test('the dashboard explains that the injury is not counted until hours are entered for its month', async ({ page }) => {
     await signIn(page, ADMIN.email, ADMIN.password);
     await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
-    const notice = page.getByRole('status').filter({ hasText: 'not counted in TRIR/LTIFR yet' });
-    await expect(notice).toContainText('1 injury is not counted in TRIR/LTIFR yet');
+    const notice = page.getByRole('status').filter({ hasText: 'not counted in LTIFR yet' });
+    await expect(notice).toContainText('1 injury is not counted in LTIFR yet');
     await notice.getByRole('link', { name: 'Enter hours worked' }).click();
     await expect(page.getByRole('heading', { name: 'Hours Worked' })).toBeVisible();
   });
@@ -189,11 +189,12 @@ test.describe.serial('a working day', () => {
 
     await openMenu(page, 'Dashboard');
     await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
-    // 1 recordable injury x 200,000 / 52,000 hours = 3.85; 1 lost-time injury -> LTIFR 3.85 too
+    // 1 lost-time injury x 200,000 / 52,000 hours = LTIFR 3.85
     const kpi = (label) => page.locator('.dash-kpi').filter({ has: page.getByText(label, { exact: true }) });
-    await expect(kpi('TRIR (average of sites)')).toContainText('3.85');
+    await expect(kpi('LTIFR (average of sites)')).toContainText('3.85');
+    await expect(page.getByText(/TRIR/)).toHaveCount(0);
     await expect(kpi('Workers')).toContainText('30');
-    await expect(page.getByText('not counted in TRIR/LTIFR yet')).toHaveCount(0); // every injury now counted
+    await expect(page.getByText('not counted in LTIFR yet')).toHaveCount(0); // every injury now counted
     await page.getByLabel('Site', { exact: true }).selectOption({ label: 'Msasa Depot' });
     const info = page.getByRole('region', { name: 'Site information' });
     await expect(info).toContainText('12 Mutare Road, Msasa, Harare');

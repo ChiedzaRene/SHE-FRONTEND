@@ -17,7 +17,7 @@ export default function SiteDashboard() {
   const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [incidents, setIncidents] = useState([]);
-  const [metrics, setMetrics] = useState({ total_incidents: 0, trir: null });
+  const [metrics, setMetrics] = useState({ total_incidents: 0, ltifr: null });
   const [openActions, setOpenActions] = useState(0);
   const [latestHours, setLatestHours] = useState(null); // newest month the manager entered: { period, hours_worked, workers }
   const [actionStats, setActionStats] = useState({}); // corrective actions over the last 12 months
@@ -48,7 +48,7 @@ export default function SiteDashboard() {
 
       const [incRes, metRes, actRes, hoursRes, sumRes, talkRes] = await Promise.all([
         incidentsApi.getBySite(siteId).catch(() => ({ data: [] })),
-        incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, trir: null } })),
+        incidentsApi.getMetrics(siteId).catch(() => ({ data: { total_incidents: 0, ltifr: null } })),
         actionsApi.getAll().catch(() => ({ data: [] })),
         siteHoursApi.list({ site_id: siteId }).catch(() => ({ data: [] })),
         dashboardApi.summary({ period: '12m' }).catch(() => ({ data: null })),
@@ -61,7 +61,7 @@ export default function SiteDashboard() {
       setActionStats(sumRes.data?.current?.totals || {});
 
       setIncidents(incRes.data || []);
-      setMetrics(metRes.data || { total_incidents: 0, trir: null });
+      setMetrics(metRes.data || { total_incidents: 0, ltifr: null });
       setOpenActions((actRes.data || actRes).filter(a => String(a.site_id) === String(siteId) && !a.resolved).length);
     } catch (err) {
       console.error("Dashboard Sync Error:", err);
@@ -159,11 +159,11 @@ export default function SiteDashboard() {
           </div>
 
           <div className="card" style={{ padding: '24px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '16px' }}>Site TRIR</div>
+            <div style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', marginBottom: '16px' }}>Site LTIFR</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
               <div style={{ width: '54px', height: '54px', borderRadius: '14px', backgroundColor: '#eef2ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4f46e5' }}><Activity size={28} /></div>
               <span style={{ fontSize: '1.8rem', fontWeight: '900', color: '#1e293b' }}>
-                {fmtRate(metrics.trir)}
+                {fmtRate(metrics.ltifr)}
               </span>
             </div>
           </div>
