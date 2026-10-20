@@ -4,6 +4,7 @@ import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import { FeedbackProvider } from "./components/Feedback";
+import { READ_ONLY_ROLES } from "./utils/roles";
 import ActivityBar from "./components/ActivityBar";
 
 import Login from "./pages/Login";
@@ -45,7 +46,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["admin", "super_admin", "she_team", "site_manager"]}
+                  allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]}
                 />
               }
             >
@@ -60,7 +61,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["admin", "super_admin", "she_team", "site_manager"]}
+                  allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]}
                 />
               }
             >
@@ -71,7 +72,7 @@ function App() {
             {/* Monthly hours worked and headcount (TRIR/LTIFR denominator): entered by site managers, read by SHE */}
             <Route
               element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager"]} />
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]} />
               }
             >
               <Route path="/site-hours" element={<SiteHours />} />
@@ -81,7 +82,7 @@ function App() {
             {/* Inspection reports: written by the SHE team, acknowledged by the regional office, actioned by sites */}
             <Route
               element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager"]} />
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
               }
             >
               <Route path="/inspections" element={<Inspections />} />

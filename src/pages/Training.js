@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { safetyTalksApi, sitesApi, trainingsApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
+import { isReadOnly } from "../utils/roles";
 import { useFeedback } from "../components/Feedback";
 import FileViewer from "../components/FileViewer";
 import LoadingScreen from "../components/LoadingScreen";
@@ -636,7 +637,7 @@ export default function Trainings() {
           <Users size={16} aria-hidden="true" /> SHE trainings
         </button>
       </div>
-      {tab === "talks" ? (isManager ? <ManagerTalks /> : <TalksTracker />) : <SheTrainings canRecord={!isManager} />}
+      {tab === "talks" ? (isManager ? <ManagerTalks /> : <TalksTracker />) : <SheTrainings canRecord={!isManager && !isReadOnly(user?.role)} />}
     </div>
   );
 }

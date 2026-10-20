@@ -325,6 +325,8 @@ const UserManagement = () => {
                     <option value="she_team">SHE Team</option>
                     <option value="regional_manager">Regional Manager</option>
                     <option value="site_manager">Site Manager</option>
+                    <option value="operations">Operations (view only)</option>
+                    <option value="director">Director (view only)</option>
                   </select>
                 </div>
                 {formData.role === 'regional_manager' ? (

@@ -437,6 +437,8 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Location / Site').selectOption({ label: 'Msasa Depot' });
     await page.getByLabel('Assigned Personnel').fill(MANAGER.name);
     await page.getByLabel('Action Plan / Description').fill(ACTION);
+    const due = new Date(Date.now() + 14 * 864e5); // the deadline is chosen, not fixed
+    await page.getByLabel('Deadline').fill(`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`);
     await page.getByRole('button', { name: 'Assign Action' }).click();
     await expect(page.locator('tbody tr').filter({ hasText: 'Msasa Depot' })).toHaveCount(1);
 

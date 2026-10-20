@@ -22,6 +22,7 @@ export default function LogIncidentModal({
     severity: "low",
     lost_time_days: "",
     injured_person: "",
+    action_plan: "",
     occurred_at: nowLocal(),
   });
   const [loading, setLoading] = useState(false);
@@ -36,6 +37,7 @@ export default function LogIncidentModal({
       severity: prefill?.severity || "low",
       lost_time_days: "",
       injured_person: "",
+      action_plan: "",
       occurred_at: nowLocal(),
     });
     setError("");
@@ -73,6 +75,7 @@ export default function LogIncidentModal({
         site_id: site?.id,
         type: formData.type,
         description: formData.description,
+        action_plan: formData.action_plan.trim() || undefined,
         severity: formData.severity,
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
@@ -183,6 +186,19 @@ export default function LogIncidentModal({
                 }
                 required
                 rows={4}
+              />
+              <small style={{ color: "#64748b" }}>The description can't be changed once the incident is logged.</small>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="incident-action-plan-new">Action plan (optional)</label>
+              <textarea id="incident-action-plan-new"
+                className="form-control"
+                placeholder="What will be done about it, by whom and by when (can be added or updated later)"
+                value={formData.action_plan}
+                maxLength={5000}
+                onChange={(e) => setFormData({ ...formData, action_plan: e.target.value })}
+                rows={3}
               />
             </div>
 

@@ -5,6 +5,8 @@ export const homeFor = (role) => {
     case "super_admin":
       return "/admin";
     case "she_team":
+    case "operations":
+    case "director":
       return "/she-dashboard";
     case "site_manager":
       return "/site-dashboard";
