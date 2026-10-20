@@ -43,6 +43,9 @@ export default function SiteHours() {
   }, []);
   useEffect(() => { refreshNeeds(); }, [refreshNeeds]);
 
+  // the month whose figures are on screen; until it matches the chosen month the boxes stay locked
+  const [shownMonth, setShownMonth] = useState(null);
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -60,6 +63,7 @@ export default function SiteHours() {
       setSaved(stored);
       setDraft({});
       setStatus({});
+      setShownMonth(month);
     } catch (err) {
       setError(err.response?.data?.detail || "Could not load site hours.");
     } finally {
@@ -71,6 +75,7 @@ export default function SiteHours() {
     load();
   }, [load]);
 
+  const locked = loading || shownMonth !== month;
   const missing = useMemo(() => sites.filter((s) => saved[s.id] === undefined).length, [sites, saved]);
 
   const valueOf = (siteId, field) => {
@@ -225,6 +230,7 @@ export default function SiteHours() {
                             value={valueOf(site.id, "hours")}
                             placeholder="e.g. 5200"
                             aria-label={`Hours worked at ${site.name}`}
+                            disabled={locked /* the month's figures are still loading: typing now would be wiped */}
                             onChange={(e) => type(site.id, "hours", e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && save(site.id)}
                           />
@@ -239,6 +245,7 @@ export default function SiteHours() {
                             value={valueOf(site.id, "workers")}
                             placeholder="e.g. 25"
                             aria-label={`Number of workers at ${site.name}`}
+                            disabled={locked}
                             onChange={(e) => type(site.id, "workers", e.target.value)}
                             onKeyDown={(e) => e.key === "Enter" && save(site.id)}
                           />
@@ -246,7 +253,7 @@ export default function SiteHours() {
                         <td>
                           <button
                             className="btn btn-primary"
-                            disabled={st === "saving" || draft[site.id] === undefined}
+                            disabled={locked || st === "saving" || draft[site.id] === undefined}
                             onClick={() => save(site.id)}
                             aria-label={`Save hours for ${site.name}`}
                           >

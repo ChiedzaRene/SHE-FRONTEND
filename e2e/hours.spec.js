@@ -44,3 +44,30 @@ test('the SHE team sees the hours and workers the managers entered but cannot ch
   await expect(page.getByRole('spinbutton')).toHaveCount(0);
   await expect(page.getByRole('button', { name: /^Save hours/ })).toHaveCount(0);
 });
+
+test('when the chosen month is slow to load, typed figures are not wiped by the late answer', async ({ page }) => {
+  const saves = [];
+  let calls = 0;
+  await mockApi(page, {
+    'GET /sites': [{ id: 1, name: 'Msasa Depot' }],
+    'GET /site-hours': async (route) => {
+      calls += 1;
+      if (calls > 1) await new Promise((r) => setTimeout(r, 1500)); // the second month answers late
+      return route.fulfill(json(200, []));
+    },
+    'PUT /site-hours': (route, req) => {
+      saves.push(req.postDataJSON());
+      return route.fulfill(json(200, { id: 1, site_id: 1, period: '2026-01-01', hours_worked: 4100, workers: 20, entered_by: 4 }));
+    },
+  });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.goto('/site-hours');
+  await expect(page.getByLabel('Hours worked at Msasa Depot')).toBeEnabled();
+  await page.getByLabel('Month').fill('2026-01');
+  await expect(page.getByLabel('Hours worked at Msasa Depot')).toBeDisabled();   // locked while January loads
+  await page.getByLabel('Hours worked at Msasa Depot').fill('4100');             // waits until it can be typed in
+  await page.getByLabel('Number of workers at Msasa Depot').fill('20');
+  await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
+  await expect(page.getByRole('row', { name: /Msasa Depot/ }).getByText('Saved')).toBeVisible();
+  expect(saves).toEqual([{ site_id: 1, month: '2026-01', hours_worked: 4100, workers: 20 }]);
+});
