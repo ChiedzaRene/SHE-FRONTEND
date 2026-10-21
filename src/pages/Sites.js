@@ -14,12 +14,17 @@ import { sitesApi } from '../api/endpoints';
 import { useFeedback } from '../components/Feedback';
 import { apiError } from '../utils/apiError';
 import { useAuth } from '../context/AuthContext';
+import RegionsPanel, { regionChoices } from '../components/RegionsPanel';
 import { isReadOnly } from '../utils/roles';
 
 export default function Sites() {
   const { notify, confirm } = useFeedback();
   const { user } = useAuth();
   const readOnly = isReadOnly(user?.role);
+  // sites are created, edited and moved between regions by admins
+  const canAllocate = ['admin', 'super_admin'].includes(user?.role);
+  const [regions, setRegions] = useState(null);
+  const loadRegions = () => sitesApi.regions().then((r) => setRegions(r.data)).catch(() => setRegions(null));
   // --- STATE MANAGEMENT ---
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +56,19 @@ export default function Sites() {
 
   useEffect(() => {
     fetchSites();
+    loadRegions();
   }, []);
+
+  const allocate = async (site, region) => {
+    try {
+      const res = await sitesApi.setRegion(site.id, region || null);
+      setSites((all) => all.map((s) => (s.id === site.id ? res.data : s)));
+      notify(region ? `${site.name} is now in ${region}` : `${site.name} is no longer in a region`, 'success');
+      loadRegions();
+    } catch (err) {
+      notify(apiError(err, 'The region could not be changed.'), 'error');
+    }
+  };
 
   // --- HANDLERS ---
   
@@ -103,6 +120,7 @@ export default function Sites() {
       }
       
       await fetchSites(); // Refresh the list from server
+      loadRegions();
       closeForm();
     } catch (err) {
       console.error(err);
@@ -203,18 +221,11 @@ export default function Sites() {
 
             <div className="form-group">
               <label className="form-label" htmlFor="site-region">Region</label>
-              <input id="site-region"
-                type="text"
-                className="form-control"
-                list="site-regions"
-                maxLength={100}
-                value={formData.region}
-                onChange={e => setFormData({...formData, region: e.target.value})}
-                placeholder="e.g. Harare, Bulawayo, Manicaland (used to group and filter sites)"
-              />
-              <datalist id="site-regions">
-                {[...new Set(sites.map(s => s.region).filter(Boolean))].sort().map(r => <option key={r} value={r} />)}
-              </datalist>
+              <select id="site-region" className="form-control" value={formData.region}
+                onChange={e => setFormData({...formData, region: e.target.value})}>
+                <option value="">Not allocated to a region</option>
+                {regionChoices(regions, formData.region).map(r => <option key={r.name} value={r.name}>{r.label}</option>)}
+              </select>
             </div>
 
             <div className="two-col">
@@ -254,6 +265,8 @@ export default function Sites() {
         </div>
       )}
 
+      <RegionsPanel regions={regions} />
+
       {/* --- SITES LIST --- */}
       <div className="card">
         {loading ? (
@@ -267,6 +280,7 @@ export default function Sites() {
                 <tr>
                   <th>Site Details</th>
                   <th>Location & Contact</th>
+                  <th>Region</th>
                   <th className="text-center">Status</th>
                   <th className="text-right">Actions</th>
                 </tr>
@@ -282,14 +296,20 @@ export default function Sites() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}>
                         <MapPin size={14} style={{ color: '#007ACC' }} /> {site.address}
                       </div>
-                      {site.region && (
-                        <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>Region: {site.region}</div>
-                      )}
                       {site.contact_number && (
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#64748b', marginTop: 4 }}>
                           <Phone size={14} /> {site.contact_number}
                         </div>
                       )}
+                    </td>
+                    <td>
+                      {canAllocate ? (
+                        <select className="form-control site-region-select" aria-label={`Region for ${site.name}`}
+                          value={site.region || ''} onChange={(e) => allocate(site, e.target.value)}>
+                          <option value="">Not allocated</option>
+                          {regionChoices(regions, site.region).map(r => <option key={r.name} value={r.name}>{r.label}</option>)}
+                        </select>
+                      ) : site.region ? site.region : <span className="badge badge-amber">Not allocated</span>}
                     </td>
                     <td className="text-center">
                       <span className="badge badge-success">Active</span>
@@ -318,7 +338,7 @@ export default function Sites() {
                 ))}
                 {sites.length === 0 && (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: 'center', padding: '40px' }}>
+                    <td colSpan="5" style={{ textAlign: "center", padding: "40px" }}>
                       <AlertTriangle size={32} style={{ color: '#cbd5e1', marginBottom: 10 }} />
                       <p style={{ color: '#64748b' }}>No sites found.</p>
                     </td>

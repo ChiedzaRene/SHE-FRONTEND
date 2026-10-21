@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { usersApi, sitesApi } from '../api/endpoints';
+import { regionChoices } from '../components/RegionsPanel';
 import { useFeedback } from '../components/Feedback';
 import { useAuth } from '../context/AuthContext';
 import { apiError } from '../utils/apiError';
@@ -40,15 +41,19 @@ const UserManagement = () => {
     is_active: true
   });
 
+  const [regions, setRegions] = useState(null);
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersRes, sitesRes] = await Promise.all([
+      const [usersRes, sitesRes, regionsRes] = await Promise.all([
         usersApi.getAll(),
-        sitesApi.getAll().catch(() => ({ data: [] }))
+        sitesApi.getAll().catch(() => ({ data: [] })),
+        sitesApi.regions().catch(() => ({ data: null })),
       ]);
       setUsers(usersRes.data || []);
       setSites(sitesRes.data || []);
+      setRegions(regionsRes.data);
     } catch (err) {
       console.error('Error fetching data', err);
     } finally {
@@ -334,7 +339,7 @@ const UserManagement = () => {
                     <label className="form-label" htmlFor="user-region">Region</label>
                     <select id="user-region" name="region" className="form-control" value={formData.region} onChange={handleInputChange}>
                       <option value="">Choose a region</option>
-                      {[...new Set(sites.map(s => s.region).filter(Boolean))].sort().map(r => <option key={r} value={r}>{r}</option>)}
+                      {regionChoices(regions, formData.region).map(r => <option key={r.name} value={r.name}>{r.label}</option>)}
                     </select>
                   </div>
                 ) : (

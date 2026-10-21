@@ -43,6 +43,9 @@ export const sitesApi = {
   create: (data) => api.post("/sites/", data).then(invalidateSites),
   update: (id, data) => api.put(`/sites/${id}`, data).then(invalidateSites),
   delete: (id) => api.delete(`/sites/${id}`).then(invalidateSites),
+  // { regions: [{ name, sites, managers: [names], current }], unallocated }
+  regions: () => api.get("/sites/regions"),
+  setRegion: (id, region) => api.put(`/sites/${id}/region`, { region }).then(invalidateSites),
 };
 
 const summarise = (incidents) => {
