@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Building2,
@@ -554,11 +553,3 @@ const ProgressBar = ({ label, val, target, max = 1 }) => {
 };
 
 const thStyle = { padding: "16px", fontSize: "0.75rem", fontWeight: "800", color: "#64748b", textTransform: "uppercase" };
-=======
-import React from "react";
-import DashboardView from "../components/dashboard/DashboardView";
-
-export default function AdminDashboard() {
-  return <DashboardView title="Overall SHE Dashboard" subtitle="Glow Petroleum Safety Compliance Oversight" />;
-}
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
