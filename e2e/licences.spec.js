@@ -51,6 +51,14 @@ test('recording a licence with its dates, number, fee and certificate', async ({
   await page.getByRole('button', { name: 'EMA air emission licence at Msasa Depot: Not recorded' }).click();
   const dialog = page.getByRole('dialog', { name: 'EMA air emission licence at Msasa Depot' });
   await expect(dialog).toContainText("hasn't been recorded");
+  // it is plain which site and licence are open: a banner in the dialog, and the row behind it stands out
+  const banner = dialog.locator('.lic-banner');
+  await expect(banner.locator('.lic-banner-mode')).toHaveText('Editing');
+  await expect(banner.locator('.lic-banner-site')).toContainText('Msasa Depot');
+  await expect(banner.locator('.lic-banner-licence')).toContainText('EMA air emission licence');
+  await expect(dialog.getByRole('heading', { name: /Record the licence for Msasa Depot/ })).toBeVisible();
+  await expect(page.locator('.lic-item.is-open')).toHaveAttribute('aria-current', 'true');
+  await expect(page.locator('.lic-item.is-open')).toContainText('EMA air emission licence');
   const form = dialog.getByRole('form', { name: 'Record the licence' });
   await form.getByLabel('Expiry / payment due date').fill('2027-03-31');
   await form.getByLabel('Issue date').fill('2026-04-01');
@@ -71,6 +79,7 @@ test('a renewal shows the current licence and keeps the earlier ones', async ({ 
   await page.getByRole('button', { name: /^Fire brigade licence at Msasa Depot: Valid/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Fire brigade licence at Msasa Depot' });
   await expect(dialog).toContainText('FB-002');
+  await expect(dialog.locator('.lic-banner-mode')).toHaveText('Editing');   // site managers record their own renewals
   await expect(dialog.getByRole('form', { name: 'Record the renewal' })).toBeVisible();
   await expect(dialog.locator('.lic-history')).toContainText('FB-001');
   await page.keyboard.press('Escape');

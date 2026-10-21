@@ -1843,3 +1843,30 @@ tr.tt-row-missed td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
 .regions-manager { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #334155; }
 .regions-grid li.no-manager .regions-manager { color: #92400E; }
 .site-region-select { min-width: 160px; max-width: 240px; padding-top: 6px; padding-bottom: 6px; }
+/* the sites found wanting sit side by side, wrapping onto the next line */
+.tt-wanting-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+
+/* ---- Licence dialog: say plainly which site and licence are open ---- */
+.lic-banner { --tone: var(--primary); display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  padding: 18px 24px; background: linear-gradient(135deg, #eef4ff, #ffffff);
+  border-bottom: 4px solid var(--tone); position: sticky; top: 0; z-index: 1; }
+.lic-banner.expired { --tone: #dc2626; }
+.lic-banner.due_1_month { --tone: #ea580c; }
+.lic-banner.due_3_months { --tone: #d97706; }
+.lic-banner.valid { --tone: #16a34a; }
+.lic-banner-mode { display: inline-block; background: var(--tone); color: #fff; font-size: 0.7rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 3px 10px; }
+.lic-banner-site { font-size: 1.35rem; font-weight: 900; color: #0f172a; margin-top: 6px; line-height: 1.2; }
+.lic-banner-site span { font-size: 0.9rem; font-weight: 600; color: #475569; }
+.lic-banner-licence { font-size: 1rem; font-weight: 700; color: var(--primary); margin-top: 2px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lic-banner-issuer { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+.lic-banner-close { flex-shrink: 0; background: #fff; }
+.lic-form-for { color: #0f172a; font-weight: 800; }
+/* behind the dialog, the site and licence being worked on stand out */
+.lic-site.is-open { background: #fffbeb; }
+.lic-item.is-open { border: 2px solid var(--primary); box-shadow: 0 0 0 4px rgba(0, 48, 135, 0.15); background: #f5f8ff; }
+
+/* ---- Corrective actions: how many were recorded recently (a quick filter) ---- */
+.ca-recent { border: 1.5px solid #f59e0b; background: #fffbeb; color: #92400E; font-weight: 800; font-size: 0.82rem;
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; white-space: nowrap; }
+.ca-recent[aria-pressed="true"] { background: #f59e0b; color: #fff; }

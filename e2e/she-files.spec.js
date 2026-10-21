@@ -33,7 +33,7 @@ test('the SHE team shares a file with site managers of one site and makes it vie
   await form.getByLabel('File').setInputFiles({ name: 'findings.pdf', mimeType: 'application/pdf', buffer: PDF });
   await form.getByLabel('Title').fill('Audit findings');
   await form.getByLabel('Note (optional)').fill('Read before Friday');
-  await form.getByLabel('Which site managers?').selectOption({ label: 'Borrowdale only' });
+  await form.getByLabel('Which site?').selectOption({ label: 'Borrowdale only' });
   await form.getByRole('checkbox', { name: /View only/ }).check();
   await form.getByRole('button', { name: 'Share file' }).click();
 

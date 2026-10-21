@@ -74,12 +74,17 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal lic-modal" role="dialog" aria-modal="true" aria-label={`${cell.name} at ${site.name}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <div className="modal-title">{cell.name}</div>
-            <div className="tt-muted">{site.name} · issued by {cell.issuer}</div>
+        {/* which site and licence this is, plainly: easy to mix up when working through many sites */}
+        <div className={`lic-banner ${cell.status}`}>
+          <div className="lic-banner-text">
+            <span className="lic-banner-mode">{canEdit ? "Editing" : "Viewing"}</span>
+            <div className="lic-banner-site">{site.name}{site.region && <span> · {site.region}</span>}</div>
+            <div className="lic-banner-licence">
+              {cell.name} <span className={`badge ${LICENCE_STATUS[cell.status].cls}`}>{LICENCE_STATUS[cell.status].label}</span>
+            </div>
+            <div className="lic-banner-issuer">Issued by {cell.issuer}</div>
           </div>
-          <button type="button" className="btn btn-outline btn-sm" onClick={onClose} aria-label="Close"><X size={16} /></button>
+          <button type="button" className="btn btn-outline btn-sm lic-banner-close" onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <div className="modal-body">
           {current ? (
@@ -96,7 +101,7 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
 
           {canEdit && (
             <form onSubmit={save} aria-label={current ? "Record the renewal" : "Record the licence"} className="lic-form">
-              <h4>{current ? "Record the renewal" : "Record the licence"}</h4>
+              <h4>{current ? "Record the renewal" : "Record the licence"} <span className="lic-form-for">for {site.name}</span></h4>
               <div className="tt-form-grid">
                 <div className="form-group">
                   <label className="form-label" htmlFor="lic-expiry">Expiry / payment due date</label>
@@ -157,13 +162,13 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
 const ORDER = ["expired", "due_1_month", "due_3_months", "missing", "valid"];
 const SHORT = { expired: "expired", due_1_month: "due this month", due_3_months: "due within 3 months", missing: "not recorded", valid: "valid" };
 
-function SiteLicences({ site, cells, expanded, onToggle, onOpen }) {
+function SiteLicences({ site, cells, expanded, onToggle, onOpen, openType }) {
   const counts = ORDER.reduce((acc, k) => ({ ...acc, [k]: site.licences.filter((c) => c.status === k).length }), {});
   const total = site.licences.length;
   const problems = ORDER.filter((k) => k !== "valid" && counts[k]);
   const worst = problems[0] || "valid";
   return (
-    <li className={`lic-site lic-site-${worst}`}>
+    <li className={`lic-site lic-site-${worst}${openType ? " is-open" : ""}`}>
       <button type="button" className="lic-site-head" aria-expanded={expanded} onClick={onToggle}>
         <span className="lic-site-name">
           <strong>{site.name}</strong>
@@ -186,7 +191,8 @@ function SiteLicences({ site, cells, expanded, onToggle, onOpen }) {
             const st = LICENCE_STATUS[cell.status];
             return (
               <li key={cell.licence_type}>
-                <button type="button" className={`lic-item ${cell.status}`} onClick={() => onOpen(cell)}
+                <button type="button" className={`lic-item ${cell.status}${openType === cell.licence_type ? " is-open" : ""}`}
+                  aria-current={openType === cell.licence_type ? "true" : undefined} onClick={() => onOpen(cell)}
                   aria-label={`${cell.name} at ${site.name}: ${st.label}${cell.current ? `, ${dueText(cell.current)}` : ""}`}>
                   <span className="lic-item-name">{cell.name}<span className="tt-muted">{cell.issuer}</span></span>
                   <span className="lic-item-due">{cell.current ? dueText(cell.current) : "No licence recorded"}</span>
@@ -283,7 +289,8 @@ function LicenceRegister() {
             {shown.map(({ site, cells }) => (
               <SiteLicences key={site.site_id} site={site} cells={cells} expanded={isOpen(site.site_id)}
                 onToggle={() => setExpanded((e) => ({ ...e, [site.site_id]: !isOpen(site.site_id) }))}
-                onOpen={(cell) => setOpen({ site, cell })} />
+                onOpen={(cell) => setOpen({ site, cell })}
+                openType={open?.site.site_id === site.site_id ? open.cell.licence_type : null} />
             ))}
           </ul>
         ) : (

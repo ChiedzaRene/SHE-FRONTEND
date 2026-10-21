@@ -28,11 +28,18 @@ export default function Sidebar({ id }) {
     const role = user?.role === "super_admin" ? "admin" : user?.role;
     // Operations and directors see what the SHE team sees, without changing it
     const oversight = isReadOnly(role);
-    // The regional office works on the inspection NCs and corrective actions for its region
+    // The regional office works on the inspection NCs for its region, sees the all-sites dashboard and the reports,
+    // and its own region's corrective actions, incidents, licences, talks, trainings and SHE files
     if (role === "regional_manager") {
       return [
+        { to: "/she-dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
         { to: "/corrective-actions", icon: Wrench, label: "Corrective Actions" },
+        { to: "/incidents", icon: AlertTriangle, label: "Incidents" },
+        { to: "/legal", icon: Scale, label: "Legal" },
+        { to: "/trainings", icon: GraduationCap, label: "Talks & Training" },
+        { to: "/she-files", icon: FolderOpen, label: "SHE Files" },
+        { to: "/reports", icon: FileText, label: "Reports" },
         { to: "/settings", icon: Settings, label: "Settings" },
       ];
     }
