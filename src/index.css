@@ -71,6 +71,7 @@ input, select, textarea {
 /* The menu bar and backdrop only exist on small screens (see RESPONSIVE below) */
 .mobile-topbar,
 .sidebar-backdrop { display: none; }
+
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -1171,14 +1172,6 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 @media (max-width: 640px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .quick-actions { grid-template-columns: 1fr; }
-  .legal-compliance-header {
-    align-items: flex-start !important;
-    text-align: left !important;
-  }
-
-  .legal-compliance-header > div:first-child {
-    justify-content: flex-start !important;
-  }
 }
 
 /* ─── TOASTS & CONFIRM DIALOG ─────────────── */
