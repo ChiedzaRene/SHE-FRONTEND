@@ -61,6 +61,7 @@ test('reopening the app after the browser was closed for over 30 minutes means s
 
 test('reopening within 30 minutes carries on where the person left off', async ({ page, context }) => {
   const later = await context.newPage();
+  await mockApi(later, { 'GET /dashboard/summary': {} }); // the new tab talks to the same (simulated) server
   await page.close();
   await context.clock.setSystemTime(Date.now() + 10 * 60 * 1000);
   await later.goto('/admin');
@@ -69,6 +70,7 @@ test('reopening within 30 minutes carries on where the person left off', async (
 
 test('signing out in one tab signs out the other open tabs too', async ({ page, context }) => {
   const other = await context.newPage();
+  await mockApi(other);
   await other.goto('/incidents');
   await expect(other.getByRole('heading', { name: 'Incidents Register' })).toBeVisible();
 
