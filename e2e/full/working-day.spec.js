@@ -40,7 +40,8 @@ test.describe.serial('a working day', () => {
       await page.getByRole('button', { name: 'Add New Site' }).click();
       await page.getByLabel('Site Name').fill(name);
       await page.getByLabel('Physical Address').fill(address);
-      await page.getByLabel('Region').fill(name.startsWith('Typo') ? '' : 'Harare');
+      // Msasa is put in its region when it is added; Borrowdale is allocated from the list below
+      if (name === 'Msasa Depot') await page.getByLabel('Region', { exact: true }).selectOption('Harare East');
       await page.getByLabel('Site code').fill(name === 'Msasa Depot' ? 'MSA' : '');
       await page.getByLabel('Latitude').fill(lat);
       await page.getByLabel('Longitude').fill(lng);
@@ -56,6 +57,15 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Contact Number').fill('+263 242 123 456');
     await page.getByRole('button', { name: 'Update Site' }).click();
     await expect(page.getByText('+263 242 123 456')).toBeVisible();
+
+    // allocating a site to a region straight from the list; each region shows its manager (none yet)
+    const regions = page.getByRole('region', { name: 'Regions' });
+    await expect(regions).toContainText('2 sites not allocated');      // Borrowdale and Typo Station
+    await page.getByLabel('Region for Borrowdale Station').selectOption('Harare East');
+    await expect(toast(page, 'Borrowdale Station is now in Harare East')).toBeVisible();
+    await expect(regions.locator('li').filter({ hasText: 'Harare East' })).toContainText('2 sites');
+    await expect(regions.locator('li').filter({ hasText: 'Harare East' })).toContainText('No regional manager yet');
+    await expect(regions).toContainText('1 site not allocated');
 
     await page.getByRole('button', { name: 'Delete Typo Station' }).click();
     await expect(page.getByRole('alertdialog')).toContainText('Delete Typo Station?');
@@ -256,7 +266,7 @@ test.describe.serial('a working day', () => {
     const she = await (await browser.newContext()).newPage();
     await signIn(she, SHE.email, SHE.own);
     await openMenu(she, 'Talks & Training');
-    await she.getByLabel('Region').selectOption('Harare');
+    await she.getByLabel('Region').selectOption('Harare East');
     const row = she.getByRole('region', { name: 'Completion by site' }).getByRole('row', { name: /Msasa Depot/ });
     // the site was added today, so the only week due is this one (if its window is open)
     await expect(row).toContainText(windowOpen ? '1 of 1 · 100%' : 'None due yet');
@@ -291,7 +301,7 @@ test.describe.serial('a working day', () => {
       if (await p.locator('.notif-popup').isVisible()) await p.getByRole('button', { name: 'Dismiss notification' }).click();
     };
 
-    // the admin adds the regional manager for the Harare region
+    // the admin adds the regional manager for the Harare East region
     await signIn(page, ADMIN.email, ADMIN.password);
     await openMenu(page, 'Users');
     await page.getByRole('button', { name: 'Register New User' }).click();
@@ -299,7 +309,7 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Email').fill(REGIONAL.email);
     await page.getByLabel('Password').fill(REGIONAL.temp);
     await page.getByLabel('Role').selectOption({ label: 'Regional Manager' });
-    await page.getByLabel('Region').selectOption('Harare');
+    await page.getByLabel('Region').selectOption('Harare East');
     await page.getByRole('button', { name: 'Create User' }).click();
     await expect(toast(page, `${REGIONAL.email} created`)).toBeVisible();
 
