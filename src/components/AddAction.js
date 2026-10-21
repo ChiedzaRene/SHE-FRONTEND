@@ -1,14 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-<<<<<<< HEAD
 import { actionsApi, sitesApi } from '../api/endpoints';
 import { X, Lock, AlertCircle } from 'lucide-react';
-=======
-import { actionsApi, sitesApi, staffApi } from '../api/endpoints';
-import { useFeedback } from './Feedback';
-import { apiError } from '../utils/apiError';
-import { X, AlertCircle } from 'lucide-react';
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 import { useAuth } from '../context/AuthContext';
 
 const normalizeSites = (payload) => {
@@ -31,15 +24,6 @@ const normalizeSites = (payload) => {
 };
 
 const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = null }) => {
-<<<<<<< HEAD
-=======
-  const { notify } = useFeedback();
-  // Staff names to pick from: assigning to someone with an account sends them a notification
-  const [staff, setStaff] = useState([]);
-  useEffect(() => {
-    staffApi.directory().then((res) => setStaff(Array.isArray(res.data) ? res.data : [])).catch(() => setStaff([]));
-  }, []);
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   const location = useLocation();
   const { user } = useAuth();
   const isSiteManager = user?.role === 'site_manager';
@@ -53,17 +37,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     } catch { return ''; }
   };
 
-<<<<<<< HEAD
   const getThirtyDaysFromNow = () => {
     const date = new Date();
     date.setDate(date.getDate() + 30);
     return date.toISOString().split('T')[0];
-=======
-  // the earliest deadline that can be chosen (today, in local time)
-  const today = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   };
 
   const [formData, setFormData] = useState({
@@ -71,11 +48,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     action_taken: '',
     assigned_to: '',
     designation: 'Safety',
-<<<<<<< HEAD
     due_date: getThirtyDaysFromNow(),
-=======
-    due_date: '', // chosen by whoever opens the action
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     priority: 'medium',
     status: 'open'
   });
@@ -139,20 +112,10 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
 
   // Debug — remove after fixing
   console.log("Form Data:", formData);
-<<<<<<< HEAD
   console.log("Sites:", internalSites);
 
   if (!formData.site_id || !formData.action_taken) {
     alert(`Missing fields: site_id="${formData.site_id}" action_taken="${formData.action_taken}"`);
-=======
-
-  if (!formData.site_id || !formData.action_taken) {
-    notify('Please choose a site and describe the action taken.', 'error');
-    return;
-  }
-  if (!formData.due_date) {
-    notify('Choose the deadline for this action.', 'error');
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     return;
   }
 
@@ -165,27 +128,16 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       assigned_to: formData.assigned_to,
       priority: formData.priority,
       status: 'open',
-<<<<<<< HEAD
       due_date: new Date(formData.due_date).toISOString()
     };
 
     console.log("Sending Payload:", payload);
-=======
-      // end of the chosen day, so an action due today isn't shown as overdue this morning
-      due_date: new Date(`${formData.due_date}T23:59:00`).toISOString()
-    };
-
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     await actionsApi.create(payload);
     onSuccess();
   } catch (err) {
     const serverError = err.response?.data;
     console.error('Submission error:', serverError);
-<<<<<<< HEAD
     alert(`Submission Failed: ${JSON.stringify(serverError?.detail || 'Check console for details')}`);
-=======
-    notify(`Could not save the action. ${apiError(err, 'Please check the form and try again.')}`, 'error');
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   }
 };
 
@@ -203,16 +155,9 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       <form onSubmit={handleSubmit} style={{ padding: '24px' }}>
         <div className="grid-3">
           <div className="form-group">
-<<<<<<< HEAD
             <label className="form-label">Location / Site</label>
             {isSiteManager ? (
               <input
-=======
-            <label className="form-label" htmlFor="action-site">Location / Site</label>
-            {isSiteManager ? (
-              <input
-                id="action-site"
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                 type="text"
                 className="form-control"
                 value={internalSites.find(s => String(s.id) === String(formData.site_id))?.name || 'Your Site'}
@@ -220,11 +165,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
                 style={{ background: '#f1f5f9', cursor: 'not-allowed' }}
               />
             ) : (
-<<<<<<< HEAD
               <select className="form-control" required value={formData.site_id} onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}>
-=======
-              <select id="action-site" className="form-control" required value={formData.site_id} onChange={(e) => setFormData({ ...formData, site_id: e.target.value })}>
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                 <option value="">-- {internalSites.length ? 'Select Site' : 'No Sites Available'} --</option>
                 {internalSites.map((site) => (
                   <option key={site.id} value={String(site.id)}>{site.name}</option>
@@ -234,13 +175,8 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
 
           <div className="form-group">
-<<<<<<< HEAD
             <label className="form-label">Designation</label>
             <select className="form-control" value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })}>
-=======
-            <label className="form-label" htmlFor="action-designation">Designation</label>
-            <select id="action-designation" className="form-control" value={formData.designation} onChange={(e) => setFormData({ ...formData, designation: e.target.value })}>
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
               <option value="Safety">Safety</option>
               <option value="Health">Health</option>
               <option value="Environment">Environment</option>
@@ -251,42 +187,19 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
 
           <div className="form-group">
-<<<<<<< HEAD
             <label className="form-label">Assigned Personnel</label>
             <input type="text" className="form-control" required placeholder="Name" value={formData.assigned_to} onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
-=======
-            <label className="form-label" htmlFor="action-assigned-to">Assigned Personnel</label>
-            <input id="action-assigned-to" type="text" className="form-control" required list="action-staff" autoComplete="off"
-              placeholder="Start typing a name" value={formData.assigned_to}
-              onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })} />
-            <datalist id="action-staff">
-              {staff.map((p) => (
-                <option key={p.email} value={p.name || p.email}>{p.name ? p.email : ''}</option>
-              ))}
-            </datalist>
-            <small style={{ color: '#64748b' }}>Pick someone from the list to notify them. Anyone else (e.g. a contractor) can be typed in.</small>
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
           </div>
         </div>
 
         <div className="grid-2" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
           <div className="form-group">
-<<<<<<< HEAD
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>Due Date <Lock size={12} /></label>
             <input type="date" className="form-control" readOnly value={formData.due_date} style={{ background: '#f1f5f9', cursor: 'not-allowed' }} />
           </div>
           <div className="form-group">
             <label className="form-label">Priority</label>
             <select className="form-control" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
-=======
-            <label className="form-label" htmlFor="action-due">Deadline</label>
-            <input id="action-due" type="date" className="form-control" required min={today()} value={formData.due_date}
-              onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
-          </div>
-          <div className="form-group">
-            <label className="form-label" htmlFor="action-priority">Priority</label>
-            <select id="action-priority" className="form-control" value={formData.priority} onChange={(e) => setFormData({ ...formData, priority: e.target.value })}>
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -295,13 +208,8 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
         </div>
 
         <div className="form-group" style={{ marginTop: '20px' }}>
-<<<<<<< HEAD
           <label className="form-label">Action Plan / Description</label>
           <textarea className="form-control" rows="4" required value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}></textarea>
-=======
-          <label className="form-label" htmlFor="action-description">Action Plan / Description</label>
-          <textarea id="action-description" className="form-control" rows="4" required value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}></textarea>
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
