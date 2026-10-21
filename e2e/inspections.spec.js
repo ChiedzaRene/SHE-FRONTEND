@@ -201,3 +201,26 @@ test('the site attaches photos and documents as proof of the corrective action; 
   await card.getByRole('button', { name: 'Open receipt.pdf' }).click();
   await expect(page.getByRole('dialog', { name: 'receipt.pdf' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();
 });
+
+test('a dropped connection while the server restarts is retried, so the report still opens; saves are not repeated', async ({ page }) => {
+  let tries = 0;
+  let saves = 0;
+  const draft = report({ status: 'draft', ncs: [], introduction: null, can: { edit: true, submit: true, delete: true } });
+  await mockApi(page, {
+    // the first two attempts fail like Render closing connections while it restarts after a deploy
+    'GET /site-inspections/5': (route) => (++tries <= 2 ? route.abort('connectionclosed') : route.fulfill(json(200, draft))),
+    'PUT /site-inspections/5': (route) => { saves += 1; return route.abort('connectionclosed'); },
+  });
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/inspections/5');
+  await expect(page.getByRole('heading', { name: /CBD site inspection report No. 15/i })).toBeVisible({ timeout: 15000 });
+  expect(tries).toBe(3);
+
+  // a save is sent once: if the connection drops the person is told, and nothing is sent twice
+  await page.getByRole('textbox', { name: 'Introduction' }).click();
+  await page.keyboard.type('Visit notes');
+  await page.getByRole('button', { name: 'Save report' }).click();
+  await expect(page.getByText("Can't reach the server")).toBeVisible();
+  await page.waitForTimeout(2000);
+  expect(saves).toBe(1);
+});

@@ -22,6 +22,20 @@ export const subscribeToActivity = (fn) => {
   return () => listeners.delete(fn);
 };
 
+// Reads that fail because the connection dropped (the server restarting after a deploy, or a sleeping free
+// instance waking up) are tried again a few times before the page shows an error. Saves are never repeated
+// automatically, so nothing is submitted twice.
+const RETRY_DELAYS_MS = [1500, 3000, 6000];
+const RETRY_STATUSES = [502, 503, 504];
+const canRetry = (err) => {
+  const config = err.config;
+  if (!config || !['get', 'head'].includes((config.method || 'get').toLowerCase())) return false;
+  if ((config.retryCount || 0) >= RETRY_DELAYS_MS.length) return false;
+  if (err.code === 'ECONNABORTED' || axios.isCancel(err)) return false; // a 30 s timeout has already waited long enough
+  return !err.response || RETRY_STATUSES.includes(err.response.status);
+};
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // Attach JWT token to every request
 api.interceptors.request.use((config) => {
   setPending(pending + 1);
@@ -38,8 +52,14 @@ api.interceptors.response.use(
     setPending(pending - 1);
     return res;
   },
-  (err) => {
+  async (err) => {
     setPending(pending - 1);
+    if (canRetry(err)) {
+      const config = err.config;
+      config.retryCount = (config.retryCount || 0) + 1;
+      await wait(RETRY_DELAYS_MS[config.retryCount - 1]);
+      return api.request(config);
+    }
     if (err.response?.status === 401 && window.location.pathname !== '/login') {
       localStorage.removeItem('token');
       try { sessionStorage.setItem(SESSION_NOTICE_KEY, 'Your session has expired. Please sign in again.'); } catch (e) { /* storage blocked */ }
