@@ -11,6 +11,10 @@
     "axios": "^1.14.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",
+<<<<<<< HEAD
+=======
+    "pdfjs-dist": "4.10.38",
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-leaflet": "^5.0.0",
@@ -23,7 +27,15 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+<<<<<<< HEAD
     "eject": "react-scripts eject"
+=======
+    "eject": "react-scripts eject",
+    "build:ui-tests": "node e2e/build.js full",
+    "ui-tests": "playwright test -c playwright.full.config.js",
+    "build:ui-tests:simulated": "node e2e/build.js",
+    "ui-tests:simulated": "playwright test"
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   },
   "eslintConfig": {
     "extends": [
@@ -42,5 +54,11 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+<<<<<<< HEAD
+=======
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1"
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   }
 }

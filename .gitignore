@@ -1,3 +1,13 @@
 node_modules/
 build/
 .env
+<<<<<<< HEAD
+=======
+.env.local
+.env.*.local
+
+# browser test output
+/test-results/
+/playwright-report/
+/build-full/
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9

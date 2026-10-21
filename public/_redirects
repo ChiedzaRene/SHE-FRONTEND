@@ -1,1 +1,6 @@
+<<<<<<< HEAD
 /*    /index.html   200
+=======
+# Single-page app: every address is handled by the app itself (so refreshing /admin or /settings works)
+/*    /index.html   200
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9

@@ -1,5 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { usersApi, sitesApi } from '../api/endpoints';
+<<<<<<< HEAD
+=======
+import { regionChoices } from '../components/RegionsPanel';
+import { useFeedback } from '../components/Feedback';
+import { useAuth } from '../context/AuthContext';
+import { apiError } from '../utils/apiError';
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 import {
   Plus,
   Search,
@@ -13,6 +20,11 @@ import {
 } from 'lucide-react';
 
 const UserManagement = () => {
+<<<<<<< HEAD
+=======
+  const { notify, confirm } = useFeedback();
+  const { user: currentUser } = useAuth();
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   const [users, setUsers] = useState([]);
   const [sites, setSites] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,6 +34,11 @@ const UserManagement = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null); // null = Create, object = Edit
   const [showPassword, setShowPassword] = useState(false);
+<<<<<<< HEAD
+=======
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -29,6 +46,7 @@ const UserManagement = () => {
     password: '',
     role: 'site_manager',
     site_id: '',
+<<<<<<< HEAD
     is_active: true
   });
 
@@ -41,6 +59,25 @@ const UserManagement = () => {
       ]);
       setUsers(usersRes.data || []);
       setSites(sitesRes.data || []);
+=======
+    region: '',
+    is_active: true
+  });
+
+  const [regions, setRegions] = useState(null);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [usersRes, sitesRes, regionsRes] = await Promise.all([
+        usersApi.getAll(),
+        sitesApi.getAll().catch(() => ({ data: [] })),
+        sitesApi.regions().catch(() => ({ data: null })),
+      ]);
+      setUsers(usersRes.data || []);
+      setSites(sitesRes.data || []);
+      setRegions(regionsRes.data);
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     } catch (err) {
       console.error('Error fetching data', err);
     } finally {
@@ -62,12 +99,17 @@ const UserManagement = () => {
       password: '', // Keep empty unless changing
       role: user.role || 'site_manager',
       site_id: user.site_id || '',
+<<<<<<< HEAD
+=======
+      region: user.region || '',
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
       is_active: user.is_active
     });
     setIsModalOpen(true);
   };
 
   const handleDeleteClick = async (userId) => {
+<<<<<<< HEAD
     if (window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
       try {
         await usersApi.delete(userId);
@@ -75,6 +117,40 @@ const UserManagement = () => {
       } catch (err) {
         alert("Failed to delete user.");
       }
+=======
+    const ok = await confirm({
+      title: 'Delete this user?',
+      message: 'This permanently removes the account and cannot be undone.',
+      confirmLabel: 'Delete user',
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await usersApi.delete(userId);
+      await fetchData();
+      notify('User deleted.', 'success');
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 409 && typeof detail === 'string') {
+        // The user has recorded incidents, audits etc. Those must keep their author, so offer the safe alternative.
+        const deactivate = await confirm({
+          title: "This account can't be deleted",
+          message: `${detail}\n\nDeactivate this account instead?`,
+          confirmLabel: 'Deactivate account',
+        });
+        if (deactivate) {
+          try {
+            await usersApi.update(userId, { is_active: false });
+            await fetchData();
+            notify('Account deactivated. They can no longer sign in.', 'success');
+          } catch (e2) {
+            notify(apiError(e2, 'Could not deactivate the user.'), 'error');
+          }
+        }
+        return;
+      }
+      notify(apiError(err, 'Failed to delete user.'), 'error');
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     }
   };
 
@@ -90,14 +166,22 @@ const UserManagement = () => {
     setIsModalOpen(false);
     setEditingUser(null);
     setShowPassword(false);
+<<<<<<< HEAD
     setFormData({
       full_name: '', email: '', password: '',
       role: 'site_manager', site_id: '', is_active: true
+=======
+    setFormError('');
+    setFormData({
+      full_name: '', email: '', password: '',
+      role: 'site_manager', site_id: '', region: '', is_active: true
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+<<<<<<< HEAD
     try {
       const payload = {
         ...formData,
@@ -120,18 +204,68 @@ const UserManagement = () => {
     } catch (err) {
       console.error('Save failed', err.response?.data);
       alert(err.response?.data?.detail || 'An error occurred');
+=======
+    setFormError('');
+    const newPassword = formData.password || '';
+    if (newPassword && newPassword.length < 8) {
+      setFormError('The password must be at least 8 characters.');
+      return;
+    }
+    const payload = {
+      ...formData,
+      // a regional manager looks after a region, not one site
+      site_id: formData.role !== 'regional_manager' && formData.site_id ? Number(formData.site_id) : null,
+      region: formData.role === 'regional_manager' ? formData.region || null : null,
+    };
+    if (formData.role === 'regional_manager' && !formData.region) {
+      setFormError('Choose the region this regional manager looks after.');
+      return;
+    }
+    // If editing and password is empty, remove it from payload so it doesn't overwrite with empty string
+    if (editingUser && !payload.password) {
+      delete payload.password;
+    }
+
+    setSaving(true);
+    try {
+      let message;
+      if (editingUser) {
+        await usersApi.update(editingUser.id, payload);
+        const isMe = String(editingUser.id) === String(currentUser?.user_id);
+        if (newPassword && isMe) message = 'Your password has been changed.';
+        else if (newPassword) message = `Password reset for ${payload.email}. They'll be asked to choose their own password when they next sign in.`;
+        else message = `${payload.email} updated.`;
+      } else {
+        await usersApi.create(payload);
+        message = `${payload.email} created. They'll choose their own password at first sign-in.`;
+      }
+      closeModal();
+      notify(message, 'success');
+      await fetchData();
+    } catch (err) {
+      // Shown inside the box so it can't be missed; the box stays open to fix it
+      setFormError(apiError(err, 'Could not save the user.'));
+    } finally {
+      setSaving(false);
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
     }
   };
 
   // --- HELPERS ---
   const getSiteName = (id) => sites.find(s => String(s.id) === String(id))?.name || 'Global';
   
+<<<<<<< HEAD
   // Filter out super_admin users from display
   const filteredUsers = users.filter((u) => 
     u.role !== 'super_admin' && (
       u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase())
     )
+=======
+  const filteredUsers = users.filter((u) => 
+    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.email?.toLowerCase().includes(search.toLowerCase())
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
   );
 
   return (
@@ -193,7 +327,14 @@ const UserManagement = () => {
                       <div className="users-name">{user.full_name}</div>
                       <div className="users-email">{user.email}</div>
                     </td>
+<<<<<<< HEAD
                     <td><span className="badge">{user.role}</span></td>
+=======
+                    <td>
+                      <span className="badge">{user.role}</span>
+                      {user.region && <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: 2 }}>{user.region}</div>}
+                    </td>
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                     <td>{getSiteName(user.site_id)}</td>
                     <td>
                       {user.is_active ? 
@@ -203,10 +344,17 @@ const UserManagement = () => {
                     </td>
                     <td className="users-actions-cell">
                       <div className="users-actions-wrap">
+<<<<<<< HEAD
                         <button className="btn-icon-only" onClick={() => handleEditClick(user)}>
                           <Edit2 size={16} color="#6366f1" />
                         </button>
                         <button className="btn-icon-only" onClick={() => handleDeleteClick(user.id)}>
+=======
+                        <button className="btn-icon-only" aria-label={`Edit ${user.email}`} onClick={() => handleEditClick(user)}>
+                          <Edit2 size={16} color="#6366f1" />
+                        </button>
+                        <button className="btn-icon-only" aria-label={`Delete ${user.email}`} onClick={() => handleDeleteClick(user.id)}>
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                           <Trash2 size={16} color="#ef4444" />
                         </button>
                       </div>
@@ -229,6 +377,7 @@ const UserManagement = () => {
             </div>
             <form onSubmit={handleSubmit} className="modal-body">
               <div className="form-group">
+<<<<<<< HEAD
                 <label className="form-label">Full Name</label>
                 <input name="full_name" className="form-control" value={formData.full_name} onChange={handleInputChange} required />
               </div>
@@ -242,17 +391,39 @@ const UserManagement = () => {
                 </label>
                 <div className="users-password-wrap">
                   <input
+=======
+                <label className="form-label" htmlFor="user-full-name">Full Name</label>
+                <input id="user-full-name" name="full_name" className="form-control" value={formData.full_name} onChange={handleInputChange} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-email">Email</label>
+                <input id="user-email" name="email" type="email" className="form-control" value={formData.email} onChange={handleInputChange} required />
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="user-password">
+                  Password {editingUser && <small>(Leave blank to keep current)</small>}
+                </label>
+                <div className="users-password-wrap">
+                  <input id="user-password"
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                     name="password"
                     type={showPassword ? "text" : "password"}
                     className="form-control"
                     value={formData.password}
                     onChange={handleInputChange}
                     required={!editingUser}
+<<<<<<< HEAD
+=======
+                    minLength={8}
+                    autoComplete="new-password"
+                    placeholder={editingUser ? 'New password (at least 8 characters)' : 'At least 8 characters'}
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                   />
                   <button type="button" className="users-password-toggle" onClick={() => setShowPassword(!showPassword)}>
                     {showPassword ? <EyeOff size={16}/> : <Eye size={16}/>}
                   </button>
                 </div>
+<<<<<<< HEAD
               </div>
               <div className="two-col users-form-two-col">
                 <div className="form-group">
@@ -270,15 +441,65 @@ const UserManagement = () => {
                     {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
+=======
+                <small style={{ color: '#64748b', display: 'block', marginTop: 6 }}>
+                  {editingUser
+                    ? 'If you set a new password, the user is signed out everywhere and must choose their own password at their next sign-in.'
+                    : 'This is a temporary password. The user will be asked to choose their own at first sign-in.'}
+                </small>
+              </div>
+              <div className="two-col users-form-two-col">
+                <div className="form-group">
+                  <label className="form-label" htmlFor="user-role">Role</label>
+                  <select id="user-role" name="role" className="form-control" value={formData.role} onChange={handleInputChange}>
+                    <option value="admin">Admin</option>
+                    <option value="she_team">SHE Team</option>
+                    <option value="regional_manager">Regional Manager</option>
+                    <option value="site_manager">Site Manager</option>
+                    <option value="operations">Operations (view only)</option>
+                    <option value="director">Director (view only)</option>
+                  </select>
+                </div>
+                {formData.role === 'regional_manager' ? (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="user-region">Region</label>
+                    <select id="user-region" name="region" className="form-control" value={formData.region} onChange={handleInputChange}>
+                      <option value="">Choose a region</option>
+                      {regionChoices(regions, formData.region).map(r => <option key={r.name} value={r.name}>{r.label}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="user-site">Site</label>
+                    <select id="user-site" name="site_id" className="form-control" value={formData.site_id} onChange={handleInputChange}>
+                      <option value="">Global</option>
+                      {sites.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
               </div>
               <div className="form-group users-active-row">
                 <input type="checkbox" name="is_active" checked={formData.is_active} onChange={handleInputChange} />
                 <label className="form-label" style={{ marginBottom: 0 }}>User is Active</label>
               </div>
+<<<<<<< HEAD
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline" onClick={closeModal}>Cancel</button>
                 <button type="submit" className="btn btn-primary">
                   {editingUser ? 'Update User' : 'Create User'}
+=======
+              {formError && (
+                <div role="alert" style={{ background: 'var(--danger-light)', color: 'var(--danger)', padding: '10px 12px',
+                  borderRadius: 6, fontSize: '0.85rem', fontWeight: 600, marginBottom: 12 }}>
+                  {formError}
+                </div>
+              )}
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline" onClick={closeModal}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingUser ? 'Update User' : 'Create User'}
+>>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
                 </button>
               </div>
             </form>
