@@ -2,8 +2,8 @@ import axios from 'axios';
 
 // 1. Create the unified instance
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'https://she-backend-tjlg.onrender.com',
-  /*baseURL: 'http://localhost:8000',*/
+  /*baseURL: process.env.REACT_APP_API_URL || 'https://she-backend-tjlg.onrender.com',*/
+  baseURL: 'http://localhost:8000',
 });
 
 // 2. Attach JWT token to every outgoing request automatically
