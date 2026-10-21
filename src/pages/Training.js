@@ -54,9 +54,12 @@ function MissedPanel({ missed }) {
         <AlertTriangle size={18} aria-hidden="true" /> Missed
         <span className="tt-panel-count">{bySite.length} site{bySite.length === 1 ? "" : "s"}</span>
       </h3>
-      <p className="tt-panel-note">The deadline passed without a talk ({missed.length} week{missed.length === 1 ? "" : "s"} in this period).</p>
+      <p className="tt-panel-note">
+        The deadline passed without a talk ({missed.length} week{missed.length === 1 ? "" : "s"} in this period).
+        The next week opens on {nextMonday()}.
+      </p>
       {bySite.length ? (
-        <ul className="tt-wanting-list">
+        <ul className="tt-wanting-list tt-wanting-row">
           {bySite.map((s) => (
             <li key={s.site_id}>
               <div className="tt-wanting-site">
@@ -88,7 +91,7 @@ function PendingPanel({ week }) {
           : <>No week is open. The next one opens on {nextMonday()}.</>}
       </p>
       {pending.length ? (
-        <ul className="tt-wanting-list">
+        <ul className="tt-wanting-list tt-wanting-row">
           {pending.map((p) => (
             <li key={p.site_id}>
               <div className="tt-wanting-site"><strong>{p.name}</strong><span className="tt-wanting-tag">Not in yet</span></div>
@@ -424,10 +427,8 @@ function TalksTracker() {
             </div>
           </div>
 
-          <div className="tt-wanting">
-            <MissedPanel missed={data.missed} />
-            <PendingPanel week={week} />
-          </div>
+          {/* before the deadline: who still has to submit this week; after it: who missed */}
+          {week?.open ? <PendingPanel week={week} /> : <MissedPanel missed={data.missed} />}
 
           <section className="card" aria-label="Completion by site">
             <div className="card-header">
@@ -678,7 +679,7 @@ export default function Trainings() {
           <Users size={16} aria-hidden="true" /> SHE trainings
         </button>
       </div>
-      {tab === "talks" ? (isManager ? <ManagerTalks /> : <TalksTracker />) : <SheTrainings canRecord={!isManager && !isReadOnly(user?.role)} />}
+      {tab === "talks" ? (isManager ? <ManagerTalks /> : <TalksTracker />) : <SheTrainings canRecord={!isManager && user?.role !== "regional_manager" && !isReadOnly(user?.role)} />}
     </div>
   );
 }

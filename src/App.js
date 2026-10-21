@@ -50,11 +50,21 @@ function App() {
                 />
               }
             >
-              <Route path="/she-dashboard" element={<SheDashboard />} />
               <Route path="/command-center" element={<CommandCenter />} />
               {/* the earlier audit records; new inspections live under /inspections */}
               <Route path="/audits" element={<AuditList />} />
+            </Route>
+
+            {/* Regional managers too: the all-sites dashboard, and their region's licences, talks, trainings and files */}
+            <Route
+              element={
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
+              }
+            >
+              <Route path="/she-dashboard" element={<SheDashboard />} />
               <Route path="/legal" element={<Legal />} />
+              <Route path="/trainings" element={<Trainings />} />
+              <Route path="/she-files" element={<SheFiles />} />
             </Route>
 
             {/* Admin & SHE Team Routes */}
@@ -66,7 +76,6 @@ function App() {
               }
             >
               <Route path="/sites" element={<Sites />} />
-              <Route path="/trainings" element={<Trainings />} />
             </Route>
 
             {/* Monthly hours worked and headcount (LTIFR denominator): entered by site managers, read by SHE */}
@@ -76,7 +85,6 @@ function App() {
               }
             >
               <Route path="/site-hours" element={<SiteHours />} />
-              <Route path="/she-files" element={<SheFiles />} />
             </Route>
 
             {/* Inspection reports: written by the SHE team, acknowledged by the regional office, actioned by sites */}

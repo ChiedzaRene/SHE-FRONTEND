@@ -36,6 +36,7 @@ const CorrectiveActions = () => {
   // UI States
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [timeFilter, setTimeFilter] = useState("all"); // days back, by when the action was recorded
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Modal States
@@ -123,7 +124,15 @@ const CorrectiveActions = () => {
     return { text: `${diffDays} days left`, color: `hsl(${hue}, 75%, 45%)` };
   };
 
+  // recorded in the last 3 days: flagged so new actions stand out to everyone, not only to whoever was notified
+  const recordedAt = (a) => (a.created_at ? new Date(a.created_at) : null);
+  const recentSince = new Date(Date.now() - 3 * 864e5);
+  const isRecent = (a) => Boolean(recordedAt(a) && recordedAt(a) >= recentSince);
+  const recentCount = actions.filter(isRecent).length;
+  const since = timeFilter === "all" ? null : new Date(Date.now() - Number(timeFilter) * 864e5);
+
   const filteredActions = newestFirst(actions).filter((a) => {
+    if (since && !(recordedAt(a) && recordedAt(a) >= since)) return false;
     const content = (
       a.action_taken ||
       a.description ||
@@ -216,6 +225,8 @@ const CorrectiveActions = () => {
             padding: "16px 24px",
             borderBottom: "1px solid #f1f5f9",
             display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
             gap: "16px",
           }}
         >
@@ -249,6 +260,24 @@ const CorrectiveActions = () => {
             <option value="Open">Open Only</option>
             <option value="Closed">Closed Only</option>
           </select>
+          <select
+            className="form-control"
+            style={{ width: "170px" }}
+            aria-label="Recorded"
+            value={timeFilter}
+            onChange={(e) => setTimeFilter(e.target.value)}
+          >
+            <option value="all">Any time</option>
+            <option value="3">Last 3 days</option>
+            <option value="7">Last week</option>
+            <option value="30">Last month</option>
+          </select>
+          {recentCount > 0 && (
+            <button type="button" className="ca-recent" aria-pressed={timeFilter === "3"}
+              onClick={() => setTimeFilter(timeFilter === "3" ? "all" : "3")}>
+              {recentCount} new in the last 3 days
+            </button>
+          )}
         </div>
 
         {/* TABLE */}
@@ -296,7 +325,7 @@ const CorrectiveActions = () => {
                         <div
                           style={{ display: "flex", flexDirection: "column" }}
                         >
-                          {newIds.has(action.id) && <span><NewBadge /></span>}
+                          {(newIds.has(action.id) || isRecent(action)) && <span><NewBadge /></span>}
                           <span
                             style={{
                               fontSize: "0.85rem",
@@ -311,6 +340,11 @@ const CorrectiveActions = () => {
                           >
                             {getSiteName(action.site_id)}
                           </span>
+                          {recordedAt(action) && (
+                            <span style={{ fontSize: "0.72rem", color: "#94a3b8" }}>
+                              Recorded {recordedAt(action).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td
@@ -360,6 +394,13 @@ const CorrectiveActions = () => {
                     </tr>
                   );
                 })
+              )}
+              {!loading && filteredActions.length === 0 && (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: "center", padding: "40px", color: "#94a3b8" }}>
+                    No corrective actions match these filters.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>

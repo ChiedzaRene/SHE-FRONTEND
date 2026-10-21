@@ -91,18 +91,13 @@ test('the SHE team tracks every site: missed weeks, sites still to submit, and f
   await signIn(page, { role: 'she_team' });
   await page.goto('/trainings');
   await expect(page.locator('.dash-kpi').first()).toContainText('75%');
-  // missed (deadline passed) and still to submit (before the deadline) are shown together
+  // before the deadline only "Still to submit" shows; "Missed" appears once the deadline has passed
   const pending = page.getByRole('region', { name: 'Still to submit' });
-  const missed = page.getByRole('region', { name: 'Missed talks' });
   await expect(pending).toContainText('1 site');
   await expect(pending.locator('li')).toHaveCount(1);
   await expect(pending).toContainText('Borrowdale');
   await expect(pending).toContainText('Rudo Moyo');
-  await expect(missed).toContainText('1 site');
-  await expect(missed.locator('li')).toHaveCount(1);                 // one card per site, its weeks listed inside
-  await expect(missed.locator('li')).toContainText('2 missed');
-  await expect(missed).toContainText(/Oct 12|12 Oct/);
-  await expect(missed).toContainText(/Oct 5|5 Oct/);
+  await expect(page.getByRole('region', { name: 'Missed talks' })).toHaveCount(0);
   // one column for how a site is doing, worst first
   const completion = page.getByRole('region', { name: 'Completion by site' });
   await expect(completion.locator('thead th')).toHaveText(['Site', 'Region', 'Site manager', 'Talks submitted']);
@@ -184,4 +179,33 @@ test('the dashboards show weekly talk completion, and the SHE dashboard filters 
   await page.getByLabel('Region').selectOption('Harare');
   await expect.poll(() => asked.at(-1)).toBe('Harare');
   await expect(page.getByLabel('Site', { exact: true }).locator('option')).toHaveText(['All sites in Harare', 'Msasa Depot']);
+});
+
+test('after the deadline the SHE team sees who missed, side by side, and nothing "still to submit"', async ({ page }) => {
+  const site = (id, name, managers) => ({ site_id: id, name, region: 'Harare', managers });
+  await mockApi(page, {
+    'GET /safety-talks/overview': {
+      period: 'month', regions: ['Harare'],
+      this_week: { week_of: null, open: false, deadline: null, pending: [] },
+      totals: { due: 12, done: 9, missed: 3, rate: 75, sites: 3, attendees: 40 },
+      sites: [{ ...site(2, 'Borrowdale', ['Rudo Moyo']), due: 4, done: 2, rate: 50, missed_weeks: ['2026-10-12', '2026-10-05'] },
+        { ...site(3, 'Avondale', []), due: 4, done: 3, rate: 75, missed_weeks: ['2026-09-28'] }],
+      missed: [{ ...site(2, 'Borrowdale', ['Rudo Moyo']), week_of: '2026-10-12' }, { ...site(2, 'Borrowdale', ['Rudo Moyo']), week_of: '2026-10-05' },
+        { ...site(3, 'Avondale', []), week_of: '2026-09-28' }],
+      talks: [],
+    },
+  });
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/trainings');
+  const missed = page.getByRole('region', { name: 'Missed talks' });
+  await expect(missed).toContainText('2 sites');
+  await expect(page.getByRole('region', { name: 'Still to submit' })).toHaveCount(0);
+  const cards = missed.locator('li');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first()).toContainText('Borrowdale');          // most missed weeks first
+  await expect(cards.first()).toContainText('2 missed');
+  // the sites sit next to each other, not one under the other
+  const [a, b] = await Promise.all([cards.nth(0).boundingBox(), cards.nth(1).boundingBox()]);
+  expect(Math.abs(a.y - b.y)).toBeLessThan(2);
+  expect(b.x).toBeGreaterThan(a.x);
 });

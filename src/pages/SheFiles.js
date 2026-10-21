@@ -10,6 +10,7 @@ import useNewItems from "../hooks/useNewItems";
 
 const AUDIENCES = [
   { value: "site_manager", label: "Site managers" },
+  { value: "regional_manager", label: "Regional managers" },
   { value: "she_team", label: "SHE team" },
   { value: "admin", label: "Admins" },
 ];
@@ -69,7 +70,7 @@ function ShareForm({ sites, onShared, onCancel }) {
     form.append("title", title.trim());
     if (description.trim()) form.append("description", description.trim());
     form.append("audience", audience.join(","));
-    if (siteId && audience.includes("site_manager")) form.append("site_id", siteId);
+    if (siteId && (audience.includes("site_manager") || audience.includes("regional_manager"))) form.append("site_id", siteId);
     form.append("view_only", viewOnly ? "true" : "false");
     form.append("file", file);
     setProgress(0);
@@ -114,13 +115,14 @@ function ShareForm({ sites, onShared, onCancel }) {
             </label>
           ))}
         </fieldset>
-        {audience.includes("site_manager") && (
+        {(audience.includes("site_manager") || audience.includes("regional_manager")) && (
           <div className="form-group">
-            <label className="form-label" htmlFor="sf-site">Which site managers?</label>
+            <label className="form-label" htmlFor="sf-site">Which site?</label>
             <select id="sf-site" className="form-control" value={siteId} onChange={(e) => setSiteId(e.target.value)}>
               <option value="">Every site</option>
               {sites.map((s) => <option key={s.id} value={s.id}>{s.name} only</option>)}
             </select>
+            <small className="share-hint">One site: only its site managers and its region's regional managers get it.</small>
           </div>
         )}
         <div className="share-wide share-restrict">

@@ -218,7 +218,7 @@ test.describe.serial('a working day', () => {
     const form = page.getByRole('form', { name: 'Share a file' });
     await form.getByLabel('File').setInputFiles({ name: 'spill-procedure.pdf', mimeType: 'application/pdf', buffer: makePdf('Spill procedure') });
     await form.getByLabel('Title').fill('Spill response procedure');
-    await form.getByLabel('Which site managers?').selectOption({ label: 'Msasa Depot only' });
+    await form.getByLabel('Which site?').selectOption({ label: 'Msasa Depot only' });
     await form.getByRole('checkbox', { name: /View only/ }).check();
     await form.getByRole('button', { name: 'Share file' }).click();
     await expect(page.locator('.files-row').first()).toContainText('View only');

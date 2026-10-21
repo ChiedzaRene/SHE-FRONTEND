@@ -87,7 +87,8 @@ test('the regional office acknowledges each NC; once all are assigned the report
   });
   await signIn(page, { role: 'regional_manager', region: 'Harare' });
   await expect(page).toHaveURL(/\/inspections$/);                         // the regional office lands on Inspections
-  await expect(page.locator('#app-sidebar').getByRole('link')).toHaveText(['Inspections', 'Corrective Actions', 'Settings']);
+  await expect(page.locator('#app-sidebar').getByRole('link')).toHaveText(['Dashboard', 'Inspections', 'Corrective Actions', 'Incidents',
+    'Legal', 'Talks & Training', 'SHE Files', 'Reports', 'Settings']);
   await page.goto('/inspections/5');
   await expect(page.getByRole('region', { name: 'Introduction' }).locator('b')).toHaveText('comprehensive');
   const form = page.getByRole('form', { name: 'Acknowledge 15/CBD/01' });
