@@ -1,41 +1,688 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Building2, CalendarDays, ClipboardCheck, RefreshCw, X } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { incidentsApi, sitesApi } from "../api/endpoints";
+import useNewItems, { newestFirst } from "../hooks/useNewItems";
+import NewBadge from "../components/NewBadge";
+import { X, CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
-import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
-
-const stages = ["reported", "assigned", "investigating", "causes_recorded", "closed", "report_finalised"];
-const stageLabels = { reported: "Reported", assigned: "Team assigned", investigating: "Investigation", causes_recorded: "Causes and lessons", closed: "Closed", report_finalised: "Report finalised" };
-const dateOf = (incident) => new Date(incident.occurred_at || incident.created_at || incident.date || 0);
-
-function IncidentWorkflow({ incident, siteName, canEdit, onClose, onSaved }) {
-  const initial = incident.incident_workflow || incident.workflow || {};
-  const [form, setForm] = useState({ status: incident.resolved ? "closed" : initial.status || "reported", investigation_team: initial.investigation_team || "", team_details: initial.team_details || "", evidence: initial.evidence || "", costs: initial.costs || "", causes: initial.causes || "", root_cause: initial.root_cause || "", corrective_action: initial.corrective_action || "", lessons_learned: initial.lessons_learned || "", report_type: initial.report_type || "preliminary", she_comment: initial.she_comment || "", operations_manager_comment: initial.operations_manager_comment || "" });
-  const [saving, setSaving] = useState(false); const [error, setError] = useState("");
-  const update = (name, value) => setForm((current) => ({ ...current, [name]: value }));
-  const save = async () => { setSaving(true); setError(""); try { const response = await incidentsApi.update(incident.id, { ...form, resolved: form.status === "closed" || form.status === "report_finalised", incident_workflow: form }); onSaved(response.data); } catch (err) { setError(typeof err.response?.data?.detail === "string" ? err.response.data.detail : "Could not save the investigation stage."); } finally { setSaving(false); } };
-  const text = (label, name, rows = 3) => <div className="form-group"><label className="form-label" htmlFor={`workflow-${name}`}>{label}</label><textarea id={`workflow-${name}`} className="form-control" rows={rows} value={form[name]} onChange={(event) => update(name, event.target.value)} disabled={!canEdit} /></div>;
-  const statusIndex = Math.max(0, stages.indexOf(form.status));
-  return <div className="modal-overlay"><div className="modal" style={{ maxWidth: "860px", width: "95%" }}><div className="modal-header"><div><div className="modal-title">INC-{incident.id} investigation record</div><small style={{ color: "#64748b" }}>{siteName} - {incident.type} - {dateOf(incident).toLocaleDateString()}</small></div><button onClick={onClose} className="btn-icon btn-outline" aria-label="Close"><X size={18} /></button></div><div className="modal-body">
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(90px, 1fr))", gap: "4px", marginBottom: "24px" }}>{stages.map((stage, index) => <div key={stage} style={{ padding: "10px 5px", textAlign: "center", fontSize: "11px", background: index <= statusIndex ? "#dbeafe" : "#f1f5f9", color: index <= statusIndex ? "#1d4ed8" : "#64748b", borderBottom: `3px solid ${index <= statusIndex ? "#2563eb" : "#cbd5e1"}` }}>{stageLabels[stage]}</div>)}</div>
-    <div style={{ background: "#f8fafc", padding: "14px", marginBottom: "18px" }}><strong>Reported details</strong><p style={{ margin: "8px 0 0", whiteSpace: "pre-wrap" }}>{incident.description || "No description provided."}</p></div>{error && <div style={{ color: "#b91c1c", marginBottom: "12px" }}>{error}</div>}
-    {canEdit && <div className="form-group"><label className="form-label" htmlFor="workflow-status">Workflow stage</label><select id="workflow-status" className="form-control" value={form.status} onChange={(event) => update("status", event.target.value)}>{stages.map((stage) => <option key={stage} value={stage}>{stageLabels[stage]}</option>)}</select></div>}
-    <h4>Investigation team assignment</h4>{text("Team members and job titles", "investigation_team", 2)}{text("Assignment details and date", "team_details", 2)}<h4>Investigation report</h4>{text("Evidence: documents, witness reports, pictures or sketches", "evidence", 4)}{text("Incident costs: description, damage payer and USD cost", "costs", 3)}<h4>Causes, controls and closure</h4>{text("Incident causes (up to three)", "causes", 3)}{text("Root cause", "root_cause", 2)}{text("Corrective action, owner and due date", "corrective_action", 3)}{text("Lessons learnt", "lessons_learned", 3)}<h4>Final SHE report</h4><div className="form-group"><label className="form-label" htmlFor="workflow-report-type">Report type</label><select id="workflow-report-type" className="form-control" value={form.report_type} onChange={(event) => update("report_type", event.target.value)} disabled={!canEdit}><option value="preliminary">Preliminary investigation report</option><option value="interim_corrective_action">Interim corrective action report</option><option value="full_investigation">Full investigation report</option><option value="full_corrective_action">Full corrective action report</option></select></div>{text("SHE officer comment", "she_comment", 3)}{text("Operations manager comments (required for fatal incidents)", "operations_manager_comment", 3)}
-  </div><div className="modal-footer"><button className="btn btn-outline" onClick={onClose}>Close</button>{canEdit && <button className="btn btn-primary" onClick={save} disabled={saving}>{saving ? "Saving..." : "Save stage"}</button>}</div></div></div>;
-}
+import LoadingScreen from "../components/LoadingScreen";
+import { useFeedback } from "../components/Feedback";
+import { isReadOnly } from "../utils/roles";
 
 export default function Incidents() {
-  const { user } = useAuth(); const isSiteManager = user?.role === "site_manager"; const canEdit = !isSiteManager;
-  const [incidents, setIncidents] = useState([]); const [sites, setSites] = useState([]); const [loading, setLoading] = useState(true); const [selectedSite, setSelectedSite] = useState("all"); const [range, setRange] = useState("all"); const [selected, setSelected] = useState(null); const [modalOpen, setModalOpen] = useState(false); const [intakeOpen, setIntakeOpen] = useState(false);
-  const fetchData = useCallback(async () => { setLoading(true); try { const [incidentResponse, siteResponse] = await Promise.all([incidentsApi.getAll(), sitesApi.getAll()]); setIncidents(incidentResponse.data || []); setSites(siteResponse.data || []); } finally { setLoading(false); } }, []);
-  useEffect(() => { fetchData(); }, [fetchData]); useEffect(() => { if (isSiteManager && user?.site_id) setSelectedSite(String(user.site_id)); }, [isSiteManager, user?.site_id]);
-  const filtered = useMemo(() => incidents.filter((incident) => { if (selectedSite !== "all" && String(incident.site_id) !== String(selectedSite)) return false; if (range === "all") return true; const start = new Date(); if (range === "day") start.setHours(0, 0, 0, 0); else start.setDate(start.getDate() - Number(range)); return dateOf(incident) >= start; }), [incidents, range, selectedSite]);
-  const siteName = (id) => sites.find((site) => String(site.id) === String(id))?.name || `Site ${id || ""}`;
-  const statusOf = (incident) => incident.incident_workflow?.status || incident.workflow?.status || (incident.resolved ? "closed" : "reported");
-  if (loading && !incidents.length) return <LoadingScreen message="Loading incidents..." />;
-  return <div style={{ padding: "20px" }}><div className="page-header" style={{ marginBottom: "24px" }}><div><div style={{ color: "#2563eb", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}><ClipboardCheck size={14} /> SHE incident control</div><h1 className="page-title">Incident register</h1><p className="page-subtitle">Move each report from site intake through investigation, closure and final SHE reporting.</p></div>{isSiteManager && <button className="btn btn-primary" onClick={() => setIntakeOpen(true)}>Report incident</button>}</div>
-    <div className="card" style={{ marginBottom: "24px" }}><div style={{ display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}><Building2 size={18} /><select className="form-control" style={{ maxWidth: "260px" }} value={selectedSite} onChange={(event) => setSelectedSite(event.target.value)} disabled={isSiteManager}><option value="all">All sites</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select><CalendarDays size={18} /><select className="form-control" style={{ maxWidth: "150px" }} value={range} onChange={(event) => setRange(event.target.value)}>{[["all", "All time"], ["day", "Today"], ["7", "7 days"], ["30", "30 days"], ["90", "90 days"]].map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><button className="btn btn-outline" onClick={fetchData}><RefreshCw size={15} /> Sync</button></div></div>
-    <div className="card" style={{ padding: 0, overflow: "hidden" }}><div className="table-wrap"><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr><th>ID</th><th>Site</th><th>Type</th><th>Severity</th><th>Stage</th><th>Occurred</th><th>Action</th></tr></thead><tbody>{filtered.map((incident) => <tr key={incident.id}><td>INC-{incident.id}</td><td>{siteName(incident.site_id)}</td><td>{incident.type}</td><td><span className={`badge badge-${incident.severity}`}>{incident.severity}</span></td><td>{stageLabels[statusOf(incident)] || "Reported"}</td><td>{dateOf(incident).toLocaleDateString()}</td><td><button className="btn btn-sm btn-outline" onClick={() => { setSelected(incident); setModalOpen(true); }}>Open record</button></td></tr>)}{!filtered.length && <tr><td colSpan="7" style={{ textAlign: "center", padding: "40px" }}>No incident records match the current filters.</td></tr>}</tbody></table></div></div>
-    <LogIncidentModal isOpen={intakeOpen} onClose={() => setIntakeOpen(false)} onIncidentLogged={fetchData} />{modalOpen && selected && <IncidentWorkflow incident={selected} siteName={siteName(selected.site_id)} canEdit={canEdit} onClose={() => setModalOpen(false)} onSaved={(updated) => { setIncidents((items) => items.map((item) => item.id === updated.id ? updated : item)); setSelected(updated); }} />}</div>;
+  const newIds = useNewItems("incidents");
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const isSiteManager = user?.role === "site_manager";
+  const readOnly = isReadOnly(user?.role);
+  const { notify } = useFeedback();
+
+  // --- State Management ---
+  const [incidents, setIncidents] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [selectedSite, setSelectedSite] = useState("all");
+  const [reportRange, setReportRange] = useState("all");
+
+  const [filteredIncidents, setFilteredIncidents] = useState([]);
+  const [reportSummary, setReportSummary] = useState({
+    total: 0,
+    highOrCritical: 0,
+    lowOrMedium: 0,
+    resolved: 0,
+    open: 0,
+  });
+
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
+  const [followUpPrefill, setFollowUpPrefill] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionPlan, setActionPlan] = useState("");
+  const [savingPlan, setSavingPlan] = useState(false);
+  const [planError, setPlanError] = useState("");
+
+  const reportRangeOptions = [
+    { value: "day", label: "Today" },
+    { value: "7", label: "7 Days" },
+    { value: "30", label: "30 Days" },
+    { value: "90", label: "90 Days" },
+    { value: "all", label: "All Time" },
+  ];
+
+  // --- Data Fetching ---
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [incRes, sitesRes] = await Promise.all([
+        incidentsApi.getAll(),
+        sitesApi.getAll(),
+      ]);
+      setIncidents(incRes.data || []);
+      setSites(sitesRes.data || []);
+    } catch (err) {
+      console.error("Dashboard Sync Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Lock the site filter to the site manager's own site
+  useEffect(() => {
+    if (isSiteManager && user?.site_id) {
+      setSelectedSite(String(user.site_id));
+    }
+  }, [isSiteManager, user?.site_id]);
+
+  // --- Helper: Date Parsing ---
+  const getIncidentDate = (incident) => {
+    const rawDate =
+      incident.date_time ||
+      incident.date ||
+      incident.created_at ||
+      incident.incident_date;
+    if (!rawDate) return null;
+    const parsed = new Date(rawDate);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  // --- Automatic Live Filtering ---
+  useEffect(() => {
+    let result = [...incidents];
+    const now = new Date();
+
+    // 1. Filter by Time Range
+    if (reportRange !== "all") {
+      const start = new Date(now);
+      if (reportRange === "day") {
+        start.setHours(0, 0, 0, 0);
+      } else {
+        start.setDate(now.getDate() - parseInt(reportRange, 10));
+        start.setHours(0, 0, 0, 0);
+      }
+      result = result.filter((inc) => {
+        const d = getIncidentDate(inc);
+        return d && d >= start;
+      });
+    }
+
+    // 2. Filter by Site (String conversion handles ID type mismatches)
+    if (selectedSite !== "all") {
+      result = result.filter(
+        (inc) => String(inc.site_id) === String(selectedSite),
+      );
+    }
+
+    // 3. Calculate Summary Stats
+    const summary = {
+      total: result.length,
+      highOrCritical: result.filter((inc) => {
+        const sev = (inc.severity || "").trim().toLowerCase();
+        return ["high", "critical"].includes(sev);
+      }).length,
+      lowOrMedium: result.filter((inc) => {
+        const sev = (inc.severity || "").trim().toLowerCase();
+        return ["low", "medium", "modrate"].includes(sev);
+      }).length,
+      // Incidents carry a boolean `resolved` flag (there is no status field)
+      resolved: result.filter((inc) => inc.resolved).length,
+      open: result.filter((inc) => !inc.resolved).length,
+    };
+
+    setFilteredIncidents(newestFirst(result));
+    setReportSummary(summary);
+  }, [incidents, reportRange, selectedSite]);
+
+  const siteNameOf = (siteId) =>
+    sites.find((s) => String(s.id) === String(siteId))?.name || (siteId ? `Site ${siteId}` : "—");
+
+  const openDetails = (inc) => {
+    setSelectedIncident(inc);
+    setActionPlan(inc.action_plan || "");
+    setPlanError("");
+    setIsModalOpen(true);
+  };
+
+  // The description is the fixed record of what happened; what is being done about it goes in the action plan
+  const saveActionPlan = async () => {
+    setSavingPlan(true);
+    setPlanError("");
+    try {
+      const res = await incidentsApi.update(selectedIncident.id, { action_plan: actionPlan });
+      setIncidents((all) => all.map((i) => (i.id === res.data.id ? res.data : i)));
+      setSelectedIncident(res.data);
+      setActionPlan(res.data.action_plan || "");
+      notify("Action plan saved");
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setPlanError(typeof detail === "string" ? detail : "Could not save the action plan.");
+    } finally {
+      setSavingPlan(false);
+    }
+  };
+
+  // --- Navigate to Corrective Actions page, prefilled from this incident ---
+  const handleTakeAction = (incident) => {
+    setIsModalOpen(false);
+    navigate("/corrective-actions", {
+      state: {
+        fromIncident: true,
+        site_id: incident.site_id,
+        type: incident.type,
+        description: incident.description,
+      },
+    });
+  };
+
+  if (loading && incidents.length === 0) {
+    return (
+      <LoadingScreen message="Loading incidents..." />
+    );
+  }
+
+  return (
+    <div style={{ padding: "20px" }}>
+      <div className="page-header" style={{ marginBottom: "24px" }}>
+        <h1 className="page-title">Incidents Register</h1>
+      </div>
+
+      {/* --- Filter & Report Panel --- */}
+      <div
+        className="card incident-report-panel"
+        style={{ marginBottom: "32px" }}
+      >
+        <div
+          className="incident-report-header"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "20px",
+          }}
+        >
+          <div style={{ flex: "1 1 300px" }}>
+            <h3 style={{ margin: "0 0 8px 0" }}>SHE Oversight Summary</h3>
+            <p
+              className="incident-report-subtitle"
+              style={{ color: "#64748b", fontSize: "0.9rem" }}
+            >
+              Real-time monitoring across all fuel stations and depots.
+            </p>
+
+            {/* Station Selector */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginTop: "16px",
+              }}
+            >
+              <Building2 size={18} color="#6366f1" />
+              {isSiteManager ? (
+                <input
+                  type="text"
+                  value={
+                    sites.find((s) => String(s.id) === String(selectedSite))
+                      ?.name || "Your Site"
+                  }
+                  disabled
+                  readOnly
+                  style={{
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    minWidth: "220px",
+                    background: "#f1f5f9",
+                    color: "#64748b",
+                    cursor: "not-allowed",
+                  }}
+                />
+              ) : (
+                <select
+                  className="form-select"
+                  value={selectedSite}
+                  onChange={(e) => setSelectedSite(e.target.value)}
+                  style={{
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: "1px solid #e2e8f0",
+                    minWidth: "220px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="all">National (All Stations)</option>
+                  {sites.map((site) => (
+                    <option key={site.id} value={site.id}>
+                      {site.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          </div>
+
+          <button
+            className="btn btn-outline"
+            onClick={fetchData}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              height: "fit-content",
+            }}
+          >
+            <RefreshCw size={16} /> Sync Data
+          </button>
+        </div>
+
+        {/* Time Range Selector */}
+        <div
+          className="incident-range-toolbar"
+          style={{
+            marginTop: "24px",
+            borderTop: "1px solid #f1f5f9",
+            paddingTop: "20px",
+          }}
+        >
+          <div
+            className="incident-range-label"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              marginBottom: "12px",
+              fontWeight: "700",
+              fontSize: "0.85rem",
+            }}
+          >
+            <CalendarDays size={16} /> TIME RANGE
+          </div>
+          <div
+            className="incident-range-chips"
+            style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}
+          >
+            {reportRangeOptions.map((option) => (
+              <button
+                key={option.value}
+                className={`incident-range-chip ${reportRange === option.value ? "active" : ""}`}
+                onClick={() => setReportRange(option.value)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: "20px",
+                  border: "1px solid #e2e8f0",
+                  background:
+                    reportRange === option.value ? "#6366f1" : "white",
+                  color: reportRange === option.value ? "white" : "#64748b",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  transition: "all 0.2s",
+                }}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="incident-report-results" style={{ marginTop: "24px" }}>
+          <div
+            className="incident-report-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "16px",
+            }}
+          >
+            <div
+              className="incident-report-stat"
+              style={{
+                padding: "16px",
+                background: "#f8fafc",
+                borderRadius: "12px",
+                textAlign: "center",
+              }}
+            >
+              <div
+                className="incident-report-stat-label"
+                style={{
+                  color: "#64748b",
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  fontWeight: "800",
+                }}
+              >
+                Total
+              </div>
+              <div
+                className="incident-report-stat-value"
+                style={{ fontSize: "1.5rem", fontWeight: "900" }}
+              >
+                {reportSummary.total}
+              </div>
+            </div>
+            <div
+              className="incident-report-stat high-risk"
+              style={{
+                padding: "16px",
+                background: "#fef2f2",
+                borderRadius: "12px",
+                textAlign: "center",
+                color: "#dc2626",
+              }}
+            >
+              <div
+                className="incident-report-stat-label"
+                style={{
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  fontWeight: "800",
+                }}
+              >
+                High/Critical
+              </div>
+              <div
+                className="incident-report-stat-value"
+                style={{ fontSize: "1.5rem", fontWeight: "900" }}
+              >
+                {reportSummary.highOrCritical}
+              </div>
+            </div>
+            <div
+              className="incident-report-stat low-medium"
+              style={{
+                padding: "16px",
+                background: "#fffbeb",
+                borderRadius: "12px",
+                textAlign: "center",
+                color: "#d97706",
+              }}
+            >
+              <div
+                className="incident-report-stat-label"
+                style={{
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  fontWeight: "800",
+                }}
+              >
+                Low/Medium
+              </div>
+              <div
+                className="incident-report-stat-value"
+                style={{ fontSize: "1.5rem", fontWeight: "900" }}
+              >
+                {reportSummary.lowOrMedium}
+              </div>
+            </div>
+            <div
+              className="incident-report-stat resolved"
+              style={{
+                padding: "16px",
+                background: "#f0fdf4",
+                borderRadius: "12px",
+                textAlign: "center",
+                color: "#16a34a",
+              }}
+            >
+              <div
+                className="incident-report-stat-label"
+                style={{
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  fontWeight: "800",
+                }}
+              >
+                Resolved
+              </div>
+              <div
+                className="incident-report-stat-value"
+                style={{ fontSize: "1.5rem", fontWeight: "900" }}
+              >
+                {reportSummary.resolved}
+              </div>
+            </div>
+            <div
+              className="incident-report-stat open"
+              style={{
+                padding: "16px",
+                background: "#f1f5f9",
+                borderRadius: "12px",
+                textAlign: "center",
+                color: "#475569",
+              }}
+            >
+              <div
+                className="incident-report-stat-label"
+                style={{
+                  fontSize: "0.75rem",
+                  textTransform: "uppercase",
+                  fontWeight: "800",
+                }}
+              >
+                Open
+              </div>
+              <div
+                className="incident-report-stat-value"
+                style={{ fontSize: "1.5rem", fontWeight: "900" }}
+              >
+                {reportSummary.open}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* --- Data Table --- */}
+      <div className="card" style={{ padding: "0", overflow: "hidden" }}>
+        <div className="table-wrap">
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr
+                style={{
+                  background: "#f8fafc",
+                  borderBottom: "1px solid #e2e8f0",
+                }}
+              >
+                <th style={{ textAlign: "left", padding: "16px" }}>ID</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Site</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Type</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Severity</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Date</th>
+                <th style={{ textAlign: "center", padding: "16px" }}>
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredIncidents.map((inc) => (
+                <tr key={inc.id} className={newIds.has(inc.id) ? "row-new" : undefined} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "16px", fontWeight: "600" }}>
+                    INC-{inc.id}
+                    {newIds.has(inc.id) && <NewBadge />}
+                  </td>
+                  <td style={{ padding: "16px" }}>{siteNameOf(inc.site_id)}</td>
+                  <td style={{ padding: "16px" }}>{inc.type}</td>
+                  <td style={{ padding: "16px" }}>
+                    <span
+                      className={`badge badge-${inc.severity?.toLowerCase()}`}
+                    >
+                      {inc.severity}
+                    </span>
+                  </td>
+                  <td style={{ padding: "16px" }}>
+                    {getIncidentDate(inc)?.toLocaleDateString(undefined, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    }) || "N/A"}
+                  </td>
+                  <td style={{ padding: "16px", textAlign: "center" }}>
+                    <button
+                      className="btn btn-sm btn-outline"
+                      onClick={() => openDetails(inc)}
+                    >
+                      Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredIncidents.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="6"
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: "#94a3b8",
+                    }}
+                  >
+                    No incident records match the current filters.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* --- Details Modal --- */}
+      {isModalOpen && selectedIncident && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            className="modal"
+            style={{
+              background: "white",
+              padding: "24px",
+              borderRadius: "16px",
+              maxWidth: "500px",
+              width: "90%",
+            }}
+          >
+            <div
+              className="modal-header"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginBottom: "16px",
+              }}
+            >
+              <h2 style={{ margin: 0 }}>Incident Details</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: "16px" }}>
+                <strong>Site:</strong> {siteNameOf(selectedIncident.site_id)}
+              </div>
+              <div style={{ marginBottom: "16px" }}>
+                <strong>Type:</strong> {selectedIncident.type}
+              </div>
+              {selectedIncident.injured_person && (
+                <div style={{ marginBottom: "16px" }}>
+                  <strong>Injured person:</strong> {selectedIncident.injured_person}
+                </div>
+              )}
+              <div style={{ marginBottom: "16px" }}>
+                <strong>Description</strong>{" "}
+                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>(fixed once logged)</span>
+                <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
+                  {selectedIncident.description || "No description provided."}
+                </p>
+              </div>
+              <div style={{ marginBottom: "8px" }}>
+                <label className="form-label" htmlFor="incident-action-plan"><strong>Action plan</strong></label>
+                {readOnly ? (
+                  <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
+                    {selectedIncident.action_plan || "No action plan yet."}
+                  </p>
+                ) : (
+                  <>
+                    <textarea
+                      id="incident-action-plan"
+                      className="form-control"
+                      rows={4}
+                      maxLength={5000}
+                      placeholder="What is being done about this incident, by whom and by when"
+                      value={actionPlan}
+                      onChange={(e) => setActionPlan(e.target.value)}
+                    />
+                    {planError && <div role="alert" style={{ color: "#991B1B", marginTop: 6 }}>{planError}</div>}
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      style={{ marginTop: 8 }}
+                      disabled={savingPlan || actionPlan.trim() === (selectedIncident.action_plan || "").trim()}
+                      onClick={saveActionPlan}
+                    >
+                      {savingPlan ? "Saving..." : "Save action plan"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            <div
+              className="modal-footer"
+              style={{ display: "flex", gap: "12px", marginTop: "24px" }}
+            >
+              {!readOnly && (
+                <button
+                  className="btn btn-primary"
+                  style={{ flex: 1 }}
+                  onClick={() => handleTakeAction(selectedIncident)}
+                >
+                  Take Action
+                </button>
+              )}
+              <button
+                className="btn btn-outline"
+                style={{ flex: 1 }}
+                onClick={() => setIsModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- Follow-Up Incident Modal --- */}
+      <LogIncidentModal
+        isOpen={isFollowUpOpen}
+        onClose={() => {
+          setIsFollowUpOpen(false);
+          setFollowUpPrefill(null);
+        }}
+        onIncidentLogged={() => {
+          setIsFollowUpOpen(false);
+          setFollowUpPrefill(null);
+          fetchData();
+        }}
+        prefill={followUpPrefill}
+      />
+    </div>
+  );
 }
