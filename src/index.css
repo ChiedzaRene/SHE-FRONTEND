@@ -64,11 +64,6 @@ input, select, textarea {
 .app-layout {
   display: flex;
   height: 100vh;
-<<<<<<< HEAD
-  overflow: hidden;
-}
-
-=======
   height: 100dvh; /* the visible height on phones, where the address bar comes and goes */
   overflow: hidden;
 }
@@ -76,8 +71,6 @@ input, select, textarea {
 /* The menu bar and backdrop only exist on small screens (see RESPONSIVE below) */
 .mobile-topbar,
 .sidebar-backdrop { display: none; }
-
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 .main-content {
   flex: 1;
   overflow-y: auto;
@@ -1095,10 +1088,6 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 /* ─── RESPONSIVE ─────────────────────────── */
 @media (max-width: 900px) {
   .two-col { grid-template-columns: 1fr; }
-<<<<<<< HEAD
-  .main-content { padding: 20px 16px; }
-  .sidebar { width: 200px; min-width: 200px; }
-=======
   .main-content { padding: 20px 16px; min-height: 0; }
 
   /* Phones and tablets: a top bar with a menu button, and the sidebar slides in over the page */
@@ -1177,13 +1166,11 @@ textarea.form-control { resize: vertical; min-height: 100px; }
 
 @media (prefers-reduced-motion: reduce) {
   .sidebar, .nav-open .sidebar, .sidebar-backdrop { transition: none; }
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 }
 
 @media (max-width: 640px) {
   .kpi-grid { grid-template-columns: 1fr 1fr; }
   .quick-actions { grid-template-columns: 1fr; }
-<<<<<<< HEAD
   .legal-compliance-header {
     align-items: flex-start !important;
     text-align: left !important;
@@ -1192,8 +1179,6 @@ textarea.form-control { resize: vertical; min-height: 100px; }
   .legal-compliance-header > div:first-child {
     justify-content: flex-start !important;
   }
-}
-=======
 }
 
 /* ─── TOASTS & CONFIRM DIALOG ─────────────── */
@@ -1892,4 +1877,3 @@ tr.tt-row-missed td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
 .ca-recent { border: 1.5px solid #f59e0b; background: #fffbeb; color: #92400E; font-weight: 800; font-size: 0.82rem;
   border-radius: 999px; padding: 6px 14px; cursor: pointer; white-space: nowrap; }
 .ca-recent[aria-pressed="true"] { background: #f59e0b; color: #fff; }
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9

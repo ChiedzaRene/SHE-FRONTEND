@@ -1,5 +1,4 @@
 import api from "./axios";
-<<<<<<< HEAD
 
 const requestWithFallback = async (method, paths, configOrData) => {
   let lastError;
@@ -19,9 +18,6 @@ const requestWithFallback = async (method, paths, configOrData) => {
 
   throw lastError;
 };
-=======
-import { saveBlobResponse } from "../utils/download";
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 
 export const authApi = {
   login: (email, password) => {
@@ -35,95 +31,20 @@ export const authApi = {
   register: (data) => api.post("/auth/register", data),
 };
 
-<<<<<<< HEAD
 export const sitesApi = {
   getAll: () => api.get("/sites/"),
   getOne: (id) => api.get(`/sites/${id}`),
   create: (data) => api.post("/sites/", data),
   update: (id, data) => api.put(`/sites/${id}`, data),
-=======
-// Nearly every page loads the sites list. Share one in-flight/recent request between
-// them instead of refetching on each navigation. Cleared on any site change and on logout.
-const SITES_TTL_MS = 60 * 1000;
-let sitesCache = null; // { at: number, promise: Promise }
-
-export const clearSitesCache = () => {
-  sitesCache = null;
-};
-
-const invalidateSites = (res) => {
-  clearSitesCache();
-  return res;
-};
-
-export const sitesApi = {
-  getAll: () => {
-    if (sitesCache && Date.now() - sitesCache.at < SITES_TTL_MS) {
-      return sitesCache.promise;
-    }
-    const promise = api.get("/sites/").catch((err) => {
-      clearSitesCache(); // never cache a failure
-      throw err;
-    });
-    sitesCache = { at: Date.now(), promise };
-    return promise;
-  },
-  getOne: (id) => api.get(`/sites/${id}`),
-  create: (data) => api.post("/sites/", data).then(invalidateSites),
-  update: (id, data) => api.put(`/sites/${id}`, data).then(invalidateSites),
-  delete: (id) => api.delete(`/sites/${id}`).then(invalidateSites),
-  // { regions: [{ name, sites, managers: [names], current }], unallocated }
-  regions: () => api.get("/sites/regions"),
-  setRegion: (id, region) => api.put(`/sites/${id}/region`, { region }).then(invalidateSites),
-};
-
-const summarise = (incidents) => {
-  const byType = {};
-  const bySite = {};
-  let open = 0;
-  incidents.forEach((i) => {
-    const type = i.type || "Other";
-    byType[type] = (byType[type] || 0) + 1;
-    if (i.site_id != null) bySite[i.site_id] = (bySite[i.site_id] || 0) + 1;
-    if (!i.resolved) open += 1;
-  });
-  return {
-    total: incidents.length,
-    open,
-    by_type: Object.entries(byType).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value),
-    by_site: Object.entries(bySite).map(([site_id, value]) => ({ site_id: Number(site_id), value })),
-  };
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 };
 
 export const incidentsApi = {
   getAll: () => api.get("/incidents/"),
-<<<<<<< HEAD
   getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),
   getMetrics: (siteId) => api.get(`/incidents/metrics/${siteId}`),
   getGlobalMetrics: () => api.get("/incidents/metrics/global"),
-=======
-  // Totals for the dashboards: { total, open, by_type: [{ name, value }], by_site: [{ site_id, value }] }.
-  // An older server without /incidents/summary gets the same numbers worked out from the incident list.
-  getSummary: () =>
-    api.get("/incidents/summary").catch((err) => {
-      // an older server reads "summary" as an incident number (422) or has no such route (404)
-      if (!err.response || ![404, 405, 422].includes(err.response.status)) throw err;
-      return api.get("/incidents/").then((res) => ({ data: summarise(res.data || []) }));
-    }),
-  getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
-  create: (data) => api.post("/incidents/", data),
-  update: (id, data) => api.put(`/incidents/${id}`, data),
-  // period: "12m" (rolling 12 months, default) or "ytd"
-  getMetrics: (siteId, period = "12m") =>
-    api.get(`/incidents/metrics/${siteId}`, { params: { period } }),
-  getGlobalMetrics: (period = "12m") =>
-    api.get("/incidents/metrics/global", { params: { period } }),
-  getMetricsBySite: (period = "12m") =>
-    api.get("/incidents/metrics/by-site", { params: { period } }),
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 };
 
 export const actionsApi = {
@@ -142,7 +63,6 @@ export const auditsApi = {
   update: (id, data) => api.put(`/audits/${id}`, data),
 };
 
-<<<<<<< HEAD
 export const legalApi = {
   getAll: () => api.get("/legal/"),
   getOne: (id) => api.get(`/legal/${id}`),
@@ -150,14 +70,11 @@ export const legalApi = {
   update: (id, data) => api.put(`/legal/${id}`, data),
 };
 
-=======
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 export const trainingsApi = {
   getAll: () => api.get("/trainings/"),
   getOne: (id) => api.get(`/trainings/${id}`),
   create: (data) => api.post("/trainings/", data),
   update: (id, data) => api.put(`/trainings/${id}`, data),
-<<<<<<< HEAD
 };
 
 export const inspectionsApi = {
@@ -222,178 +139,4 @@ export const scorecardApi = {
       `/legal-scorecard/${id}`,
       `/scorecard/${id}`,
     ]),
-=======
-  // SHE team / admins: a training they gave, with its supporting document.
-  // form: FormData with site_id, date, training_module, trainer_name, personnel, trained_employees, type, comments, file
-  record: (form, onUploadProgress) => api.post("/trainings/record", form, { onUploadProgress }),
-  viewDocument: (id) => api.get(`/trainings/${id}/document/view`, { responseType: "blob" }),
-  downloadDocument: async (id, filename) => {
-    const res = await api.get(`/trainings/${id}/document`, { responseType: "blob" });
-    saveBlobResponse(res, filename);
-  },
-};
-
-// Weekly toolbox talks: site managers submit Monday or Tuesday; the SHE team tracks every site
-export const safetyTalksApi = {
-  current: () => api.get("/safety-talks/current"),
-  // form: FormData with title, attendees, notes, file
-  submit: (form, onUploadProgress) => api.post("/safety-talks/", form, { onUploadProgress }),
-  // params: { period, site_id, region }
-  overview: (params = {}) => api.get("/safety-talks/overview", { params }),
-  view: (id) => api.get(`/safety-talks/${id}/view`, { responseType: "blob" }),
-  download: async (id, filename) => {
-    const res = await api.get(`/safety-talks/${id}/download`, { responseType: "blob" });
-    saveBlobResponse(res, filename);
-  },
-};
-
-export const usersApi = {
-  // GET /users (List)
-  getAll: () => api.get("/users"),
-
-  // GET /users/{id} (Single)
-  getOne: (id) => api.get(`/users/${id}`),
-
-  // POST /users (Create) - REMOVED the trailing slash here
-  create: (data) => api.post("/users", data),
-
-  // PUT /users/{id} (Update)
-  update: (id, data) => api.put(`/users/${id}`, data),
-
-  // DELETE /users/{id} (Delete)
-  delete: (id) => api.delete(`/users/${id}`),
-};
-
-// Monthly hours worked and headcount per site: the denominator for LTIFR.
-// Entered by the site's manager (admins can correct them); read-only for the SHE team.
-export const siteHoursApi = {
-  list: (params = {}) => api.get("/site-hours/", { params }),
-  // data: { site_id, month: "YYYY-MM", hours_worked, workers }
-  save: (data) => api.put("/site-hours/", data),
-};
-
-// SHE files: documents the SHE team or admins share with other roles. A view-only file opens in the app
-// (view) but its download is refused by the server for everyone except the person who shared it.
-export const sheFilesApi = {
-  list: () => api.get("/she-files/"),
-  // form: FormData with title, description, audience ("site_manager,she_team,admin"), site_id, view_only, file
-  upload: (form, onUploadProgress) => api.post("/she-files/", form, { onUploadProgress }),
-  view: (id) => api.get(`/she-files/${id}/view`, { responseType: "blob" }),
-  download: async (id, filename) => {
-    const res = await api.get(`/she-files/${id}/download`, { responseType: "blob" });
-    saveBlobResponse(res, filename);
-  },
-  delete: (id) => api.delete(`/she-files/${id}`),
-};
-
-// Inspection reports and their non-conformities (NCs).
-// SHE team: create/update/addNc/updateNc/deleteNc/addPhoto/deletePhoto/submit/review
-// Regional office: acknowledge (recommendation, assigned_to, due_date). Responsible person: complete.
-export const inspectionsApi = {
-  list: (params = {}) => api.get("/site-inspections/", { params }),
-  myNcs: () => api.get("/site-inspections/my-ncs"),
-  get: (id) => api.get(`/site-inspections/${id}`),
-  create: (data) => api.post("/site-inspections/", data),
-  update: (id, data) => api.put(`/site-inspections/${id}`, data),
-  remove: (id) => api.delete(`/site-inspections/${id}`),
-  submit: (id) => api.post(`/site-inspections/${id}/submit`),
-  assignees: (id) => api.get(`/site-inspections/${id}/assignees`),
-  addNc: (id, data) => api.post(`/site-inspections/${id}/ncs`, data),
-  updateNc: (ncId, data) => api.put(`/site-inspections/ncs/${ncId}`, data),
-  deleteNc: (ncId) => api.delete(`/site-inspections/ncs/${ncId}`),
-  addPhoto: (ncId, file) => {
-    const form = new FormData();
-    form.append("file", file);
-    return api.post(`/site-inspections/ncs/${ncId}/photos`, form);
-  },
-  // proof of the inspection itself (photo, PDF or document)
-  addReportFile: (id, file) => {
-    const form = new FormData();
-    form.append("file", file);
-    return api.post(`/site-inspections/${id}/attachments`, form);
-  },
-  deletePhoto: (photoId) => api.delete(`/site-inspections/photos/${photoId}`),
-  photo: (photoId) => api.get(`/site-inspections/photos/${photoId}`, { responseType: "blob" }),
-  downloadFile: async (photoId, filename) => {
-    const res = await api.get(`/site-inspections/photos/${photoId}`, { params: { download: true }, responseType: "blob" });
-    saveBlobResponse(res, filename);
-  },
-  acknowledge: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/acknowledge`, data),
-  // files: photos, PDFs or documents proving the corrective action was done (up to 5)
-  complete: (ncId, notes, files = []) => {
-    const form = new FormData();
-    form.append("notes", notes);
-    files.forEach((f) => form.append("files", f));
-    return api.post(`/site-inspections/ncs/${ncId}/complete`, form);
-  },
-  review: (ncId, data) => api.post(`/site-inspections/ncs/${ncId}/review`, data), // { outcome: "closed" | "open", comment }
-};
-
-// Site licences: the register of each site's licences and their due dates.
-// record(form): FormData with site_id, licence_type, expiry_date, issue_date, licence_number, amount, notes, file
-export const licencesApi = {
-  register: (params = {}) => api.get("/licences/", { params }),
-  record: (form) => api.post("/licences/", form),
-  correct: (id, form) => api.put(`/licences/${id}`, form),
-  remove: (id) => api.delete(`/licences/${id}`),
-  document: (id) => api.get(`/licences/${id}/document`, { responseType: "blob" }),
-  downloadDocument: async (id, filename) => {
-    const res = await api.get(`/licences/${id}/document`, { params: { download: true }, responseType: "blob" });
-    saveBlobResponse(res, filename);
-  },
-};
-
-// Everything a dashboard shows for a period and one site (or all), with the previous period to compare.
-// params: { period: "month" | "last_month" | "quarter" | "last_quarter" | "3m" | "6m" | "ytd" | "12m", site_id, region }
-export const dashboardApi = {
-  summary: (params = {}) => api.get("/dashboard/summary", { params }),
-};
-
-// Reports: one structured document per kind, as JSON for the screen or a CSV/PDF download.
-// kind: "performance" | "compliance" | "incidents" | "leaderboard"
-export const reportsApi = {
-  get: (kind, params = {}) => api.get(`/reports/${kind}`, { params }),
-
-  // Fetches the file with the auth header and hands it to the browser as a download
-  download: async (kind, params, format) => {
-    const res = await api.get(`/reports/${kind}`, {
-      params: { ...params, format },
-      responseType: "blob",
-    });
-    saveBlobResponse(res, `she-${kind}.${format}`);
-  },
-};
-
-// Settings: the signed-in user's own account, the LTIFR limit, and the audit log
-export const accountApi = {
-  me: () => api.get("/users/me"),
-  updateMe: (data) => api.patch("/users/me", data), // { full_name }
-  changePassword: (data) => api.post("/auth/change-password", data), // { current_password, new_password }
-};
-
-export const settingsApi = {
-  getTargets: () => api.get("/settings/safety-targets"),
-  saveTargets: (data) => api.put("/settings/safety-targets", data), // { ltifr_limit }
-};
-
-export const auditApi = {
-  // params: { email, action, resource, start, end, limit, offset }; total is in the X-Total-Count header
-  list: (params = {}) => api.get("/audit-logs/", { params }),
-  facets: () => api.get("/audit-logs/facets"),
-  // One person's trail at a glance: totals, first/last activity, last sign-in, what they did
-  person: (email) => api.get("/audit-logs/person", { params: { email } }),
-};
-
-// Notifications for the signed-in person (newest first) and marking them read.
-// markRead body: { ids: [..] } | { resource: "incidents" } | { all: true }
-export const notificationsApi = {
-  list: (params = {}) => api.get("/notifications/", { params }),
-  markRead: (body) => api.post("/notifications/read", body),
-  markUnread: (body) => api.post("/notifications/unread", body),
-};
-
-// Active staff (name + email), for choosing who a corrective action is assigned to
-export const staffApi = {
-  directory: () => api.get("/users/directory"),
->>>>>>> 5efc5de2c5b042e318673e7ef2a45614b01d5ba9
 };
