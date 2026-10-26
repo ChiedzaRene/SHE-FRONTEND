@@ -91,7 +91,7 @@ test('a corrective action takes the deadline that is chosen, not a fixed 30 days
   expect([chosen.getFullYear(), chosen.getMonth() + 1, chosen.getDate()]).toEqual([2027, 1, 15]);
 });
 
-test("the site's report gives the description and then the evidence, with no causes yet", async ({ page }) => {
+test("the site's report: who reported, the person involved, the description, the causes and the evidence", async ({ page }) => {
   let created = null;
   const uploads = [];
   await mockApi(page, {
@@ -110,7 +110,14 @@ test("the site's report gives the description and then the evidence, with no cau
   await page.getByRole('button', { name: 'Log Incident' }).click();
   const form = page.locator('.modal');
   await expect(form.getByLabel('Site', { exact: true })).toHaveValue('Msasa Depot');
-  await expect(form.getByLabel(/^Cause/)).toHaveCount(0);            // the investigation finds the causes
+  await expect(form.getByLabel(/Action plan/)).toHaveCount(0);       // the plan comes with the corrective actions
+  // the description comes after who reported it and the person involved, as on the paper form
+  const order = await form.locator('label').evaluateAll((ls) => ls.map((l) => l.textContent.trim()));
+  const at = (text) => order.findIndex((t) => (text instanceof RegExp ? text.test(t) : t.startsWith(text)));
+  expect(at('Name of reporter')).toBeLessThan(at(/^Name of (injured person|person involved)/));
+  expect(at('Years of service')).toBeLessThan(at('Description'));
+  expect(at('Description')).toBeLessThan(at('Incident Type'));
+  expect(at('Description')).toBeLessThan(at('Cause 1'));
   await form.getByLabel('Incident Type').selectOption({ label: 'Spill' });
   await form.getByLabel('Description').fill('Diesel overflowed during a tanker delivery at pump 3');
   await form.getByLabel('Name of person involved').fill('Farai Moyo');
@@ -124,6 +131,8 @@ test("the site's report gives the description and then the evidence, with no cau
   await form.getByLabel('Other category').fill('Tanker overfill');
   await form.getByLabel('First aid case').check();
   await form.getByLabel('Impact within site boundaries').check();
+  await form.getByLabel('Cause 1', { exact: true }).fill('Delivery not watched');
+  await form.getByLabel('Cause 2', { exact: true }).fill('Hose left in the tank');
   await form.getByLabel('Evidence notes').fill('Photos of the forecourt');
   await form.getByLabel(/Evidence files/).setInputFiles({ name: 'pump3.png', mimeType: 'image/png', buffer: Buffer.from('png') });
   await form.getByRole('button', { name: 'Add cost' }).click();
@@ -143,12 +152,15 @@ test("the site's report gives the description and then the evidence, with no cau
     reporter_name: 'Tendai Chikore', department: 'Retail', employee_or_contractor: 'contractor', years_of_service: '3',
     location: 'Pump 3 forecourt', categories: ['oil_fuel_spillage', 'other'], other_category: 'Tanker overfill',
     injury_outcome: 'first_aid', environmental_impact: 'within_site', evidence: 'Photos of the forecourt',
+    site_causes: ['Delivery not watched', 'Hose left in the tank'],
     cost_items: [
       { description: 'Absorbent and clean-up', damage_payer: 'Transporter', cost_usd: 250.5 },
       { description: '', damage_payer: '', cost_usd: 100 },
     ],
   });
+  expect(created.action_plan).toBeUndefined();
   await expect(form).toHaveCount(0);
+  await expect(page.getByText('Incident logged and sent to the SHE team')).toBeVisible();
 });
 
 // An incident whose record changes as the (simulated) server accepts each step
@@ -186,7 +198,7 @@ test('a SHE officer picks the investigation team from the people with accounts',
   await expect(page).toHaveURL(/\/she-dashboard$/);
   await expect(page.locator('#app-sidebar').getByRole('link', { name: 'Sites' })).toBeVisible();
   const record = await openRecord(page);
-  await expect(record.getByRole('region', { name: 'Investigation and causes' })).toContainText('Opens once the SHE team assigns');
+  await expect(record.getByRole('region', { name: 'Investigation findings' })).toContainText('Opens once the SHE team assigns');
   await record.getByLabel('Team member 1', { exact: true }).selectOption({ label: 'Rudo Officer (SHE Officer)' });
   await expect(record.getByLabel('Team member 1 job title')).toHaveValue('SHE Officer');
   await record.getByRole('button', { name: 'Add team member' }).click();
@@ -201,7 +213,7 @@ test('a SHE officer picks the investigation team from the people with accounts',
   await expect(record.getByRole('button', { name: 'Start investigation' })).toBeVisible();
 });
 
-test('a team member from another site logs the evidence and causes, and nothing else', async ({ page }) => {
+test('a team member from another site logs the findings, and nothing else', async ({ page }) => {
   const state = await investigation(page, {
     incident_workflow: { status: 'investigating', team_members: [{ user_id: 52, name: 'Peter Two', job_title: 'Depot manager' }] },
   });
@@ -210,18 +222,32 @@ test('a team member from another site logs the evidence and causes, and nothing 
   await expect(record.getByText('You are on the investigation team')).toBeVisible();
   await expect(record.getByRole('cell', { name: 'Peter Two' })).toBeVisible();          // the team, read only
   await expect(record.getByRole('button', { name: 'Assign investigation team' })).toHaveCount(0);
-  await record.getByLabel('Investigation evidence and findings').fill('Statements from two attendants');
-  await record.getByLabel('Suggestions for cause 1').selectOption('Failure to follow procedure');
-  await record.getByLabel('Cause 2', { exact: true }).fill('Tanker driver left the hose');
-  await record.getByLabel('Root cause suggestions').selectOption('Inadequate training');
-  await record.getByRole('button', { name: 'Record the causes' }).click();
-  await expect(record.getByRole('status')).toHaveText(/Causes recorded/);
+  await record.getByRole('textbox', { name: 'Investigation findings' }).fill('Statements from two attendants: the hose was left unattended');
+  await record.getByRole('button', { name: 'Send findings to the SHE team' }).click();
+  await expect(record.getByRole('status')).toHaveText(/Findings sent to the SHE team/);
   expect(state.sent[0]).toEqual({ incident_workflow: {
-    evidence: 'Statements from two attendants', causes: ['Failure to follow procedure', 'Tanker driver left the hose'],
-    root_cause: 'Inadequate training', status: 'causes_recorded' } });
-  // corrective actions are for the SHE team
-  await expect(record.getByRole('region', { name: 'Corrective actions' })).toContainText('No corrective actions assigned yet');
-  await expect(record.getByRole('button', { name: 'Assign a corrective action' })).toHaveCount(0);
+    evidence: 'Statements from two attendants: the hose was left unattended', status: 'findings_recorded' } });
+  // the root cause and the corrective actions are for the SHE team
+  await expect(record.getByRole('textbox', { name: 'Root cause', exact: true })).toBeDisabled();
+  await expect(record.getByRole('button', { name: 'Record the root cause' })).toHaveCount(0);
+});
+
+test('the SHE team records the root cause, starting from the causes the site reported', async ({ page }) => {
+  const state = await investigation(page, {
+    incident_intake: { site_causes: ['Delivery not watched'] },
+    incident_workflow: { status: 'findings_recorded', evidence: 'Statements' },
+  });
+  await signIn(page, { role: 'she_officer' });
+  const record = await openRecord(page);
+  await expect(record.getByRole('region', { name: 'Corrective actions' })).toContainText('Opens once the SHE team records the root cause');
+  await expect(record.getByLabel('Cause 1', { exact: true })).toHaveValue('Delivery not watched');
+  await record.getByLabel('Suggestions for cause 2').selectOption('Failure to follow procedure');
+  await record.getByLabel('Root cause suggestions').selectOption('Inadequate training');
+  await record.getByRole('button', { name: 'Record the root cause' }).click();
+  await expect(record.getByRole('status')).toHaveText(/Root cause recorded/);
+  expect(state.sent[0]).toEqual({ incident_workflow: {
+    causes: ['Delivery not watched', 'Failure to follow procedure'], root_cause: 'Inadequate training', status: 'root_cause_recorded' } });
+  await expect(record.getByRole('button', { name: 'Assign a corrective action' })).toBeVisible();
 });
 
 test('the SHE team assigns corrective actions with the hierarchy of control; the description stays fixed', async ({ page }) => {
@@ -229,7 +255,7 @@ test('the SHE team assigns corrective actions with the hierarchy of control; the
   const ca = { id: 30, incident_id: 7, site_id: 2, action_taken: 'Fit an overfill alarm on pump 3', assigned_to: 'Peter Two',
     control: 'redesign', due_date: '2026-11-15T21:59:00Z', status: 'open', is_successful: null };
   const state = await investigation(page, {
-    incident_workflow: { status: 'causes_recorded', causes: ['Failure to follow procedure'], root_cause: 'Inadequate training' },
+    incident_workflow: { status: 'root_cause_recorded', causes: ['Failure to follow procedure'], root_cause: 'Inadequate training' },
   }, {
     'GET /corrective-actions/incident/7': (route) => route.fulfill(json(200, posted ? [ca] : [])),
     'POST /corrective-actions': (route, req) => { posted = req.postDataJSON(); return route.fulfill(json(200, ca)); },
@@ -252,11 +278,17 @@ test('the SHE team assigns corrective actions with the hierarchy of control; the
   await record.getByRole('button', { name: 'Corrective actions all assigned' }).click();
   await expect(record.getByRole('status')).toHaveText(/Actions assigned/);
   expect(state.sent[0]).toEqual({ incident_workflow: { status: 'actions_assigned' } });
-  await expect(record.getByRole('button', { name: 'Close the investigation' })).toBeVisible();
+  // closing waits for the corrective actions to be closed
+  await expect(record.getByText('1 corrective action is still open')).toBeVisible();
+  await expect(record.getByRole('region', { name: 'Closing the investigation' })).toContainText('Opens once every corrective action is closed');
+  await expect(record.getByRole('button', { name: 'Close the investigation' })).toHaveCount(0);
 });
 
-test('closing logs the lessons learnt, the report type and the SHE Officer comment', async ({ page }) => {
-  const state = await investigation(page, { incident_workflow: { status: 'actions_assigned' } });
+test('once the corrective actions are closed, SHE log the lessons learnt, report type and comment', async ({ page }) => {
+  const state = await investigation(page, { incident_workflow: { status: 'actions_assigned' } }, {
+    'GET /corrective-actions/incident/7': [{ id: 30, incident_id: 7, action_taken: 'Fit an overfill alarm', control: 'redesign',
+      assigned_to: 'Peter Two', status: 'resolved', is_successful: 'yes' }],
+  });
   await signIn(page, { role: 'she_officer' });
   const record = await openRecord(page);
   await record.getByLabel('Lessons learnt').fill('Deliveries are watched from start to finish');
@@ -278,23 +310,26 @@ test('closing logs the lessons learnt, the report type and the SHE Officer comme
 
 test("the server's reason is shown when a step can't be taken yet", async ({ page }) => {
   await investigation(page, { incident_workflow: { status: 'investigating' } }, {
-    'PUT /incidents/7': (route) => route.fulfill(json(422, { detail: 'Evidence, one to three causes and the root cause are required' })),
+    'PUT /incidents/7': (route) => route.fulfill(json(422, { detail: 'Write down what the investigation found' })),
   });
   await signIn(page, { role: 'admin' });
   const record = await openRecord(page);
-  await record.getByRole('button', { name: 'Record the causes' }).click();
-  await expect(record.getByRole('alert')).toContainText('the root cause are required');
+  await record.getByRole('button', { name: 'Send findings to the SHE team' }).click();
+  await expect(record.getByRole('alert')).toContainText('Write down what the investigation found');
 });
 
 test('the Operations Manager comments on a fatal incident and changes nothing else', async ({ page }) => {
   const state = await investigation(page, {
     severity: 'fatal', incident_intake: { categories: ['fatality'] }, incident_workflow: { status: 'actions_assigned' },
+  }, {
+    'GET /corrective-actions/incident/7': [{ id: 30, incident_id: 7, action_taken: 'Fit an overfill alarm', control: 'redesign',
+      assigned_to: 'Peter Two', status: 'resolved', is_successful: 'yes' }],
   });
   await signIn(page, { role: 'operations' });
   const record = await openRecord(page);
   await expect(record.getByLabel('Lessons learnt')).toBeDisabled();
   await expect(record.getByRole('button', { name: 'Close the investigation' })).toHaveCount(0);
-  await record.getByLabel("Operations Manager's comments (fatal incidents)").fill('Reviewed with the board');
+  await record.getByLabel(/^Operations Manager's comments/).fill('Reviewed with the board');
   await record.getByRole('button', { name: 'Save comment' }).click();
   await expect.poll(() => state.sent[0]).toEqual({ incident_workflow: { operations_manager_comment: 'Reviewed with the board' } });
 });

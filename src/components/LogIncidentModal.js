@@ -26,7 +26,6 @@ export default function LogIncidentModal({
     severity: "low",
     lost_time_days: "",
     injured_person: "",
-    action_plan: "",
     occurred_at: nowLocal(),
   });
   const { notify } = useFeedback();
@@ -44,8 +43,7 @@ export default function LogIncidentModal({
       severity: prefill?.severity || "low",
       lost_time_days: "",
       injured_person: "",
-      action_plan: "",
-      occurred_at: nowLocal(),
+        occurred_at: nowLocal(),
     });
     setIntake(emptyIntake());
     setFiles([]);
@@ -84,7 +82,6 @@ export default function LogIncidentModal({
         site_id: site?.id,
         type: formData.type,
         description: formData.description,
-        action_plan: formData.action_plan.trim() || undefined,
         severity: formData.severity,
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
@@ -104,6 +101,7 @@ export default function LogIncidentModal({
           failed.push(file.name);
         }
       }
+      notify("Incident logged and sent to the SHE team");
       if (failed.length) {
         notify(`The incident was logged, but these files couldn't be attached: ${failed.join(", ")}. Add them from the Incidents page.`, "error");
       }
@@ -149,116 +147,107 @@ export default function LogIncidentModal({
               />
             </div>
 
-            <div className="two-col">
-              <div className="form-group">
-                <label className="form-label" htmlFor="incident-incident-type">Incident Type</label>
-                <select id="incident-incident-type"
-                  className="form-control"
-                  value={formData.type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, type: e.target.value })
-                  }
-                  required
-                >
-                  <option value="injury">Injury</option>
-                  <option value="spill">Spill</option>
-                  <option value="fire">Fire</option>
-                  <option value="environmental">Environmental</option>
-                  <option value="near-miss">Near-Miss</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="incident-severity">Severity</label>
-                <select id="incident-severity"
-                  className="form-control"
-                  value={formData.severity}
-                  onChange={(e) =>
-                    setFormData({ ...formData, severity: e.target.value })
-                  }
-                  required
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="incident-when-did-it-happen">When did it happen?</label>
-              <input id="incident-when-did-it-happen"
-                type="datetime-local"
-                className="form-control"
-                value={formData.occurred_at}
-                max={nowLocal()}
-                onChange={(e) =>
-                  setFormData({ ...formData, occurred_at: e.target.value })
-                }
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="incident-description">Description</label>
-              <textarea id="incident-description"
-                className="form-control"
-                placeholder="Detailed description of the incident..."
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                required
-                minLength={5}
-                maxLength={3000}
-                rows={4}
-              />
-              <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="incident-action-plan-new">Action plan (optional)</label>
-              <textarea id="incident-action-plan-new"
-                className="form-control"
-                placeholder="What will be done about it, by whom and by when (can be added or updated later)"
-                value={formData.action_plan}
-                maxLength={5000}
-                onChange={(e) => setFormData({ ...formData, action_plan: e.target.value })}
-                rows={3}
-              />
-            </div>
-
-            <div className="form-group">
-                <label className="form-label" htmlFor="incident-injured-person">{isInjury ? "Name of injured person" : "Name of person involved"}</label>
-                <input
-                  id="incident-injured-person"
-                  type="text"
-                  className="form-control"
-                  value={formData.injured_person}
-                  maxLength={150}
-                  autoComplete="off"
-                  onChange={(e) => setFormData({ ...formData, injured_person: e.target.value })}
-                  placeholder="e.g. Farai Moyo (leave blank if not known yet)"
-                />
-              </div>
-
-            {isInjury && (
-              <div className="form-group">
-                <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days <small>(days off duty)</small></label>
-                <input id="incident-lost-time-days"
-                  type="number"
-                  className="form-control"
-                  value={formData.lost_time_days}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lost_time_days: e.target.value })
-                  }
-                  min="0"
-                  placeholder="e.g. 3"
-                />
-              </div>
-            )}
-
-            <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident" evidenceFiles={(
+            <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident"
+              personFields={(
+                <>
+                  <div className="form-group">
+                      <label className="form-label" htmlFor="incident-injured-person">{isInjury ? "Name of injured person" : "Name of person involved"}</label>
+                      <input
+                        id="incident-injured-person"
+                        type="text"
+                        className="form-control"
+                        value={formData.injured_person}
+                        maxLength={150}
+                        autoComplete="off"
+                        onChange={(e) => setFormData({ ...formData, injured_person: e.target.value })}
+                        placeholder="e.g. Farai Moyo (leave blank if not known yet)"
+                      />
+                    </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="incident-when-did-it-happen">When did it happen?</label>
+                    <input id="incident-when-did-it-happen"
+                      type="datetime-local"
+                      className="form-control"
+                      value={formData.occurred_at}
+                      max={nowLocal()}
+                      onChange={(e) =>
+                        setFormData({ ...formData, occurred_at: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  {isInjury && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days <small>(days off duty)</small></label>
+                      <input id="incident-lost-time-days"
+                        type="number"
+                        className="form-control"
+                        value={formData.lost_time_days}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lost_time_days: e.target.value })
+                        }
+                        min="0"
+                        placeholder="e.g. 3"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              description={(
+                <div className="form-group">
+                  <label className="form-label" htmlFor="incident-description">Description</label>
+                  <textarea id="incident-description"
+                    className="form-control"
+                    placeholder="Detailed description of the incident..."
+                    value={formData.description}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
+                    required
+                    minLength={5}
+                    maxLength={3000}
+                    rows={4}
+                  />
+                  <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
+                </div>
+              )}
+              classification={(
+                <div className="two-col">
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="incident-incident-type">Incident Type</label>
+                    <select id="incident-incident-type"
+                      className="form-control"
+                      value={formData.type}
+                      onChange={(e) =>
+                        setFormData({ ...formData, type: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="injury">Injury</option>
+                      <option value="spill">Spill</option>
+                      <option value="fire">Fire</option>
+                      <option value="environmental">Environmental</option>
+                      <option value="near-miss">Near-Miss</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="incident-severity">Severity</label>
+                    <select id="incident-severity"
+                      className="form-control"
+                      value={formData.severity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, severity: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>              )}
+              evidenceFiles={(
               <div className="form-group">
                 <label className="form-label" htmlFor="incident-evidence-files">
                   <Paperclip size={14} /> Evidence files (up to 20, 10 MB each)
