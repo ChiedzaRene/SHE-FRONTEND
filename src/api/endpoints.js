@@ -79,6 +79,19 @@ export const incidentsApi = {
   getBySite: (siteId) => api.get(`/incidents/site/${siteId}`),
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),
+  workflowHistory: (id) => api.get(`/incidents/${id}/workflow-history`),
+  // evidence: documents, witness or victim reports, pictures, sketch diagrams; each call answers with the incident
+  addFile: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/incidents/${id}/files`, form);
+  },
+  viewFile: (id, fileId) => api.get(`/incidents/${id}/files/${fileId}`, { responseType: "blob" }),
+  downloadFile: async (id, fileId, filename) => {
+    const res = await api.get(`/incidents/${id}/files/${fileId}`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+  removeFile: (id, fileId) => api.delete(`/incidents/${id}/files/${fileId}`),
   // period: "12m" (rolling 12 months, default) or "ytd"
   getMetrics: (siteId, period = "12m") =>
     api.get(`/incidents/metrics/${siteId}`, { params: { period } }),
