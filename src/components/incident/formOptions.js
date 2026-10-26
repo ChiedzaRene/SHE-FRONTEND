@@ -88,13 +88,15 @@ export const REPORT_TYPES = [
   ["full_corrective_action", "Full corrective action report"],
 ];
 
-// The form's order: the site reports, SHE assign a team, the team logs the causes,
-// SHE assign corrective actions, SHE close it with the lessons learnt, report type and comments
+// The form's order: the site reports (description, causes, evidence) to SHE; SHE assemble the investigation
+// team; the team logs its findings; SHE record the root cause; SHE assign the corrective actions; once those
+// are closed, SHE close it with the lessons learnt, report type and comments
 export const STAGES = [
   ["reported", "Reported"],
   ["assigned", "Team assigned"],
   ["investigating", "Investigating"],
-  ["causes_recorded", "Causes recorded"],
+  ["findings_recorded", "Findings recorded"],
+  ["root_cause_recorded", "Root cause recorded"],
   ["actions_assigned", "Actions assigned"],
   ["closed", "Closed"],
 ];

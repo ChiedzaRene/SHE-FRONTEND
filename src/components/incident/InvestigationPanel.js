@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { apiError } from "../../utils/apiError";
 import { Plus, Trash2, Check, Lock } from "lucide-react";
 import { actionsApi, incidentsApi } from "../../api/endpoints";
+import { Link } from "react-router-dom";
 import AddActionForm from "../AddAction";
 import {
   CONTROLS, REPORT_TYPES, ROOT_CAUSES, STAGES, UNSAFE_ACTS, UNSAFE_CONDITIONS, isFatal, labelOf, stageIndex,
@@ -129,32 +130,61 @@ function TeamSection({ incident, canEdit, save, busy }) {
   );
 }
 
-// 2. The investigation team (or SHE) logs the evidence they found, the causes and the root cause
-function CausesSection({ incident, canEdit, save, busy }) {
+// 2. The investigation team logs what it found
+function FindingsSection({ incident, canEdit, save, busy }) {
   const wf = incident.incident_workflow || {};
   const status = wf.status || "reported";
-  const fromRecord = () => ({
-    evidence: wf.evidence || "",
-    causes: [0, 1, 2].map((i) => (wf.causes || [])[i] || ""),
-    root_cause: wf.root_cause || "",
-  });
+  const [findings, setFindings] = useState(wf.evidence || "");
+  useEffect(() => { setFindings(incident.incident_workflow?.evidence || ""); }, [incident]);
+  const payload = () => ({ evidence: findings.trim() || null });
+
+  return (
+    <fieldset disabled={!canEdit || busy} className="inc-plain">
+      <div className="form-group">
+        <label className="form-label" htmlFor="inc-findings">Investigation findings</label>
+        <textarea id="inc-findings" className="form-control" rows={4} maxLength={10000} value={findings}
+          onChange={(e) => setFindings(e.target.value)}
+          placeholder="What the investigation found: statements taken, what was seen, photos and sketch diagrams (attach files on the Site report tab)." />
+      </div>
+      {canEdit && (
+        <div className="inc-actions">
+          <button type="button" className="btn btn-outline" onClick={() => save("findings", payload(), "Findings saved")}>Save findings</button>
+          {status === "assigned" && (
+            <button type="button" className="btn btn-primary" onClick={() => save("findings", { ...payload(), status: "investigating" }, "Investigation started")}>
+              Start investigation
+            </button>
+          )}
+          {status === "investigating" && (
+            <button type="button" className="btn btn-primary"
+              onClick={() => save("findings", { ...payload(), status: "findings_recorded" }, "Findings sent to the SHE team")}>
+              Send findings to the SHE team
+            </button>
+          )}
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
+// 3. The SHE team records the root cause; the causes the site reported are the starting point
+function RootCauseSection({ incident, canEdit, save, busy }) {
+  const wf = incident.incident_workflow || {};
+  const status = wf.status || "reported";
+  const fromRecord = () => {
+    const known = wf.causes?.length ? wf.causes : incident.incident_intake?.site_causes || [];
+    return { causes: [0, 1, 2].map((i) => known[i] || ""), root_cause: wf.root_cause || "" };
+  };
   const [draft, setDraft] = useState(fromRecord);
   useEffect(() => { setDraft(fromRecord()); }, [incident]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const payload = () => ({
-    evidence: draft.evidence.trim() || null,
     causes: draft.causes.map((c) => c.trim()).filter(Boolean),
     root_cause: draft.root_cause.trim() || null,
   });
 
   return (
     <fieldset disabled={!canEdit || busy} className="inc-plain">
-      <div className="form-group">
-        <label className="form-label" htmlFor="inc-findings">Investigation evidence and findings</label>
-        <textarea id="inc-findings" className="form-control" rows={3} maxLength={10000} value={draft.evidence}
-          onChange={(e) => set({ evidence: e.target.value })}
-          placeholder="What the investigation found: statements taken, photos, sketch diagrams. Attach files on the Site report tab." />
-      </div>
+      <p className="inc-muted">The causes as the site reported them; confirm or change them.</p>
       {draft.causes.map((cause, i) => (
         <div className="form-group inc-cause" key={i}>
           <label className="form-label" htmlFor={`inc-cause-${i + 1}`}>Cause {i + 1}</label>
@@ -180,34 +210,27 @@ function CausesSection({ incident, canEdit, save, busy }) {
       </div>
       {canEdit && (
         <div className="inc-actions">
-          <button type="button" className="btn btn-outline" onClick={() => save("causes", payload(), "Findings saved")}>Save findings</button>
-          {status === "assigned" && (
-            <button type="button" className="btn btn-primary" onClick={() => save("causes", { ...payload(), status: "investigating" }, "Investigation started")}>
-              Start investigation
-            </button>
-          )}
-          {status === "investigating" && (
+          {status === "findings_recorded" ? (
             <button type="button" className="btn btn-primary"
-              onClick={() => save("causes", { ...payload(), status: "causes_recorded" }, "Causes recorded; the SHE team has been told")}>
-              Record the causes
+              onClick={() => save("root", { ...payload(), status: "root_cause_recorded" }, "Root cause recorded")}>
+              Record the root cause
             </button>
+          ) : (
+            <button type="button" className="btn btn-outline" onClick={() => save("root", payload(), "Saved")}>Save</button>
           )}
-          <small className="inc-muted">Recording the causes needs evidence (notes or a file), at least one cause and the root cause.</small>
         </div>
       )}
     </fieldset>
   );
 }
 
-// 3. The SHE team assigns the corrective actions, each with its hierarchy of control
-function ActionsSection({ incident, canEdit, save, busy }) {
+export const actionClosed = (a) => a.is_successful === "yes" || ["resolved", "closed"].includes((a.status || "").toLowerCase());
+
+// 4. The SHE team assigns the corrective actions, each with its hierarchy of control
+function ActionsSection({ incident, canEdit, save, busy, actions, reload }) {
   const status = incident.incident_workflow?.status || "reported";
-  const [actions, setActions] = useState(null);
   const [adding, setAdding] = useState(false);
-  const load = useCallback(() => {
-    actionsApi.byIncident(incident.id).then((res) => setActions(res.data || [])).catch(() => setActions([]));
-  }, [incident.id]);
-  useEffect(() => { load(); }, [load]);
+  const open = (actions || []).filter((a) => !actionClosed(a)).length;
 
   return (
     <>
@@ -225,20 +248,26 @@ function ActionsSection({ incident, canEdit, save, busy }) {
                   <td>{a.control ? labelOf(CONTROLS, a.control).split(" (")[0] : "—"}</td>
                   <td>{a.assigned_to}</td>
                   <td>{day(a.due_date)}</td>
-                  <td>{a.is_successful === "yes" ? "Closed" : "Open"}</td>
+                  <td>{actionClosed(a) ? "Closed" : "Open"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {status === "actions_assigned" && open > 0 && (
+        <p className="inc-muted">
+          {open} corrective action{open === 1 ? " is" : "s are"} still open. The investigation is closed once they are closed
+          (on the <Link to="/corrective-actions">Corrective Actions</Link> page).
+        </p>
+      )}
       {canEdit && (adding ? (
         <AddActionForm incident={{ id: incident.id, site_id: incident.site_id, description: incident.description }}
-          onCancel={() => setAdding(false)} onSuccess={() => { setAdding(false); load(); }} />
+          onCancel={() => setAdding(false)} onSuccess={() => { setAdding(false); reload(); }} />
       ) : (
         <div className="inc-actions">
           <button type="button" className="btn btn-outline" onClick={() => setAdding(true)}><Plus size={14} /> Assign a corrective action</button>
-          {status === "causes_recorded" && (
+          {status === "root_cause_recorded" && (
             <button type="button" className="btn btn-primary" disabled={busy || !actions?.length}
               onClick={() => save("actions", { status: "actions_assigned" }, "Moved to Actions assigned")}>
               Corrective actions all assigned
@@ -250,7 +279,7 @@ function ActionsSection({ incident, canEdit, save, busy }) {
   );
 }
 
-// 4. When it is closed, the SHE team logs the lessons learnt, the report type and the comments
+// 5. When the corrective actions are closed, the SHE team logs the lessons learnt, the report type and the comments
 function CloseSection({ incident, canEdit, save, busy }) {
   const wf = incident.incident_workflow || {};
   const status = wf.status || "reported";
@@ -342,7 +371,7 @@ function OpsComment({ incident, user, save, busy }) {
   const canComment = user?.role === "operations";
   return (
     <div className="form-group inc-ops">
-      <label className="form-label" htmlFor="inc-ops-comment">Operations Manager's comments (fatal incidents)</label>
+      <label className="form-label" htmlFor="inc-ops-comment">Operations Manager's comments (when necessary, e.g. fatal incidents)</label>
       {canComment ? (
         <>
           <textarea id="inc-ops-comment" className="form-control" rows={3} maxLength={10000} value={text}
@@ -382,32 +411,44 @@ export default function InvestigationPanel({ incident, user, onSaved }) {
     }
   };
   const props = { incident, save, busy };
+  const [actions, setActions] = useState(null);
+  const loadActions = useCallback(() => {
+    actionsApi.byIncident(incident.id).then((res) => setActions(res.data || [])).catch(() => setActions([]));
+  }, [incident.id]);
+  useEffect(() => { loadActions(); }, [loadActions]);
+  const actionsDone = !!actions?.length && actions.every(actionClosed);
 
   return (
     <div className="inc-investigation">
       {onTeam && !isShe && !closed && (
-        <p className="inc-banner">You are on the investigation team: record what you find and the causes in step 2.</p>
+        <p className="inc-banner">You are on the investigation team: record what you find in step 2 and send it to the SHE team.</p>
       )}
-      <Section n={1} title="Investigation team" who="assigned by the SHE team" open>
+      <Section n={1} title="Investigation team" who="assembled by the SHE team" open>
         <TeamSection {...props} canEdit={isShe && !closed} />
         <Notice notice={notice} section="team" />
       </Section>
-      <Section n={2} title="Investigation and causes" who="by the investigation team" open={reached >= STAGE.assigned}
+      <Section n={2} title="Investigation findings" who="by the investigation team" open={reached >= STAGE.assigned}
         waiting="Opens once the SHE team assigns the investigation team.">
-        <CausesSection {...props} canEdit={(isShe && !closed) || (onTeam && reached <= STAGE.causes_recorded)} />
-        <Notice notice={notice} section="causes" />
+        <FindingsSection {...props} canEdit={(isShe && !closed) || (onTeam && reached <= STAGE.findings_recorded)} />
+        <Notice notice={notice} section="findings" />
       </Section>
-      <Section n={3} title="Corrective actions" who="assigned by the SHE team" open={reached >= STAGE.causes_recorded}
-        waiting="Opens once the investigation team records the causes.">
-        <ActionsSection {...props} canEdit={isShe && !closed} />
+      <Section n={3} title="Root cause" who="by the SHE team" open={reached >= STAGE.findings_recorded}
+        waiting="Opens once the investigation team sends its findings.">
+        <RootCauseSection {...props} canEdit={isShe && !closed} />
+        <Notice notice={notice} section="root" />
+      </Section>
+      <Section n={4} title="Corrective actions" who="assigned by the SHE team" open={reached >= STAGE.root_cause_recorded}
+        waiting="Opens once the SHE team records the root cause.">
+        <ActionsSection {...props} canEdit={isShe && !closed} actions={actions} reload={loadActions} />
         <Notice notice={notice} section="actions" />
       </Section>
-      <Section n={4} title="Closing the investigation" who="by the SHE team" open={reached >= STAGE.actions_assigned}
-        waiting="Opens once the corrective actions are assigned.">
+      <Section n={5} title="Closing the investigation" who="by the SHE team, after the corrective actions are closed"
+        open={closed || (reached >= STAGE.actions_assigned && actionsDone)}
+        waiting={reached >= STAGE.actions_assigned ? "Opens once every corrective action is closed." : "Opens once the corrective actions are assigned and closed."}>
         <CloseSection {...props} canEdit={isShe} />
         <Notice notice={notice} section="close" />
       </Section>
-      {(fatal || incident.incident_workflow?.operations_manager_comment) && (
+      {(fatal || user?.role === "operations" || incident.incident_workflow?.operations_manager_comment) && (
         <>
           <OpsComment {...props} user={user} />
           <Notice notice={notice} section="ops" />
