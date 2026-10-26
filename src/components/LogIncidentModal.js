@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Paperclip } from "lucide-react";
 import { incidentsApi, sitesApi } from "../api/endpoints";
+import SiteReportFields, { emptyIntake, cleanIntake } from "./incident/SiteReportFields";
+import { EVIDENCE_ACCEPT } from "./incident/EvidenceFiles";
+import { useFeedback } from "./Feedback";
 
 // "YYYY-MM-DDTHH:mm" in the user's local time, the format <input type="datetime-local"> uses
 const nowLocal = () => {
@@ -25,6 +28,9 @@ export default function LogIncidentModal({
     action_plan: "",
     occurred_at: nowLocal(),
   });
+  const { notify } = useFeedback();
+  const [intake, setIntake] = useState(emptyIntake);
+  const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -40,6 +46,8 @@ export default function LogIncidentModal({
       action_plan: "",
       occurred_at: nowLocal(),
     });
+    setIntake(emptyIntake());
+    setFiles([]);
     setError("");
   }, [isOpen, prefill?.type, prefill?.description, prefill?.severity]);
 
@@ -80,11 +88,24 @@ export default function LogIncidentModal({
         resolved: false,
         lost_time_days: parseInt(formData.lost_time_days || 0, 10),
         occurred_at: formData.occurred_at || undefined,
-        // only injuries have someone hurt
-        injured_person: formData.type === "injury" ? formData.injured_person.trim() || undefined : undefined,
+        injured_person: formData.injured_person.trim() || undefined,
+        // the rest of Glow's incident report form (GP-SHE/SPR/02/01)
+        incident_intake: cleanIntake(intake),
       };
 
-      await incidentsApi.create(payload);
+      const created = (await incidentsApi.create(payload)).data;
+      // the evidence goes up once the incident exists; a file that fails doesn't lose the report
+      const failed = [];
+      for (const file of files) {
+        try {
+          await incidentsApi.addFile(created.id, file);
+        } catch (err) {
+          failed.push(file.name);
+        }
+      }
+      if (failed.length) {
+        notify(`The incident was logged, but these files couldn't be attached: ${failed.join(", ")}. Add them from the Incidents page.`, "error");
+      }
       onIncidentLogged();
       onClose();
     } catch (err) {
@@ -99,7 +120,7 @@ export default function LogIncidentModal({
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal modal-wide">
         <div className="modal-header">
           <div className="modal-title">
             {prefill ? "Log Follow-Up Incident" : "Log New Incident"}
@@ -202,9 +223,8 @@ export default function LogIncidentModal({
               />
             </div>
 
-            {isInjury && (
-              <div className="form-group">
-                <label className="form-label" htmlFor="incident-injured-person">Name of injured person</label>
+            <div className="form-group">
+                <label className="form-label" htmlFor="incident-injured-person">{isInjury ? "Name of injured person" : "Name of person involved"}</label>
                 <input
                   id="incident-injured-person"
                   type="text"
@@ -216,11 +236,10 @@ export default function LogIncidentModal({
                   placeholder="e.g. Farai Moyo (leave blank if not known yet)"
                 />
               </div>
-            )}
 
             {isInjury && (
               <div className="form-group">
-                <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days</label>
+                <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days <small>(days off duty)</small></label>
                 <input id="incident-lost-time-days"
                   type="number"
                   className="form-control"
@@ -233,6 +252,17 @@ export default function LogIncidentModal({
                 />
               </div>
             )}
+
+            <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident" />
+
+            <div className="form-group">
+              <label className="form-label" htmlFor="incident-evidence-files">
+                <Paperclip size={14} /> Evidence files (up to 20, 10 MB each)
+              </label>
+              <input id="incident-evidence-files" type="file" multiple className="form-control" accept={EVIDENCE_ACCEPT}
+                onChange={(e) => setFiles([...e.target.files].slice(0, 20))} />
+              {files.length > 0 && <small style={{ color: "#64748b" }}>{files.length} file{files.length === 1 ? "" : "s"} will be attached</small>}
+            </div>
           </form>
         </div>
 

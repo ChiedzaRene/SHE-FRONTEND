@@ -121,13 +121,18 @@ test.describe.serial('a working day', () => {
     await expect(page.getByRole('heading', { name: 'Msasa Depot' })).toBeVisible();
     await page.getByRole('button', { name: 'Log Incident' }).click();
     const form = page.locator('.modal');
-    await expect(form.getByLabel('Site')).toHaveValue('Msasa Depot');
+    await expect(form.getByLabel('Site', { exact: true })).toHaveValue('Msasa Depot');
     await form.getByLabel('Incident Type').selectOption({ label: 'Injury' });
     await form.getByLabel('Severity').selectOption({ label: 'High' });
     await form.getByLabel('When did it happen?').fill(when.value);
     await form.getByLabel('Description').fill(INCIDENT);
     await form.getByLabel('Name of injured person').fill(INJURED);
     await form.getByLabel('Lost Time Days').fill('2');
+    // the rest of Glow's report form
+    await form.getByLabel('Name of reporter').fill(MANAGER.name);
+    await form.getByLabel('Location of incident').fill('Pump 3 forecourt');
+    await form.getByLabel('Body injury').check();
+    await form.getByLabel('First aid case').check();
     await form.getByRole('button', { name: 'Log Incident' }).click();
     await expect(form).toHaveCount(0);
 
@@ -445,6 +450,30 @@ test.describe.serial('a working day', () => {
     await page.getByRole('row').filter({ hasText: 'injury' }).getByRole('button', { name: 'Details' }).click();
     await expect(page.getByText(INCIDENT, { exact: true })).toBeVisible(); // "&" and "<" shown as typed, not &amp;
     await expect(page.getByText(`Injured person: ${INJURED}`)).toBeVisible();
+  });
+
+  test('the SHE officer attaches evidence and puts the investigation team on the incident', async ({ page }) => {
+    await signIn(page, SHE.email, SHE.own);
+    await openMenu(page, 'Incidents');
+    const row = page.getByRole('row').filter({ hasText: 'injury' });
+    await expect(row).toContainText('Reported');
+    await row.getByRole('button', { name: 'Details' }).click();
+    const record = page.getByRole('dialog', { name: /^Incident INC-/ });
+    await expect(record.getByText('Pump 3 forecourt')).toBeVisible();
+    await expect(record.getByText('Body injury')).toBeVisible();
+
+    await record.getByLabel('Attach evidence files').setInputFiles({ name: 'witness.pdf', mimeType: 'application/pdf', buffer: makePdf('Witness') });
+    await expect(record.getByRole('button', { name: 'Open witness.pdf' })).toBeVisible();
+
+    await record.getByRole('tab', { name: 'Investigation' }).click();
+    await record.getByLabel('Team member 1 name').fill(SHE.name);
+    await record.getByLabel('Team member 1 job title').fill('SHE Officer');
+    await record.getByRole('button', { name: 'Save and move to Team assigned' }).click();
+    await expect(record.getByRole('status')).toHaveText(/Moved to Team assigned/);
+    await record.getByRole('tab', { name: 'History' }).click();
+    await expect(record.getByText('moved it from Reported to Team assigned')).toBeVisible();
+    await record.getByRole('button', { name: 'Close', exact: true }).click();
+    await expect(row).toContainText('Team assigned');
   });
 
   test('the admin assigns a corrective action to the manager, who is notified and finds it flagged NEW', async ({ page, browser }) => {

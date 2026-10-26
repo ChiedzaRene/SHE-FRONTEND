@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 import useNewItems, { newestFirst } from "../hooks/useNewItems";
 import NewBadge from "../components/NewBadge";
-import { X, CalendarDays, Building2, RefreshCw } from "lucide-react";
+import { CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
+import IncidentRecord from "../components/incident/IncidentRecord";
+import { STAGES, labelOf } from "../components/incident/formOptions";
 import { useAuth } from "../context/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
-import { useFeedback } from "../components/Feedback";
 import { isReadOnly } from "../utils/roles";
 
 export default function Incidents() {
@@ -16,7 +17,6 @@ export default function Incidents() {
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
   const readOnly = isReadOnly(user?.role);
-  const { notify } = useFeedback();
 
   // --- State Management ---
   const [incidents, setIncidents] = useState([]);
@@ -38,9 +38,6 @@ export default function Incidents() {
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [followUpPrefill, setFollowUpPrefill] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [actionPlan, setActionPlan] = useState("");
-  const [savingPlan, setSavingPlan] = useState(false);
-  const [planError, setPlanError] = useState("");
 
   const reportRangeOptions = [
     { value: "day", label: "Today" },
@@ -142,27 +139,12 @@ export default function Incidents() {
 
   const openDetails = (inc) => {
     setSelectedIncident(inc);
-    setActionPlan(inc.action_plan || "");
-    setPlanError("");
     setIsModalOpen(true);
   };
 
-  // The description is the fixed record of what happened; what is being done about it goes in the action plan
-  const saveActionPlan = async () => {
-    setSavingPlan(true);
-    setPlanError("");
-    try {
-      const res = await incidentsApi.update(selectedIncident.id, { action_plan: actionPlan });
-      setIncidents((all) => all.map((i) => (i.id === res.data.id ? res.data : i)));
-      setSelectedIncident(res.data);
-      setActionPlan(res.data.action_plan || "");
-      notify("Action plan saved");
-    } catch (err) {
-      const detail = err.response?.data?.detail;
-      setPlanError(typeof detail === "string" ? detail : "Could not save the action plan.");
-    } finally {
-      setSavingPlan(false);
-    }
+  const updateIncident = (updated) => {
+    setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)));
+    setSelectedIncident(updated);
   };
 
   // --- Navigate to Corrective Actions page, prefilled from this incident ---
@@ -494,6 +476,7 @@ export default function Incidents() {
                 <th style={{ textAlign: "left", padding: "16px" }}>Type</th>
                 <th style={{ textAlign: "left", padding: "16px" }}>Severity</th>
                 <th style={{ textAlign: "left", padding: "16px" }}>Date</th>
+                <th style={{ textAlign: "left", padding: "16px" }}>Stage</th>
                 <th style={{ textAlign: "center", padding: "16px" }}>
                   Actions
                 </th>
@@ -522,6 +505,11 @@ export default function Incidents() {
                       day: "numeric",
                     }) || "N/A"}
                   </td>
+                  <td style={{ padding: "16px" }}>
+                    <span className={`inc-stage inc-stage-${inc.incident_workflow?.status || "reported"}`}>
+                      {labelOf(STAGES, inc.incident_workflow?.status || "reported")}
+                    </span>
+                  </td>
                   <td style={{ padding: "16px", textAlign: "center" }}>
                     <button
                       className="btn btn-sm btn-outline"
@@ -535,7 +523,7 @@ export default function Incidents() {
               {filteredIncidents.length === 0 && (
                 <tr>
                   <td
-                    colSpan="6"
+                    colSpan="7"
                     style={{
                       textAlign: "center",
                       padding: "40px",
@@ -551,123 +539,17 @@ export default function Incidents() {
         </div>
       </div>
 
-      {/* --- Details Modal --- */}
+      {/* --- Incident record: report form, evidence, investigation --- */}
       {isModalOpen && selectedIncident && (
-        <div
-          className="modal-overlay"
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="modal"
-            style={{
-              background: "white",
-              padding: "24px",
-              borderRadius: "16px",
-              maxWidth: "500px",
-              width: "90%",
-            }}
-          >
-            <div
-              className="modal-header"
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginBottom: "16px",
-              }}
-            >
-              <h2 style={{ margin: 0 }}>Incident Details</h2>
-              <button
-                onClick={() => setIsModalOpen(false)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                }}
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div style={{ marginBottom: "16px" }}>
-                <strong>Site:</strong> {siteNameOf(selectedIncident.site_id)}
-              </div>
-              <div style={{ marginBottom: "16px" }}>
-                <strong>Type:</strong> {selectedIncident.type}
-              </div>
-              {selectedIncident.injured_person && (
-                <div style={{ marginBottom: "16px" }}>
-                  <strong>Injured person:</strong> {selectedIncident.injured_person}
-                </div>
-              )}
-              <div style={{ marginBottom: "16px" }}>
-                <strong>Description</strong>{" "}
-                <span style={{ color: "#64748b", fontSize: "0.8rem" }}>(fixed once logged)</span>
-                <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
-                  {selectedIncident.description || "No description provided."}
-                </p>
-              </div>
-              <div style={{ marginBottom: "8px" }}>
-                <label className="form-label" htmlFor="incident-action-plan"><strong>Action plan</strong></label>
-                {readOnly ? (
-                  <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
-                    {selectedIncident.action_plan || "No action plan yet."}
-                  </p>
-                ) : (
-                  <>
-                    <textarea
-                      id="incident-action-plan"
-                      className="form-control"
-                      rows={4}
-                      maxLength={5000}
-                      placeholder="What is being done about this incident, by whom and by when"
-                      value={actionPlan}
-                      onChange={(e) => setActionPlan(e.target.value)}
-                    />
-                    {planError && <div role="alert" style={{ color: "#991B1B", marginTop: 6 }}>{planError}</div>}
-                    <button
-                      type="button"
-                      className="btn btn-outline btn-sm"
-                      style={{ marginTop: 8 }}
-                      disabled={savingPlan || actionPlan.trim() === (selectedIncident.action_plan || "").trim()}
-                      onClick={saveActionPlan}
-                    >
-                      {savingPlan ? "Saving..." : "Save action plan"}
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-            <div
-              className="modal-footer"
-              style={{ display: "flex", gap: "12px", marginTop: "24px" }}
-            >
-              {!readOnly && (
-                <button
-                  className="btn btn-primary"
-                  style={{ flex: 1 }}
-                  onClick={() => handleTakeAction(selectedIncident)}
-                >
-                  Take Action
-                </button>
-              )}
-              <button
-                className="btn btn-outline"
-                style={{ flex: 1 }}
-                onClick={() => setIsModalOpen(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        <IncidentRecord
+          incident={selectedIncident}
+          siteName={siteNameOf(selectedIncident.site_id)}
+          user={user}
+          readOnly={readOnly}
+          onClose={() => setIsModalOpen(false)}
+          onUpdated={updateIncident}
+          onTakeAction={handleTakeAction}
+        />
       )}
       {/* --- Follow-Up Incident Modal --- */}
       <LogIncidentModal
