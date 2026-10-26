@@ -7,6 +7,7 @@ const ROLE_LABEL = {
   super_admin: "Super admin",
   admin: "Admin",
   she_team: "SHE team",
+  she_officer: "SHE officer",
   site_manager: "Site manager",
 };
 

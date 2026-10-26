@@ -8,6 +8,7 @@ import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
 import { isReadOnly as viewOnlyRole } from "../utils/roles";
 import AddActionForm from "../components/AddAction";
+import { CONTROLS, labelOf } from "../components/incident/formOptions";
 import { ShieldCheck, Plus, Search, X, Eye } from "lucide-react";
 
 const CorrectiveActions = () => {
@@ -541,6 +542,25 @@ const CorrectiveActions = () => {
                     {selectedAction.designation || "General Compliance"}
                   </p>
 
+                  {selectedAction.control && (
+                    <>
+                      <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#64748b" }}>HIERARCHY OF CONTROL</label>
+                      <p style={{ margin: "4px 0 16px 0", fontWeight: "600", color: "#334155" }}>
+                        {labelOf(CONTROLS, selectedAction.control)}
+                      </p>
+                    </>
+                  )}
+
+                  {/* the incident as it was logged stays fixed; the action holds the plan */}
+                  {selectedAction.incident_description && (
+                    <>
+                      <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#64748b" }}>
+                        INCIDENT INC-{selectedAction.incident_id} (FIXED ONCE LOGGED)
+                      </label>
+                      <p className="ca-fixed" style={{ marginBottom: 16 }}>{selectedAction.incident_description}</p>
+                    </>
+                  )}
+
                   {/* --- Incident / Action Details (highlighted) --- */}
                   <label
                     style={{
@@ -549,7 +569,7 @@ const CorrectiveActions = () => {
                       color: "#64748b",
                     }}
                   >
-                    INCIDENT / ACTION DETAILS
+                    {selectedAction.incident_id ? "ACTION PLAN" : "INCIDENT / ACTION DETAILS"}
                   </label>
                   <p
                     style={{

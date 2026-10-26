@@ -253,16 +253,16 @@ export default function LogIncidentModal({
               </div>
             )}
 
-            <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident" />
-
-            <div className="form-group">
-              <label className="form-label" htmlFor="incident-evidence-files">
-                <Paperclip size={14} /> Evidence files (up to 20, 10 MB each)
-              </label>
-              <input id="incident-evidence-files" type="file" multiple className="form-control" accept={EVIDENCE_ACCEPT}
-                onChange={(e) => setFiles([...e.target.files].slice(0, 20))} />
-              {files.length > 0 && <small style={{ color: "#64748b" }}>{files.length} file{files.length === 1 ? "" : "s"} will be attached</small>}
-            </div>
+            <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident" evidenceFiles={(
+              <div className="form-group">
+                <label className="form-label" htmlFor="incident-evidence-files">
+                  <Paperclip size={14} /> Evidence files (up to 20, 10 MB each)
+                </label>
+                <input id="incident-evidence-files" type="file" multiple className="form-control" accept={EVIDENCE_ACCEPT}
+                  onChange={(e) => setFiles([...e.target.files].slice(0, 20))} />
+                {files.length > 0 && <small style={{ color: "#64748b" }}>{files.length} file{files.length === 1 ? "" : "s"} will be attached</small>}
+              </div>
+            )} />
           </form>
         </div>
 

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 import useNewItems, { newestFirst } from "../hooks/useNewItems";
 import NewBadge from "../components/NewBadge";
 import { CalendarDays, Building2, RefreshCw } from "lucide-react";
 import LogIncidentModal from "../components/LogIncidentModal";
 import IncidentRecord from "../components/incident/IncidentRecord";
+import { teamIds } from "../components/incident/InvestigationPanel";
 import { STAGES, labelOf } from "../components/incident/formOptions";
 import { useAuth } from "../context/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
@@ -13,7 +13,6 @@ import { isReadOnly } from "../utils/roles";
 
 export default function Incidents() {
   const newIds = useNewItems("incidents");
-  const navigate = useNavigate();
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
   const readOnly = isReadOnly(user?.role);
@@ -108,9 +107,11 @@ export default function Incidents() {
     }
 
     // 2. Filter by Site (String conversion handles ID type mismatches)
+    // (a site manager also keeps the incidents elsewhere that they are investigating)
     if (selectedSite !== "all") {
       result = result.filter(
-        (inc) => String(inc.site_id) === String(selectedSite),
+        (inc) => String(inc.site_id) === String(selectedSite)
+          || (isSiteManager && teamIds(inc).includes(user?.user_id)),
       );
     }
 
@@ -132,7 +133,7 @@ export default function Incidents() {
 
     setFilteredIncidents(newestFirst(result));
     setReportSummary(summary);
-  }, [incidents, reportRange, selectedSite]);
+  }, [incidents, reportRange, selectedSite, isSiteManager, user?.user_id]);
 
   const siteNameOf = (siteId) =>
     sites.find((s) => String(s.id) === String(siteId))?.name || (siteId ? `Site ${siteId}` : "—");
@@ -145,19 +146,6 @@ export default function Incidents() {
   const updateIncident = (updated) => {
     setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)));
     setSelectedIncident(updated);
-  };
-
-  // --- Navigate to Corrective Actions page, prefilled from this incident ---
-  const handleTakeAction = (incident) => {
-    setIsModalOpen(false);
-    navigate("/corrective-actions", {
-      state: {
-        fromIncident: true,
-        site_id: incident.site_id,
-        type: incident.type,
-        description: incident.description,
-      },
-    });
   };
 
   if (loading && incidents.length === 0) {
@@ -548,7 +536,6 @@ export default function Incidents() {
           readOnly={readOnly}
           onClose={() => setIsModalOpen(false)}
           onUpdated={updateIncident}
-          onTakeAction={handleTakeAction}
         />
       )}
       {/* --- Follow-Up Incident Modal --- */}

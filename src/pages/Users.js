@@ -328,6 +328,7 @@ const UserManagement = () => {
                   <select id="user-role" name="role" className="form-control" value={formData.role} onChange={handleInputChange}>
                     <option value="admin">Admin</option>
                     <option value="she_team">SHE Team</option>
+                    <option value="she_officer">SHE Officer</option>
                     <option value="regional_manager">Regional Manager</option>
                     <option value="site_manager">Site Manager</option>
                     <option value="operations">Operations (view only)</option>

@@ -81,7 +81,7 @@ function NewInspection({ sites, onCancel }) {
 
 export default function Inspections() {
   const { user } = useAuth();
-  const isShe = ["she_team", "admin", "super_admin"].includes(user?.role);
+  const isShe = ["she_team", "she_officer", "admin", "super_admin"].includes(user?.role);
   const [params, setParams] = useSearchParams();
   const status = params.get("status") || "";
   const region = params.get("region") || "";

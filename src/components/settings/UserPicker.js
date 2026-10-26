@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-const ROLE_LABEL = { super_admin: "Super admin", admin: "Admin", she_team: "SHE team", site_manager: "Site manager", unknown: "Unknown" };
+const ROLE_LABEL = { super_admin: "Super admin", admin: "Admin", she_team: "SHE team", she_officer: "SHE officer", site_manager: "Site manager", unknown: "Unknown" };
 const STATUS_NOTE = { inactive: "Deactivated", removed: "Account removed" };
 
 // Pick one person from a searchable list. value is their email, or "" for everyone.

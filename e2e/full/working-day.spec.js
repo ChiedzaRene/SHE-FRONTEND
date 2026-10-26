@@ -452,7 +452,7 @@ test.describe.serial('a working day', () => {
     await expect(page.getByText(`Injured person: ${INJURED}`)).toBeVisible();
   });
 
-  test('the SHE officer attaches evidence and puts the investigation team on the incident', async ({ page }) => {
+  test('the SHE officer attaches evidence and assigns the investigation team from the accounts', async ({ page }) => {
     await signIn(page, SHE.email, SHE.own);
     await openMenu(page, 'Incidents');
     const row = page.getByRole('row').filter({ hasText: 'injury' });
@@ -466,10 +466,11 @@ test.describe.serial('a working day', () => {
     await expect(record.getByRole('button', { name: 'Open witness.pdf' })).toBeVisible();
 
     await record.getByRole('tab', { name: 'Investigation' }).click();
-    await record.getByLabel('Team member 1 name').fill(SHE.name);
+    // the team is chosen from the people with accounts
+    await record.getByLabel('Team member 1', { exact: true }).selectOption({ label: `${SHE.name} (SHE team)` });
     await record.getByLabel('Team member 1 job title').fill('SHE Officer');
-    await record.getByRole('button', { name: 'Save and move to Team assigned' }).click();
-    await expect(record.getByRole('status')).toHaveText(/Moved to Team assigned/);
+    await record.getByRole('button', { name: 'Assign investigation team' }).click();
+    await expect(record.getByRole('status')).toHaveText(/Investigation team assigned/);
     await record.getByRole('tab', { name: 'History' }).click();
     await expect(record.getByText('moved it from Reported to Team assigned')).toBeVisible();
     await record.getByRole('button', { name: 'Close', exact: true }).click();

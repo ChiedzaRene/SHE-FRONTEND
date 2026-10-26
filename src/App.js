@@ -46,7 +46,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]}
+                  allowedRoles={["admin", "super_admin", "she_team", "she_officer", "site_manager", ...READ_ONLY_ROLES]}
                 />
               }
             >
@@ -58,7 +58,7 @@ function App() {
             {/* Regional managers too: the all-sites dashboard, and their region's licences, talks, trainings and files */}
             <Route
               element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "she_officer", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
               }
             >
               <Route path="/she-dashboard" element={<SheDashboard />} />
@@ -71,7 +71,7 @@ function App() {
             <Route
               element={
                 <ProtectedRoute
-                  allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]}
+                  allowedRoles={["admin", "super_admin", "she_team", "she_officer", "site_manager", ...READ_ONLY_ROLES]}
                 />
               }
             >
@@ -81,7 +81,7 @@ function App() {
             {/* Monthly hours worked and headcount (LTIFR denominator): entered by site managers, read by SHE */}
             <Route
               element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", ...READ_ONLY_ROLES]} />
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "she_officer", "site_manager", ...READ_ONLY_ROLES]} />
               }
             >
               <Route path="/site-hours" element={<SiteHours />} />
@@ -90,7 +90,7 @@ function App() {
             {/* Inspection reports: written by the SHE team, acknowledged by the regional office, actioned by sites */}
             <Route
               element={
-                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
+                <ProtectedRoute allowedRoles={["admin", "super_admin", "she_team", "she_officer", "site_manager", "regional_manager", ...READ_ONLY_ROLES]} />
               }
             >
               <Route path="/inspections" element={<Inspections />} />
