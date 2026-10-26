@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { apiError } from "../../utils/apiError";
 import { Plus, Trash2, Check, Lock } from "lucide-react";
 import { actionsApi, incidentsApi } from "../../api/endpoints";
 import AddActionForm from "../AddAction";
@@ -12,10 +13,7 @@ const day = (value) => (value ? String(value).slice(0, 10) : "");
 const at = (status) => stageIndex(status);
 const STAGE = Object.fromEntries(STAGES.map(([key], i) => [key, i]));
 
-const detailOf = (err, fallback) => {
-  const detail = err.response?.data?.detail;
-  return typeof detail === "string" ? detail : fallback;
-};
+const detailOf = (err, fallback) => apiError(err, fallback);
 
 export const teamIds = (incident) =>
   (incident.incident_workflow?.team_members || []).map((m) => m.user_id).filter(Boolean);

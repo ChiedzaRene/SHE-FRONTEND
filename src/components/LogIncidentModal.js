@@ -4,6 +4,7 @@ import { incidentsApi, sitesApi } from "../api/endpoints";
 import SiteReportFields, { emptyIntake, cleanIntake } from "./incident/SiteReportFields";
 import { EVIDENCE_ACCEPT } from "./incident/EvidenceFiles";
 import { useFeedback } from "./Feedback";
+import { apiError } from "../utils/apiError";
 
 // "YYYY-MM-DDTHH:mm" in the user's local time, the format <input type="datetime-local"> uses
 const nowLocal = () => {
@@ -110,7 +111,9 @@ export default function LogIncidentModal({
       onClose();
     } catch (err) {
       console.error("Error:", err.response?.data?.detail);
-      setError("Failed to log incident. Please try again.");
+      const message = `The incident wasn't logged. ${apiError(err, "Please try again.")}`;
+      setError(message);
+      notify(message, "error"); // the form is long: the message at its top may be out of sight
     } finally {
       setLoading(false);
     }
@@ -206,9 +209,11 @@ export default function LogIncidentModal({
                   setFormData({ ...formData, description: e.target.value })
                 }
                 required
+                minLength={5}
+                maxLength={3000}
                 rows={4}
               />
-              <small style={{ color: "#64748b" }}>The description can't be changed once the incident is logged.</small>
+              <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
             </div>
 
             <div className="form-group">

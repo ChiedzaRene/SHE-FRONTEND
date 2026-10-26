@@ -298,3 +298,26 @@ test('the Operations Manager comments on a fatal incident and changes nothing el
   await record.getByRole('button', { name: 'Save comment' }).click();
   await expect.poll(() => state.sent[0]).toEqual({ incident_workflow: { operations_manager_comment: 'Reviewed with the board' } });
 });
+
+test("a description that is too short is caught before sending, and the server's reason is shown", async ({ page }) => {
+  let posts = 0;
+  await mockApi(page, {
+    'GET /sites/1': SITES[0],
+    'GET /sites': SITES,
+    'POST /incidents': (route) => {
+      posts += 1;
+      return route.fulfill(json(422, { detail: [{ type: 'value_error', loc: ['body', 'occurred_at'], msg: 'Value error, occurred_at cannot be in the future' }] }));
+    },
+  });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.getByRole('button', { name: 'Log Incident' }).click();
+  const form = page.locator('.modal');
+  await expect(form.getByLabel('Site', { exact: true })).toHaveValue('Msasa Depot');
+  await form.getByLabel('Description').fill('Fell');
+  await form.getByRole('button', { name: 'Log Incident' }).click();
+  expect(await form.getByLabel('Description').evaluate((el) => el.validity.tooShort)).toBe(true);
+  expect(posts).toBe(0);
+  await form.getByLabel('Description').fill('Fell from the loading ramp');
+  await form.getByRole('button', { name: 'Log Incident' }).click();
+  await expect(form.getByText("The incident wasn't logged. Occurred at occurred_at cannot be in the future")).toBeVisible();
+});

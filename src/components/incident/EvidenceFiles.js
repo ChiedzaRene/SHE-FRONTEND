@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { apiError } from "../../utils/apiError";
 import { Paperclip, Eye, Download, Trash2 } from "lucide-react";
 import { incidentsApi } from "../../api/endpoints";
 import FileViewer from "../FileViewer";
@@ -8,10 +9,7 @@ export const EVIDENCE_ACCEPT = "image/png,image/jpeg,image/gif,image/webp,.pdf,.
 
 const sizeOf = (bytes) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
-const detailOf = (err, fallback) => {
-  const detail = err.response?.data?.detail;
-  return typeof detail === "string" ? detail : fallback;
-};
+const detailOf = (err, fallback) => apiError(err, fallback);
 
 // Evidence attached to an incident: supporting documents, witness or victim reports, pictures, sketch diagrams.
 export default function EvidenceFiles({ incident, canAdd, canRemove, onChange }) {
