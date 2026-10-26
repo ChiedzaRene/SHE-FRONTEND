@@ -80,6 +80,8 @@ export const incidentsApi = {
   create: (data) => api.post("/incidents/", data),
   update: (id, data) => api.put(`/incidents/${id}`, data),
   workflowHistory: (id) => api.get(`/incidents/${id}/workflow-history`),
+  // the people the SHE team can put on an investigation team
+  investigators: () => api.get("/incidents/investigators"),
   // evidence: documents, witness or victim reports, pictures, sketch diagrams; each call answers with the incident
   addFile: (id, file) => {
     const form = new FormData();
@@ -108,6 +110,7 @@ export const actionsApi = {
   update: (id, data) => api.put(`/corrective-actions/${id}`, data),
   delete: (id) => api.delete(`/corrective-actions/${id}`),
   resolve: (id, data) => api.post(`/corrective-actions/${id}/resolve`, data),
+  byIncident: (incidentId) => api.get(`/corrective-actions/incident/${incidentId}`),
 };
 
 export const auditsApi = {

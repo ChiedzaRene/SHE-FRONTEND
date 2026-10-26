@@ -8,7 +8,7 @@ export const emptyIntake = () => ({
   reporter_name: "", reporter_occupation: "", department: "", employee_or_contractor: "",
   person_occupation: "", years_of_service: "", witnesses: "", location: "",
   categories: [], other_category: "", injury_outcome: "", environmental_impact: "",
-  site_causes: ["", "", ""], evidence: "", cost_items: [],
+  evidence: "", cost_items: [],
 });
 
 // Drops what was left blank, so the saved record holds only what was filled in.
@@ -19,9 +19,6 @@ export const cleanIntake = (intake) => {
       const rows = value.filter((r) => (r.description || "").trim() || (r.damage_payer || "").trim() || r.cost_usd !== "")
         .map((r) => ({ ...r, cost_usd: r.cost_usd === "" ? null : Number.parseFloat(r.cost_usd) }));
       if (rows.length) out.cost_items = rows;
-    } else if (key === "site_causes") {
-      const causes = value.map((c) => c.trim()).filter(Boolean);
-      if (causes.length) out.site_causes = causes;
     } else if (Array.isArray(value) ? value.length : String(value ?? "").trim()) {
       out[key] = typeof value === "string" ? value.trim() : value;
     }
@@ -33,7 +30,6 @@ export const cleanIntake = (intake) => {
 export const intakeForEditing = (saved = {}) => {
   const base = emptyIntake();
   const merged = { ...base, ...saved };
-  merged.site_causes = [0, 1, 2].map((i) => (saved.site_causes || [])[i] || "");
   merged.cost_items = (saved.cost_items || []).map((r) => ({ ...r, cost_usd: r.cost_usd ?? "" }));
   merged.years_of_service = saved.years_of_service ?? "";
   return merged;
@@ -68,7 +64,8 @@ function Choice({ name, legend, options, value, onChange }) {
   );
 }
 
-export default function SiteReportFields({ intake, onChange, idPrefix = "intake" }) {
+// evidenceFiles: where the evidence files are attached, shown under the evidence notes
+export default function SiteReportFields({ intake, onChange, idPrefix = "intake", evidenceFiles = null }) {
   const set = (patch) => onChange({ ...intake, ...patch });
   const id = (name) => `${idPrefix}-${name}`;
 
@@ -143,21 +140,14 @@ export default function SiteReportFields({ intake, onChange, idPrefix = "intake"
       <Choice name={id("impact")} legend="Environmental impact" options={ENVIRONMENTAL_IMPACTS}
         value={intake.environmental_impact} onChange={(v) => set({ environmental_impact: v })} />
 
-      <h4 className="inc-section-title">What caused it, as seen at the site</h4>
-      {intake.site_causes.map((cause, i) => (
-        <div className="form-group inc-numbered" key={i}>
-          <label className="form-label" htmlFor={id(`site-cause-${i + 1}`)}>Cause {i + 1}</label>
-          <input id={id(`site-cause-${i + 1}`)} type="text" className="form-control" maxLength={500} value={cause}
-            onChange={(e) => set({ site_causes: intake.site_causes.map((c, n) => (n === i ? e.target.value : c)) })} />
-        </div>
-      ))}
-
+      <h4 className="inc-section-title">Evidence</h4>
       <div className="form-group">
         <label className="form-label" htmlFor={id("evidence")}>Evidence notes</label>
         <textarea id={id("evidence")} className="form-control" rows={3} maxLength={10000} value={intake.evidence}
           onChange={(e) => set({ evidence: e.target.value })}
-          placeholder="Supporting documents, witness or victim reports, pictures, sketch diagrams. Attach the files below." />
+          placeholder="Supporting documents, witness or victim reports, pictures, sketch diagrams." />
       </div>
+      {evidenceFiles}
 
       <h4 className="inc-section-title">Incident costs</h4>
       <div className="table-wrap">
@@ -214,7 +204,6 @@ export function SiteReportView({ incident }) {
       ? `Other: ${intake.other_category}` : labelOf(CATEGORIES, c))).join(", ")],
     ["Injury outcome", intake.injury_outcome && labelOf(INJURY_OUTCOMES, intake.injury_outcome)],
     ["Environmental impact", intake.environmental_impact && labelOf(ENVIRONMENTAL_IMPACTS, intake.environmental_impact)],
-    ["Causes seen at the site", (intake.site_causes || []).map((c, i) => `${i + 1}. ${c}`).join("\n")],
     ["Evidence notes", intake.evidence],
   ].filter(([, v]) => v !== undefined && v !== null && v !== "");
   const costs = intake.cost_items || [];

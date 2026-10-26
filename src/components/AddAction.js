@@ -5,6 +5,7 @@ import { useFeedback } from './Feedback';
 import { apiError } from '../utils/apiError';
 import { X, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { CONTROLS } from './incident/formOptions';
 
 const normalizeSites = (payload) => {
   const list = Array.isArray(payload)
@@ -25,7 +26,9 @@ const normalizeSites = (payload) => {
     .filter(Boolean);
 };
 
-const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = null }) => {
+// incident: { id, site_id, description } when the SHE team assigns one of an incident's corrective actions.
+// The incident's description stays as it was logged; the action holds only the plan.
+const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = null, incident = null }) => {
   const { notify } = useFeedback();
   // Staff names to pick from: assigning to someone with an account sends them a notification
   const [staff, setStaff] = useState([]);
@@ -58,12 +61,15 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     designation: 'Safety',
     due_date: '', // chosen by whoever opens the action
     priority: 'medium',
-    status: 'open'
+    status: 'open',
+    control: '',
   });
 
   // Auto-fill from prefill (from incident) or site manager token
   useEffect(() => {
-    if (prefill) {
+    if (incident) {
+      setFormData(prev => ({ ...prev, site_id: String(incident.site_id), designation: 'Safety' }));
+    } else if (prefill) {
       setFormData(prev => ({
         ...prev,
         site_id: prefill.site_id ? String(prefill.site_id) : (isSiteManager ? getTokenSiteId() : ''),
@@ -73,7 +79,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     } else if (isSiteManager) {
       setFormData(prev => ({ ...prev, site_id: getTokenSiteId() }));
     }
-  }, [prefill, isSiteManager]);
+  }, [prefill, isSiteManager, incident]);
 
   useEffect(() => {
     const loadSites = async () => {
@@ -102,14 +108,6 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       }));
     }
 
-    if (location.state?.fromIncident) {
-    setFormData((prev) => ({
-      ...prev,
-      site_id: location.state.site_id ? String(location.state.site_id) : '',
-      designation: 'Safety', // Defaulting to Safety for incidents
-      action_taken: `Corrective Action for ${location.state.type || 'Incident'}: ${location.state.description || ''}`
-    }));
-  }
 }, [location.state]);
   
 
@@ -117,9 +115,6 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
 
  const handleSubmit = async (e) => {
   e.preventDefault();
-
-  // Debug — remove after fixing
-  console.log("Form Data:", formData);
 
   if (!formData.site_id || !formData.action_taken) {
     notify('Please choose a site and describe the action taken.', 'error');
@@ -140,7 +135,9 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
       priority: formData.priority,
       status: 'open',
       // end of the chosen day, so an action due today isn't shown as overdue this morning
-      due_date: new Date(`${formData.due_date}T23:59:00`).toISOString()
+      due_date: new Date(`${formData.due_date}T23:59:00`).toISOString(),
+      ...(formData.control ? { control: formData.control } : {}),
+      ...(incident ? { incident_id: incident.id } : {}),
     };
 
     await actionsApi.create(payload);
@@ -156,7 +153,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
     <div className="card mb-8 animate-slide-down" style={{ borderLeft: '5px solid #007ACC', marginBottom: '30px' }}>
       <div className="card-header" style={{ background: '#f8fafc', padding: '15px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div className="card-title" style={{ fontSize: '1rem', fontWeight: '700', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertCircle size={18} className="text-primary" /> New Corrective Action Plan
+          <AlertCircle size={18} className="text-primary" /> {incident ? `Corrective action for INC-${incident.id}` : 'New Corrective Action Plan'}
         </div>
         <button onClick={onCancel} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
           <X size={20} />
@@ -167,7 +164,7 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
         <div className="grid-3">
           <div className="form-group">
             <label className="form-label" htmlFor="action-site">Location / Site</label>
-            {isSiteManager ? (
+            {isSiteManager || incident ? (
               <input
                 id="action-site"
                 type="text"
@@ -212,11 +209,19 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
         </div>
 
-        <div className="grid-2" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="grid-2" style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
           <div className="form-group">
             <label className="form-label" htmlFor="action-due">Deadline</label>
             <input id="action-due" type="date" className="form-control" required min={today()} value={formData.due_date}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })} />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="action-control">Hierarchy of control</label>
+            <select id="action-control" className="form-control" required={!!incident} value={formData.control}
+              onChange={(e) => setFormData({ ...formData, control: e.target.value })}>
+              <option value="">{incident ? 'Choose…' : 'Not stated'}</option>
+              {CONTROLS.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
+            </select>
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="action-priority">Priority</label>
@@ -228,8 +233,14 @@ const AddActionForm = ({ sites: initialSites, onSuccess, onCancel, prefill = nul
           </div>
         </div>
 
+        {incident && (
+          <div className="form-group" style={{ marginTop: '20px' }}>
+            <span className="form-label">Incident description <small style={{ color: '#64748b' }}>(fixed once logged)</small></span>
+            <p className="ca-fixed">{incident.description}</p>
+          </div>
+        )}
         <div className="form-group" style={{ marginTop: '20px' }}>
-          <label className="form-label" htmlFor="action-description">Action Plan / Description</label>
+          <label className="form-label" htmlFor="action-description">{incident ? 'Action plan (what will be done)' : 'Action Plan / Description'}</label>
           <textarea id="action-description" className="form-control" rows="4" required value={formData.action_taken} onChange={(e) => setFormData({ ...formData, action_taken: e.target.value })}></textarea>
         </div>
 

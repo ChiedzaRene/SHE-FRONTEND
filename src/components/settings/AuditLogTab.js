@@ -5,7 +5,7 @@ import { apiError } from "../../utils/apiError";
 import UserPicker from "./UserPicker";
 
 const PAGE_SIZE = 50;
-const ROLE_LABEL = { super_admin: "Super admin", admin: "Admin", she_team: "SHE team", site_manager: "Site manager" };
+const ROLE_LABEL = { super_admin: "Super admin", admin: "Admin", she_team: "SHE team", she_officer: "SHE officer", site_manager: "Site manager" };
 
 // The server stores UTC; show the viewer's own clock. A value with no zone marker is UTC.
 const parseTs = (ts) => (ts ? new Date(/(Z|[+-]\d\d:?\d\d)$/.test(ts) ? ts : `${ts}Z`) : null);

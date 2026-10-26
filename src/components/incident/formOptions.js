@@ -88,13 +88,15 @@ export const REPORT_TYPES = [
   ["full_corrective_action", "Full corrective action report"],
 ];
 
+// The form's order: the site reports, SHE assign a team, the team logs the causes,
+// SHE assign corrective actions, SHE close it with the lessons learnt, report type and comments
 export const STAGES = [
   ["reported", "Reported"],
   ["assigned", "Team assigned"],
   ["investigating", "Investigating"],
   ["causes_recorded", "Causes recorded"],
+  ["actions_assigned", "Actions assigned"],
   ["closed", "Closed"],
-  ["report_finalised", "Report finalised"],
 ];
 
 export const labelOf = (list, value) => (list.find(([v]) => v === value) || [null, value])[1];

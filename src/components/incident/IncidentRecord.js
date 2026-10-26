@@ -4,7 +4,7 @@ import { incidentsApi } from "../../api/endpoints";
 import { useFeedback } from "../Feedback";
 import SiteReportFields, { SiteReportView, cleanIntake, emptyIntake, intakeForEditing } from "./SiteReportFields";
 import EvidenceFiles from "./EvidenceFiles";
-import InvestigationPanel, { WORKFLOW_ROLES } from "./InvestigationPanel";
+import InvestigationPanel, { WORKFLOW_ROLES, teamIds } from "./InvestigationPanel";
 import { STAGES, labelOf, stageIndex } from "./formOptions";
 
 const EVIDENCE_ROLES = [...WORKFLOW_ROLES, "site_manager"];
@@ -61,7 +61,7 @@ function History({ incidentId }) {
 }
 
 // The full incident record: what the site reported, the evidence, SHE's investigation and its history.
-export default function IncidentRecord({ incident, siteName, user, readOnly, onClose, onUpdated, onTakeAction }) {
+export default function IncidentRecord({ incident, siteName, user, readOnly, onClose, onUpdated }) {
   const { notify } = useFeedback();
   const [tab, setTab] = useState("report");
   const [actionPlan, setActionPlan] = useState(incident.action_plan || "");
@@ -187,7 +187,7 @@ export default function IncidentRecord({ incident, siteName, user, readOnly, onC
               <div className="inc-block">
                 <h3>Evidence files</h3>
                 <EvidenceFiles incident={incident} onChange={onUpdated}
-                  canAdd={EVIDENCE_ROLES.includes(role)}
+                  canAdd={EVIDENCE_ROLES.includes(role) || teamIds(incident).includes(user?.user_id)}
                   canRemove={(f) => isShe || (f.uploaded_by != null && f.uploaded_by === user?.user_id)} />
               </div>
 
@@ -226,8 +226,9 @@ export default function IncidentRecord({ incident, siteName, user, readOnly, onC
           )}
         </div>
         <div className="modal-footer">
-          {!readOnly && (
-            <button type="button" className="btn btn-primary" onClick={() => onTakeAction(incident)}>Take Action</button>
+          {/* the SHE team takes action through the investigation: team, causes, corrective actions, closing */}
+          {isShe && tab !== "investigation" && (
+            <button type="button" className="btn btn-primary" onClick={() => setTab("investigation")}>Take Action</button>
           )}
           <button type="button" className="btn btn-outline" onClick={onClose}>Close</button>
         </div>

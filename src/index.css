@@ -1948,3 +1948,15 @@ tr.tt-row-missed td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
   .inc-cause-row, .inc-facts { grid-template-columns: 1fr; }
   .modal-wide .two-col { grid-template-columns: 1fr; }
 }
+.ca-fixed { margin: 4px 0 0; padding: 10px 12px; background: #f1f5f9; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  color: #475569; white-space: pre-wrap; }
+.inc-step { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 14px; background: #fff; }
+.inc-step.waiting { background: #f8fafc; }
+.inc-step.waiting .inc-step-title { color: var(--text-light); }
+.inc-step-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; font-size: 0.95rem; color: var(--primary); }
+.inc-step-title small { font-weight: 500; color: var(--text-muted); font-size: 0.78rem; }
+.inc-step-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--primary);
+  color: #fff; font-size: 0.78rem; }
+.inc-step.waiting .inc-step-n { background: var(--border); color: var(--text-muted); }
+.inc-banner { background: #eef3fc; color: var(--primary); border-radius: var(--radius-sm); padding: 10px 12px; font-weight: 600; margin: 0 0 14px; }
+.inc-step .card { margin-bottom: 0 !important; }

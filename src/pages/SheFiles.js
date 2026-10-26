@@ -149,7 +149,7 @@ function ShareForm({ sites, onShared, onCancel }) {
 export default function SheFiles() {
   const { user } = useAuth();
   const { notify, confirm } = useFeedback();
-  const canShare = ["admin", "super_admin", "she_team"].includes(user?.role);
+  const canShare = ["admin", "super_admin", "she_team", "she_officer"].includes(user?.role);
   const newIds = useNewItems("she_files");
 
   const [files, setFiles] = useState([]);

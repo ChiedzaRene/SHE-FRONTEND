@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import emblem from "../assets/glow-emblem.png";
 import NotificationBell from "./NotificationBell";
-import { isReadOnly, ROLE_LABELS } from "../utils/roles";
+import { isReadOnly, isSheStaff, ROLE_LABELS } from "../utils/roles";
 import {
   LayoutDashboard,
   Factory,
@@ -48,7 +48,7 @@ export default function Sidebar({ id }) {
         to:
           role === "admin"
             ? "/admin"
-            : role === "she_team" || oversight
+            : isSheStaff(role) || oversight
               ? "/she-dashboard"
               : "/site-dashboard",
         icon: LayoutDashboard,
@@ -59,7 +59,7 @@ export default function Sidebar({ id }) {
       { to: "/reports", icon: FileText, label: "Reports" },
     ];
 
-    if (role === "admin" || role === "she_team" || role === "site_manager" || oversight) {
+    if (role === "admin" || isSheStaff(role) || role === "site_manager" || oversight) {
       baseLinks.push(
         { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
         { to: "/legal", icon: Scale, label: "Legal" },
@@ -67,12 +67,12 @@ export default function Sidebar({ id }) {
       );
     }
 
-    if (role === "admin" || role === "she_team" || oversight) {
+    if (role === "admin" || isSheStaff(role) || oversight) {
       baseLinks.splice(1, 0, { to: "/sites", icon: Factory, label: "Sites" });
     }
 
     // Site managers enter their site's hours and headcount each month; SHE and admins can see them
-    if (role === "admin" || role === "she_team" || role === "site_manager" || oversight) {
+    if (role === "admin" || isSheStaff(role) || role === "site_manager" || oversight) {
       baseLinks.push({ to: "/site-hours", icon: Clock, label: "Hours Worked" });
       baseLinks.push({ to: "/she-files", icon: FolderOpen, label: "SHE Files" });
     }
