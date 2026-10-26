@@ -79,6 +79,7 @@ test('notifications can be marked unread again (all or one), opened ones say whe
   await panel.getByRole('button', { name: 'Mark "New audit at Borrowdale: Housekeeping" as unread' }).click();
   await panel.getByRole('button', { name: 'Mark "New spill at Msasa Depot" as read' }).click();
   await panel.getByRole('button', { name: 'Mark all as read' }).click();
+  await expect.poll(() => calls.length).toBe(4);   // the last click's request may still be on its way
   expect(calls).toEqual([
     ['/notifications/unread', { all: true }],
     ['/notifications/unread', { ids: [4] }],

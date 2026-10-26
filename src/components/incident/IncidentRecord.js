@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { X, Pencil } from "lucide-react";
 import { incidentsApi } from "../../api/endpoints";
 import { useFeedback } from "../Feedback";
+import { apiError } from "../../utils/apiError";
 import SiteReportFields, { SiteReportView, cleanIntake, emptyIntake, intakeForEditing } from "./SiteReportFields";
 import EvidenceFiles from "./EvidenceFiles";
 import InvestigationPanel, { WORKFLOW_ROLES, teamIds } from "./InvestigationPanel";
@@ -9,10 +10,7 @@ import { STAGES, labelOf, stageIndex } from "./formOptions";
 
 const EVIDENCE_ROLES = [...WORKFLOW_ROLES, "site_manager"];
 
-const detailOf = (err, fallback) => {
-  const detail = err.response?.data?.detail;
-  return typeof detail === "string" ? detail : fallback;
-};
+const detailOf = (err, fallback) => apiError(err, fallback);
 
 export function StageStepper({ status }) {
   const at = stageIndex(status);
