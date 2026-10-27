@@ -1964,3 +1964,7 @@ tr.tt-row-missed td:first-child { box-shadow: inset 4px 0 0 #dc2626; }
 .inc-causes { margin: 4px 0 0; padding-left: 20px; }
 .inc-causes li { margin: 2px 0; }
 .inc-description { margin-top: 4px; color: #475569; }
+/* clearing an answer stands apart from the answers themselves */
+.btn.inc-clear { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #fca5a5; background: var(--danger-light);
+  color: #991B1B; font-weight: 600; }
+.btn.inc-clear:hover { background: #fecaca; border-color: var(--danger); }
