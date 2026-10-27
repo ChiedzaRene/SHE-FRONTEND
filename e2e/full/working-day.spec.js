@@ -125,7 +125,7 @@ test.describe.serial('a working day', () => {
     await form.getByLabel('Incident Type').selectOption({ label: 'Injury' });
     await form.getByLabel('Severity').selectOption({ label: 'High' });
     await form.getByLabel('When did it happen?').fill(when.value);
-    await form.getByLabel('Description').fill(INCIDENT);
+    await form.getByRole('textbox', { name: 'Description', exact: true }).fill(INCIDENT);
     await form.getByLabel('Name of injured person').fill(INJURED);
     await form.getByLabel('Lost Time Days').fill('2');
     // the rest of Glow's report form

@@ -9,13 +9,11 @@ import { teamIds } from "../components/incident/InvestigationPanel";
 import { STAGES, labelOf } from "../components/incident/formOptions";
 import { useAuth } from "../context/AuthContext";
 import LoadingScreen from "../components/LoadingScreen";
-import { isReadOnly } from "../utils/roles";
 
 export default function Incidents() {
   const newIds = useNewItems("incidents");
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
-  const readOnly = isReadOnly(user?.role);
 
   // --- State Management ---
   const [incidents, setIncidents] = useState([]);
@@ -533,7 +531,6 @@ export default function Incidents() {
           incident={selectedIncident}
           siteName={siteNameOf(selectedIncident.site_id)}
           user={user}
-          readOnly={readOnly}
           onClose={() => setIsModalOpen(false)}
           onUpdated={updateIncident}
         />

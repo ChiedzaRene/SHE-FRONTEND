@@ -1,6 +1,8 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { CATEGORIES, INJURY_OUTCOMES, ENVIRONMENTAL_IMPACTS, costTotal, formatUsd, labelOf } from "./formOptions";
+import {
+  CATEGORIES, INJURY_OUTCOMES, ENVIRONMENTAL_IMPACTS, UNSAFE_ACTS, UNSAFE_CONDITIONS, costTotal, formatUsd, labelOf,
+} from "./formOptions";
 
 // The parts of the form the site fills in ("S" on the paper form), kept in the incident's
 // incident_intake. The person involved, date/time and days off duty are the incident's own fields.
@@ -152,10 +154,15 @@ export default function SiteReportFields({ intake, onChange, idPrefix = "intake"
         value={intake.environmental_impact} onChange={(v) => set({ environmental_impact: v })} />
 
       <h4 className="inc-section-title">Incident causes</h4>
+      {/* the form's page-4 lists of possible symptoms, as suggestions */}
+      <datalist id={id("cause-list")}>
+        {[...UNSAFE_ACTS, ...UNSAFE_CONDITIONS].map((c) => <option key={c} value={c} />)}
+      </datalist>
       {intake.site_causes.map((cause, i) => (
         <div className="form-group inc-numbered" key={i}>
           <label className="form-label" htmlFor={id(`site-cause-${i + 1}`)}>Cause {i + 1}</label>
           <input id={id(`site-cause-${i + 1}`)} type="text" className="form-control" maxLength={500} value={cause}
+            list={id("cause-list")} autoComplete="off" placeholder="Type, or pick an unsafe act or condition"
             onChange={(e) => set({ site_causes: intake.site_causes.map((c, n) => (n === i ? e.target.value : c)) })} />
         </div>
       ))}

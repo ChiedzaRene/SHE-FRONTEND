@@ -5,6 +5,7 @@ import SiteReportFields, { emptyIntake, cleanIntake } from "./incident/SiteRepor
 import { EVIDENCE_ACCEPT } from "./incident/EvidenceFiles";
 import { useFeedback } from "./Feedback";
 import { apiError } from "../utils/apiError";
+import RichTextEditor from "./RichTextEditor";
 
 // "YYYY-MM-DDTHH:mm" in the user's local time, the format <input type="datetime-local"> uses
 const nowLocal = () => {
@@ -75,6 +76,14 @@ export default function LogIncidentModal({
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    // the description is formatted text: count its words, not the formatting
+    const words = new DOMParser().parseFromString(formData.description || "", "text/html").body.textContent.trim();
+    if (words.length < 5) {
+      const message = "Describe what happened in at least 5 characters.";
+      setError(message);
+      notify(message, "error");
+      return;
+    }
     setLoading(true);
 
     try {
@@ -196,18 +205,9 @@ export default function LogIncidentModal({
               description={(
                 <div className="form-group">
                   <label className="form-label" htmlFor="incident-description">Description</label>
-                  <textarea id="incident-description"
-                    className="form-control"
-                    placeholder="Detailed description of the incident..."
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                    required
-                    minLength={5}
-                    maxLength={3000}
-                    rows={4}
-                  />
+                  <RichTextEditor id="incident-description" label="Description" value={formData.description}
+                    onChange={(html) => setFormData((f) => ({ ...f, description: html }))}
+                    placeholder="What happened: include specific time frames and names, and police details if any." />
                   <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
                 </div>
               )}
