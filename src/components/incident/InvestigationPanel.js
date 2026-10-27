@@ -4,8 +4,9 @@ import { Plus, Trash2, Check, Lock } from "lucide-react";
 import { actionsApi, incidentsApi } from "../../api/endpoints";
 import { Link } from "react-router-dom";
 import AddActionForm from "../AddAction";
+import RichTextEditor, { RichText } from "../RichTextEditor";
 import {
-  CONTROLS, REPORT_TYPES, ROOT_CAUSES, STAGES, UNSAFE_ACTS, UNSAFE_CONDITIONS, isFatal, labelOf, stageIndex,
+  CONTROLS, REPORT_TYPES, ROOT_CAUSES, STAGES, isFatal, labelOf, stageIndex,
 } from "./formOptions";
 
 export const WORKFLOW_ROLES = ["super_admin", "admin", "she_team", "she_officer"];
@@ -32,17 +33,6 @@ function Section({ n, title, who, open, waiting, children }) {
       <h4 className="inc-step-title"><span className="inc-step-n">{n}</span> {title} <small>{who}</small></h4>
       {open ? children : <p className="inc-muted"><Lock size={13} /> {waiting}</p>}
     </section>
-  );
-}
-
-function CausePicker({ onPick, label }) {
-  return (
-    <select className="form-control inc-picker" aria-label={label} value=""
-      onChange={(e) => e.target.value && onPick(e.target.value)}>
-      <option value="">Pick from the form's list…</option>
-      <optgroup label="Unsafe acts">{UNSAFE_ACTS.map((c) => <option key={c} value={c}>{c}</option>)}</optgroup>
-      <optgroup label="Unsafe conditions">{UNSAFE_CONDITIONS.map((c) => <option key={c} value={c}>{c}</option>)}</optgroup>
-    </select>
   );
 }
 
@@ -130,79 +120,81 @@ function TeamSection({ incident, canEdit, save, busy }) {
   );
 }
 
-// 2. The investigation team logs what it found
-function FindingsSection({ incident, canEdit, save, busy }) {
+// 2. The investigation team logs what it found. The box opens for writing once the investigation is started,
+// only for the people on the team, and is fixed once the findings are sent to the SHE team.
+function FindingsSection({ incident, canStart, canWrite, save, busy }) {
   const wf = incident.incident_workflow || {};
   const status = wf.status || "reported";
   const [findings, setFindings] = useState(wf.evidence || "");
   useEffect(() => { setFindings(incident.incident_workflow?.evidence || ""); }, [incident]);
-  const payload = () => ({ evidence: findings.trim() || null });
+  const words = new DOMParser().parseFromString(findings || "", "text/html").body.textContent.trim();
+  const payload = () => ({ evidence: findings });
 
   return (
-    <fieldset disabled={!canEdit || busy} className="inc-plain">
-      <div className="form-group">
-        <label className="form-label" htmlFor="inc-findings">Investigation findings</label>
-        <textarea id="inc-findings" className="form-control" rows={4} maxLength={10000} value={findings}
-          onChange={(e) => setFindings(e.target.value)}
+    <div>
+      <span className="form-label" id="inc-findings-label">Investigation findings</span>
+      {canWrite ? (
+        <RichTextEditor id="inc-findings" label="Investigation findings" value={findings} onChange={setFindings}
           placeholder="What the investigation found: statements taken, what was seen, photos and sketch diagrams (attach files on the Site report tab)." />
-      </div>
-      {canEdit && (
-        <div className="inc-actions">
-          <button type="button" className="btn btn-outline" onClick={() => save("findings", payload(), "Findings saved")}>Save findings</button>
-          {status === "assigned" && (
-            <button type="button" className="btn btn-primary" onClick={() => save("findings", { ...payload(), status: "investigating" }, "Investigation started")}>
-              Start investigation
-            </button>
-          )}
-          {status === "investigating" && (
-            <button type="button" className="btn btn-primary"
-              onClick={() => save("findings", { ...payload(), status: "findings_recorded" }, "Findings sent to the SHE team")}>
-              Send findings to the SHE team
-            </button>
+      ) : (
+        <div className="inc-locked" aria-labelledby="inc-findings-label">
+          {wf.evidence ? <RichText html={wf.evidence} /> : (
+            <p className="inc-muted">
+              <Lock size={13} />{" "}
+              {status === "assigned"
+                ? "Opens for the investigation team once the investigation is started."
+                : "Only the investigation team writes the findings."}
+            </p>
           )}
         </div>
       )}
-    </fieldset>
+      <div className="inc-actions">
+        {status === "assigned" && canStart && (
+          <button type="button" className="btn btn-primary" disabled={busy}
+            onClick={() => save("findings", { status: "investigating" }, "Investigation started: the findings box is open")}>
+            Start investigation
+          </button>
+        )}
+        {canWrite && (
+          <>
+            <button type="button" className="btn btn-outline" disabled={busy || !words} onClick={() => save("findings", payload(), "Findings saved")}>
+              Save findings
+            </button>
+            <button type="button" className="btn btn-primary" disabled={busy || !words}
+              onClick={() => save("findings", { ...payload(), status: "findings_recorded" }, "Findings sent to the SHE team")}>
+              Send findings to the SHE team
+            </button>
+            <small className="inc-muted">Once sent, the findings are fixed.</small>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
-// 3. The SHE team records the root cause; the causes the site reported are the starting point
+// 3. The SHE team records the root cause, after the findings are in. The causes are the site's, from its report.
 function RootCauseSection({ incident, canEdit, save, busy }) {
   const wf = incident.incident_workflow || {};
   const status = wf.status || "reported";
-  const fromRecord = () => {
-    const known = wf.causes?.length ? wf.causes : incident.incident_intake?.site_causes || [];
-    return { causes: [0, 1, 2].map((i) => known[i] || ""), root_cause: wf.root_cause || "" };
-  };
-  const [draft, setDraft] = useState(fromRecord);
-  useEffect(() => { setDraft(fromRecord()); }, [incident]); // eslint-disable-line react-hooks/exhaustive-deps
-  const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
-  const payload = () => ({
-    causes: draft.causes.map((c) => c.trim()).filter(Boolean),
-    root_cause: draft.root_cause.trim() || null,
-  });
+  const causes = (wf.causes?.length ? wf.causes : incident.incident_intake?.site_causes) || [];
+  const [rootCause, setRootCause] = useState(wf.root_cause || "");
+  useEffect(() => { setRootCause(incident.incident_workflow?.root_cause || ""); }, [incident]);
 
   return (
     <fieldset disabled={!canEdit || busy} className="inc-plain">
-      <p className="inc-muted">The causes as the site reported them; confirm or change them.</p>
-      {draft.causes.map((cause, i) => (
-        <div className="form-group inc-cause" key={i}>
-          <label className="form-label" htmlFor={`inc-cause-${i + 1}`}>Cause {i + 1}</label>
-          <div className="inc-cause-row">
-            <input id={`inc-cause-${i + 1}`} className="form-control" maxLength={1000} value={cause}
-              onChange={(e) => set({ causes: draft.causes.map((c, n) => (n === i ? e.target.value : c)) })} />
-            {canEdit && <CausePicker label={`Suggestions for cause ${i + 1}`}
-              onPick={(v) => set({ causes: draft.causes.map((c, n) => (n === i ? v : c)) })} />}
-          </div>
-        </div>
-      ))}
+      <div className="form-group">
+        <span className="form-label">Incident causes <small className="inc-muted">(from the site's report)</small></span>
+        {causes.length ? (
+          <ol className="inc-causes">{causes.map((c, i) => <li key={i}>{c}</li>)}</ol>
+        ) : <p className="inc-muted">The site gave no causes.</p>}
+      </div>
       <div className="form-group">
         <label className="form-label" htmlFor="inc-root-cause">Root cause</label>
-        <textarea id="inc-root-cause" className="form-control" rows={2} maxLength={10000} value={draft.root_cause}
-          onChange={(e) => set({ root_cause: e.target.value })} />
+        <textarea id="inc-root-cause" className="form-control" rows={3} maxLength={10000} value={rootCause}
+          onChange={(e) => setRootCause(e.target.value)} />
         {canEdit && (
           <select className="form-control inc-picker" aria-label="Root cause suggestions" value=""
-            onChange={(e) => e.target.value && set({ root_cause: draft.root_cause.trim() ? `${draft.root_cause.trim()}; ${e.target.value}` : e.target.value })}>
+            onChange={(e) => e.target.value && setRootCause(rootCause.trim() ? `${rootCause.trim()}; ${e.target.value}` : e.target.value)}>
             <option value="">Add a possible root cause from the form's list…</option>
             {ROOT_CAUSES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -211,12 +203,12 @@ function RootCauseSection({ incident, canEdit, save, busy }) {
       {canEdit && (
         <div className="inc-actions">
           {status === "findings_recorded" ? (
-            <button type="button" className="btn btn-primary"
-              onClick={() => save("root", { ...payload(), status: "root_cause_recorded" }, "Root cause recorded")}>
+            <button type="button" className="btn btn-primary" disabled={!rootCause.trim()}
+              onClick={() => save("root", { root_cause: rootCause.trim(), status: "root_cause_recorded" }, "Root cause recorded")}>
               Record the root cause
             </button>
           ) : (
-            <button type="button" className="btn btn-outline" onClick={() => save("root", payload(), "Saved")}>Save</button>
+            <button type="button" className="btn btn-outline" onClick={() => save("root", { root_cause: rootCause.trim() || null }, "Saved")}>Save</button>
           )}
         </div>
       )}
@@ -429,7 +421,7 @@ export default function InvestigationPanel({ incident, user, onSaved }) {
       </Section>
       <Section n={2} title="Investigation findings" who="by the investigation team" open={reached >= STAGE.assigned}
         waiting="Opens once the SHE team assigns the investigation team.">
-        <FindingsSection {...props} canEdit={(isShe && !closed) || (onTeam && reached <= STAGE.findings_recorded)} />
+        <FindingsSection {...props} canStart={isShe || onTeam} canWrite={onTeam && status === "investigating"} />
         <Notice notice={notice} section="findings" />
       </Section>
       <Section n={3} title="Root cause" who="by the SHE team" open={reached >= STAGE.findings_recorded}

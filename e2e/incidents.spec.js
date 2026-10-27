@@ -7,15 +7,10 @@ const incident = (over) => ({
   injured_person: null, lost_time_days: 0, resolved: false, action_plan: null, date_time: '2026-10-19T09:00:00Z', ...over,
 });
 
-test('the register shows the affected site, and the action plan is saved apart from the fixed description', async ({ page }) => {
-  let sent = null;
+test('the register shows the affected site; the record shows the fixed, formatted description and no action plan', async ({ page }) => {
   await mockApi(page, {
     'GET /sites': SITES,
-    'GET /incidents': [incident()],
-    'PUT /incidents/7': (route, req) => {
-      sent = req.postDataJSON();
-      return route.fulfill(json(200, incident({ action_plan: sent.action_plan })));
-    },
+    'GET /incidents': [incident({ description_html: '<p><b>Diesel spilt</b> at pump 3 during delivery</p>' })],
   });
   await signIn(page, { role: 'she_team' });
   await page.goto('/incidents');
@@ -26,22 +21,17 @@ test('the register shows the affected site, and the action plan is saved apart f
   await row.getByRole('button', { name: 'Details' }).click();
   await expect(page.getByText('Site: Borrowdale Service Station')).toBeVisible();
   await expect(page.getByText('(fixed once logged)')).toBeVisible();
-  // the description is shown as text, not as something to edit
+  await expect(page.locator('.inc-description b')).toHaveText('Diesel spilt');   // formatting kept
+  // the description is shown, not edited; the plan comes with the corrective actions
   await expect(page.getByRole('textbox', { name: /description/i })).toHaveCount(0);
-
-  const save = page.getByRole('button', { name: 'Save action plan' });
-  await expect(save).toBeDisabled();
-  await page.getByRole('textbox', { name: 'Action plan' }).fill('Absorbent laid; refresher on delivery procedure by Friday');
-  await save.click();
-  await expect.poll(() => sent).toEqual({ action_plan: 'Absorbent laid; refresher on delivery procedure by Friday' });
-  await expect(page.getByText('Action plan saved')).toBeVisible();
-  await expect(save).toBeDisabled();
+  await expect(page.getByRole('textbox', { name: /action plan/i })).toHaveCount(0);
+  await expect(page.getByText(/action plan/i)).toHaveCount(0);
 });
 
 test('a director sees every site but gets no buttons to change records', async ({ page }) => {
   await mockApi(page, {
     'GET /sites': SITES,
-    'GET /incidents': [incident({ action_plan: 'Absorbent laid' })],
+    'GET /incidents': [incident()],
   });
   await signIn(page, { role: 'director' });
   await expect(page).toHaveURL(/\/she-dashboard$/);
@@ -53,8 +43,7 @@ test('a director sees every site but gets no buttons to change records', async (
 
   await nav.getByRole('link', { name: 'Incidents' }).click();
   await page.getByRole('row', { name: /INC-7/ }).getByRole('button', { name: 'Details' }).click();
-  await expect(page.getByText('Absorbent laid')).toBeVisible();
-  await expect(page.getByRole('textbox', { name: 'Action plan' })).toHaveCount(0);
+  await expect(page.getByText('Diesel spilt at pump 3 during delivery')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Take Action' })).toHaveCount(0);
   await page.getByRole('button', { name: 'Close' }).click();
 
@@ -119,7 +108,13 @@ test("the site's report: who reported, the person involved, the description, the
   expect(at('Description')).toBeLessThan(at('Incident Type'));
   expect(at('Description')).toBeLessThan(at('Cause 1'));
   await form.getByLabel('Incident Type').selectOption({ label: 'Spill' });
-  await form.getByLabel('Description').fill('Diesel overflowed during a tanker delivery at pump 3');
+  const description = form.getByRole('textbox', { name: 'Description', exact: true });
+  await expect(form.getByRole('toolbar', { name: 'Formatting for Description' })).toBeVisible();
+  await description.click();
+  await page.keyboard.press('Control+b');
+  await page.keyboard.type('Diesel overflowed');
+  await page.keyboard.press('Control+b');
+  await page.keyboard.type(' during a tanker delivery at pump 3');
   await form.getByLabel('Name of person involved').fill('Farai Moyo');
   await form.getByLabel('Name of reporter').fill('Tendai Chikore');
   await form.getByLabel('Department').fill('Retail');
@@ -147,7 +142,7 @@ test("the site's report: who reported, the person involved, the description, the
   await expect.poll(() => uploads.length).toBe(1);
   expect(uploads[0]).toMatch(/^multipart\/form-data/);
   expect(created.injured_person).toBe('Farai Moyo');
-  expect(created.description).toBe('Diesel overflowed during a tanker delivery at pump 3');
+  expect(created.description).toMatch(/^<b>Diesel overflowed<\/b>( |&nbsp;)during a tanker delivery at pump 3$/);
   expect(created.incident_intake).toEqual({
     reporter_name: 'Tendai Chikore', department: 'Retail', employee_or_contractor: 'contractor', years_of_service: '3',
     location: 'Pump 3 forecourt', categories: ['oil_fuel_spillage', 'other'], other_category: 'Tanker overfill',
@@ -213,40 +208,61 @@ test('a SHE officer picks the investigation team from the people with accounts',
   await expect(record.getByRole('button', { name: 'Start investigation' })).toBeVisible();
 });
 
-test('a team member from another site logs the findings, and nothing else', async ({ page }) => {
+test('the findings box opens only when the investigation starts, for the team only, and is fixed once sent', async ({ page }) => {
   const state = await investigation(page, {
-    incident_workflow: { status: 'investigating', team_members: [{ user_id: 52, name: 'Peter Two', job_title: 'Depot manager' }] },
+    incident_workflow: { status: 'assigned', team_members: [{ user_id: 52, name: 'Peter Two', job_title: 'Depot manager' }] },
   });
   await signIn(page, { role: 'site_manager', site_id: 1, user_id: 52 });
   const record = await openRecord(page);
   await expect(record.getByText('You are on the investigation team')).toBeVisible();
   await expect(record.getByRole('cell', { name: 'Peter Two' })).toBeVisible();          // the team, read only
   await expect(record.getByRole('button', { name: 'Assign investigation team' })).toHaveCount(0);
-  await record.getByRole('textbox', { name: 'Investigation findings' }).fill('Statements from two attendants: the hose was left unattended');
+  const findings = record.getByRole('textbox', { name: 'Investigation findings' });
+  await expect(findings).toHaveCount(0);                                                 // locked until started
+  await expect(record.getByText('Opens for the investigation team once the investigation is started')).toBeVisible();
+  await record.getByRole('button', { name: 'Start investigation' }).click();
+  await expect(record.getByRole('status')).toHaveText(/Investigation started/);
+  expect(state.sent[0]).toEqual({ incident_workflow: { status: 'investigating' } });
+
+  await expect(record.getByRole('toolbar', { name: 'Formatting for Investigation findings' })).toBeVisible();
+  await findings.click();
+  await record.getByRole('button', { name: 'Bulleted list' }).click();
+  await page.keyboard.type('Two statements taken');
   await record.getByRole('button', { name: 'Send findings to the SHE team' }).click();
   await expect(record.getByRole('status')).toHaveText(/Findings sent to the SHE team/);
-  expect(state.sent[0]).toEqual({ incident_workflow: {
-    evidence: 'Statements from two attendants: the hose was left unattended', status: 'findings_recorded' } });
-  // the root cause and the corrective actions are for the SHE team
+  expect(state.sent[1].incident_workflow.status).toBe('findings_recorded');
+  expect(state.sent[1].incident_workflow.evidence).toMatch(/^<ul><li>Two statements taken(<br>)?<\/li><\/ul>$/);
+  // sent: the findings are fixed, and the root cause is for the SHE team
+  await expect(findings).toHaveCount(0);
+  await expect(record.locator('.inc-locked li')).toHaveText('Two statements taken');
   await expect(record.getByRole('textbox', { name: 'Root cause', exact: true })).toBeDisabled();
-  await expect(record.getByRole('button', { name: 'Record the root cause' })).toHaveCount(0);
 });
 
-test('the SHE team records the root cause, starting from the causes the site reported', async ({ page }) => {
+test('the SHE team, when not on the investigation team, cannot write the findings', async ({ page }) => {
+  await investigation(page, { incident_workflow: { status: 'investigating', team_members: [{ user_id: 52, name: 'Peter Two' }] } });
+  await signIn(page, { role: 'she_team', user_id: 4 });
+  const record = await openRecord(page);
+  await expect(record.getByRole('textbox', { name: 'Investigation findings' })).toHaveCount(0);
+  await expect(record.getByText('Only the investigation team writes the findings.')).toBeVisible();
+  await expect(record.getByRole('button', { name: 'Send findings to the SHE team' })).toHaveCount(0);
+});
+
+test('the SHE team records the root cause once the findings are in; the causes stay the site\'s', async ({ page }) => {
   const state = await investigation(page, {
-    incident_intake: { site_causes: ['Delivery not watched'] },
-    incident_workflow: { status: 'findings_recorded', evidence: 'Statements' },
+    incident_intake: { site_causes: ['Delivery not watched', 'Hose left in the tank'] },
+    incident_workflow: { status: 'findings_recorded', evidence: '<p><b>Two</b> statements taken</p>' },
   });
   await signIn(page, { role: 'she_officer' });
   const record = await openRecord(page);
   await expect(record.getByRole('region', { name: 'Corrective actions' })).toContainText('Opens once the SHE team records the root cause');
-  await expect(record.getByLabel('Cause 1', { exact: true })).toHaveValue('Delivery not watched');
-  await record.getByLabel('Suggestions for cause 2').selectOption('Failure to follow procedure');
+  await expect(record.locator('.inc-locked b')).toHaveText('Two');                 // the team's findings, fixed
+  const causes = record.locator('.inc-causes li');
+  await expect(causes).toHaveText(['Delivery not watched', 'Hose left in the tank']);
+  await expect(record.getByLabel(/^Cause 1/)).toHaveCount(0);                       // not editable here
   await record.getByLabel('Root cause suggestions').selectOption('Inadequate training');
   await record.getByRole('button', { name: 'Record the root cause' }).click();
   await expect(record.getByRole('status')).toHaveText(/Root cause recorded/);
-  expect(state.sent[0]).toEqual({ incident_workflow: {
-    causes: ['Delivery not watched', 'Failure to follow procedure'], root_cause: 'Inadequate training', status: 'root_cause_recorded' } });
+  expect(state.sent[0]).toEqual({ incident_workflow: { root_cause: 'Inadequate training', status: 'root_cause_recorded' } });
   await expect(record.getByRole('button', { name: 'Assign a corrective action' })).toBeVisible();
 });
 
@@ -309,13 +325,14 @@ test('once the corrective actions are closed, SHE log the lessons learnt, report
 });
 
 test("the server's reason is shown when a step can't be taken yet", async ({ page }) => {
-  await investigation(page, { incident_workflow: { status: 'investigating' } }, {
-    'PUT /incidents/7': (route) => route.fulfill(json(422, { detail: 'Write down what the investigation found' })),
+  await investigation(page, { incident_workflow: { status: 'findings_recorded', evidence: 'Statements' } }, {
+    'PUT /incidents/7': (route) => route.fulfill(json(409, { detail: 'The root cause is recorded after the investigation team sends its findings' })),
   });
   await signIn(page, { role: 'admin' });
   const record = await openRecord(page);
-  await record.getByRole('button', { name: 'Send findings to the SHE team' }).click();
-  await expect(record.getByRole('alert')).toContainText('Write down what the investigation found');
+  await record.getByRole('textbox', { name: 'Root cause', exact: true }).fill('Inadequate training');
+  await record.getByRole('button', { name: 'Record the root cause' }).click();
+  await expect(record.getByRole('alert')).toContainText('after the investigation team sends its findings');
 });
 
 test('the Operations Manager comments on a fatal incident and changes nothing else', async ({ page }) => {
@@ -348,11 +365,12 @@ test("a description that is too short is caught before sending, and the server's
   await page.getByRole('button', { name: 'Log Incident' }).click();
   const form = page.locator('.modal');
   await expect(form.getByLabel('Site', { exact: true })).toHaveValue('Msasa Depot');
-  await form.getByLabel('Description').fill('Fell');
+  const description = form.getByRole('textbox', { name: 'Description', exact: true });
+  await description.fill('Fell');
   await form.getByRole('button', { name: 'Log Incident' }).click();
-  expect(await form.getByLabel('Description').evaluate((el) => el.validity.tooShort)).toBe(true);
+  await expect(form.getByText('Describe what happened in at least 5 characters.')).toBeVisible();
   expect(posts).toBe(0);
-  await form.getByLabel('Description').fill('Fell from the loading ramp');
+  await description.fill('Fell from the loading ramp');
   await form.getByRole('button', { name: 'Log Incident' }).click();
   await expect(form.getByText("The incident wasn't logged. Occurred at occurred_at cannot be in the future")).toBeVisible();
 });

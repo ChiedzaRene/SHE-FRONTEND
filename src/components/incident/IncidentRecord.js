@@ -5,6 +5,7 @@ import { useFeedback } from "../Feedback";
 import { apiError } from "../../utils/apiError";
 import SiteReportFields, { SiteReportView, cleanIntake, emptyIntake, intakeForEditing } from "./SiteReportFields";
 import EvidenceFiles from "./EvidenceFiles";
+import { RichText } from "../RichTextEditor";
 import InvestigationPanel, { WORKFLOW_ROLES, teamIds } from "./InvestigationPanel";
 import { STAGES, labelOf, stageIndex } from "./formOptions";
 
@@ -59,12 +60,9 @@ function History({ incidentId }) {
 }
 
 // The full incident record: what the site reported, the evidence, SHE's investigation and its history.
-export default function IncidentRecord({ incident, siteName, user, readOnly, onClose, onUpdated }) {
+export default function IncidentRecord({ incident, siteName, user, onClose, onUpdated }) {
   const { notify } = useFeedback();
   const [tab, setTab] = useState("report");
-  const [actionPlan, setActionPlan] = useState(incident.action_plan || "");
-  const [savingPlan, setSavingPlan] = useState(false);
-  const [planError, setPlanError] = useState("");
   const [editing, setEditing] = useState(null);
   const [savingReport, setSavingReport] = useState(false);
   const [reportError, setReportError] = useState("");
@@ -79,22 +77,6 @@ export default function IncidentRecord({ incident, siteName, user, readOnly, onC
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  // The description is the fixed record of what happened; what is being done about it goes in the action plan
-  const saveActionPlan = async () => {
-    setSavingPlan(true);
-    setPlanError("");
-    try {
-      const res = await incidentsApi.update(incident.id, { action_plan: actionPlan });
-      onUpdated(res.data);
-      setActionPlan(res.data.action_plan || "");
-      notify("Action plan saved");
-    } catch (err) {
-      setPlanError(detailOf(err, "Could not save the action plan."));
-    } finally {
-      setSavingPlan(false);
-    }
-  };
 
   const saveReport = async () => {
     setSavingReport(true);
@@ -152,9 +134,11 @@ export default function IncidentRecord({ incident, siteName, user, readOnly, onC
               <div className="inc-block">
                 <strong>Description</strong>{" "}
                 <span style={{ color: "#64748b", fontSize: "0.8rem" }}>(fixed once logged)</span>
-                <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
-                  {incident.description || "No description provided."}
-                </p>
+                <div className="inc-description">
+                  {incident.description_html
+                    ? <RichText html={incident.description_html} />
+                    : <p style={{ margin: 0, whiteSpace: "pre-wrap" }}>{incident.description || "No description provided."}</p>}
+                </div>
               </div>
 
               <div className="inc-block">
@@ -189,25 +173,6 @@ export default function IncidentRecord({ incident, siteName, user, readOnly, onC
                   canRemove={(f) => isShe || (f.uploaded_by != null && f.uploaded_by === user?.user_id)} />
               </div>
 
-              <div className="inc-block">
-                <label className="form-label" htmlFor="incident-action-plan"><strong>Action plan</strong></label>
-                {readOnly ? (
-                  <p style={{ marginTop: "4px", color: "#475569", whiteSpace: "pre-wrap" }}>
-                    {incident.action_plan || "No action plan yet."}
-                  </p>
-                ) : (
-                  <>
-                    <textarea id="incident-action-plan" className="form-control" rows={4} maxLength={5000}
-                      placeholder="What is being done about this incident, by whom and by when"
-                      value={actionPlan} onChange={(e) => setActionPlan(e.target.value)} />
-                    {planError && <div role="alert" style={{ color: "#991B1B", marginTop: 6 }}>{planError}</div>}
-                    <button type="button" className="btn btn-outline btn-sm" style={{ marginTop: 8 }}
-                      disabled={savingPlan || actionPlan.trim() === (incident.action_plan || "").trim()} onClick={saveActionPlan}>
-                      {savingPlan ? "Saving..." : "Save action plan"}
-                    </button>
-                  </>
-                )}
-              </div>
             </div>
           )}
 
