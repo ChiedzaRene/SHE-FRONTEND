@@ -1,5 +1,5 @@
 import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, X } from "lucide-react";
 import {
   CATEGORIES, INJURY_OUTCOMES, ENVIRONMENTAL_IMPACTS, UNSAFE_ACTS, UNSAFE_CONDITIONS, costTotal, formatUsd, labelOf,
 } from "./formOptions";
@@ -58,12 +58,16 @@ function Choice({ name, legend, options, value, onChange }) {
       <div className="inc-choice-row">
         {options.map(([key, text]) => (
           <label key={key} className={`inc-choice-item${value === key ? " on" : ""}`}>
-            <input type="radio" name={name} value={key} checked={value === key} onChange={() => onChange(key)} />
+            {/* clicking the chosen answer again unselects it */}
+            <input type="radio" name={name} value={key} checked={value === key} onChange={() => onChange(key)}
+              onClick={() => value === key && onChange("")} />
             {text}
           </label>
         ))}
         {value && (
-          <button type="button" className="btn btn-sm btn-outline" onClick={() => onChange("")}>Clear</button>
+          <button type="button" className="btn btn-sm inc-clear" aria-label={`Clear ${legend.toLowerCase()}`} onClick={() => onChange("")}>
+            <X size={14} aria-hidden="true" /> Clear
+          </button>
         )}
       </div>
     </fieldset>

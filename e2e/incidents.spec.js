@@ -376,3 +376,25 @@ test("a description that is too short is caught before sending, and the server's
   await form.getByRole('button', { name: 'Log Incident' }).click();
   await expect(form.getByText("The incident wasn't logged. Occurred at occurred_at cannot be in the future")).toBeVisible();
 });
+
+test('an injury outcome or environmental impact unselects when clicked again, and Clear stands out', async ({ page }) => {
+  await mockApi(page, { 'GET /sites/1': SITES[0], 'GET /sites': SITES });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.getByRole('button', { name: 'Log Incident' }).click();
+  const form = page.locator('.modal');
+  const firstAid = form.getByLabel('First aid case');
+  await firstAid.check();
+  await expect(firstAid).toBeChecked();
+  await firstAid.click();                                   // clicked again: unselected
+  await expect(firstAid).not.toBeChecked();
+  await expect(form.getByRole('button', { name: 'Clear injury outcome' })).toHaveCount(0);
+
+  const withinSite = form.getByLabel('Impact within site boundaries');
+  await withinSite.check();
+  const clear = form.getByRole('button', { name: 'Clear environmental impact' });
+  await expect(clear).toHaveClass(/inc-clear/);
+  const colour = await clear.evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(colour).not.toBe(await withinSite.locator('xpath=..').evaluate((el) => getComputedStyle(el).backgroundColor));
+  await clear.click();
+  await expect(withinSite).not.toBeChecked();
+});
