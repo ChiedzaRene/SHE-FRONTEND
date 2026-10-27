@@ -105,7 +105,9 @@ test("the site's report: who reported, the person involved, the description, the
   const at = (text) => order.findIndex((t) => (text instanceof RegExp ? text.test(t) : t.startsWith(text)));
   expect(at('Name of reporter')).toBeLessThan(at(/^Name of (injured person|person involved)/));
   expect(at('Years of service')).toBeLessThan(at('Description'));
-  expect(at('Description')).toBeLessThan(at('Incident Type'));
+  // type and severity come before the days off duty (shown for injuries)
+  expect(at('Incident Type')).toBeLessThan(at('Lost Time Days'));
+  expect(at('Severity')).toBeLessThan(at('Lost Time Days'));
   expect(at('Description')).toBeLessThan(at('Cause 1'));
   await form.getByLabel('Incident Type').selectOption({ label: 'Spill' });
   const description = form.getByRole('textbox', { name: 'Description', exact: true });

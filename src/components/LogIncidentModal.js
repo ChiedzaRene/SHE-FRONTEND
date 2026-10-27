@@ -185,33 +185,6 @@ export default function LogIncidentModal({
                       required
                     />
                   </div>
-                  {isInjury && (
-                    <div className="form-group">
-                      <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days <small>(days off duty)</small></label>
-                      <input id="incident-lost-time-days"
-                        type="number"
-                        className="form-control"
-                        value={formData.lost_time_days}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lost_time_days: e.target.value })
-                        }
-                        min="0"
-                        placeholder="e.g. 3"
-                      />
-                    </div>
-                  )}
-                </>
-              )}
-              description={(
-                <div className="form-group">
-                  <label className="form-label" htmlFor="incident-description">Description</label>
-                  <RichTextEditor id="incident-description" label="Description" value={formData.description}
-                    onChange={(html) => setFormData((f) => ({ ...f, description: html }))}
-                    placeholder="What happened: include specific time frames and names, and police details if any." />
-                  <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
-                </div>
-              )}
-              classification={(
                 <div className="two-col">
                   <div className="form-group">
                     <label className="form-label" htmlFor="incident-incident-type">Incident Type</label>
@@ -246,7 +219,33 @@ export default function LogIncidentModal({
                       <option value="critical">Critical</option>
                     </select>
                   </div>
-                </div>              )}
+                </div>
+                  {isInjury && (
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="incident-lost-time-days">Lost Time Days <small>(days off duty)</small></label>
+                      <input id="incident-lost-time-days"
+                        type="number"
+                        className="form-control"
+                        value={formData.lost_time_days}
+                        onChange={(e) =>
+                          setFormData({ ...formData, lost_time_days: e.target.value })
+                        }
+                        min="0"
+                        placeholder="e.g. 3"
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+              description={(
+                <div className="form-group">
+                  <label className="form-label" htmlFor="incident-description">Description</label>
+                  <RichTextEditor id="incident-description" label="Description" value={formData.description}
+                    onChange={(html) => setFormData((f) => ({ ...f, description: html }))}
+                    placeholder="What happened: include specific time frames and names, and police details if any." />
+                  <small style={{ color: "#64748b" }}>At least 5 characters. The description can't be changed once the incident is logged.</small>
+                </div>
+              )}
               evidenceFiles={(
               <div className="form-group">
                 <label className="form-label" htmlFor="incident-evidence-files">
