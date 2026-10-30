@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Save, CheckCircle, Lock, Search } from "lucide-react";
 import { incidentsApi, sitesApi, siteHoursApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
+import { useFeedback } from "../components/Feedback";
 
 const toMonthValue = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 
@@ -20,8 +21,12 @@ const fmtNumber = (n) => (n === null || n === undefined ? "—" : Number(n).toLo
 
 const isWholeNumber = (raw) => /^\d+$/.test(String(raw).trim());
 
+// a month's hours for one person are normally somewhere in this range; outside it the figure is checked first
+const HOURS_PER_WORKER = [40, 400];
+
 export default function SiteHours() {
   const { user } = useAuth();
+  const { confirm } = useFeedback();
   // Site managers enter their own site's figures; admins can correct any site; the SHE team only reads them
   const canEdit = ["site_manager", "admin", "super_admin"].includes(user?.role);
   const isManager = user?.role === "site_manager";
@@ -105,6 +110,18 @@ export default function SiteHours() {
       setStatus((s) => ({ ...s, [siteId]: "Enter the number of workers as a whole number" }));
       return;
     }
+    // the hours are everyone's at the site for the month; a figure far from a working month is usually a typing slip
+    const workers = rawWorkers === "" ? null : Number(rawWorkers);
+    const perWorker = workers ? hours / workers : null;
+    const odd = hours > 0 && (perWorker != null ? perWorker < HOURS_PER_WORKER[0] || perWorker > HOURS_PER_WORKER[1] : hours < 100);
+    if (odd && !(await confirm({
+      title: "Check these hours",
+      message: perWorker != null
+        ? `That is about ${Math.round(perWorker)} hours per worker this month (usually ${HOURS_PER_WORKER[0]}–${HOURS_PER_WORKER[1]}). `
+          + "Enter the total hours worked by everyone at the site in the month. Save anyway?"
+        : `${hours} hours is very low for a whole site for a month. Enter the total hours worked by everyone at the site. Save anyway?`,
+      confirmLabel: "Save anyway",
+    }))) return;
     setStatus((s) => ({ ...s, [siteId]: "saving" }));
     try {
       const body = { site_id: siteId, month, hours_worked: hours };
