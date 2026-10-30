@@ -425,7 +425,12 @@ export default function DashboardView({ title, subtitle }) {
                           </button>
                         </td>
                         <td>{row.incidents}</td>
-                        <td>{fmtRate(row.ltifr)}</td>
+                        <td>
+                          {fmtRate(row.ltifr)}
+                          {row.ltifr != null && (
+                            <div className="dash-muted">{row.lost_time_injuries} LTI{row.lost_time_injuries === 1 ? "" : "s"}</div>
+                          )}
+                        </td>
                         <td>{fmtNum(row.workers)}</td>
                         <td>{fmtNum(row.hours_worked)}</td>
                         <td>{row.actions_total ? `${fmtPct(row.actions_completion_pct)} (${row.actions_completed}/${row.actions_total})` : "—"}</td>

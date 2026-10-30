@@ -78,3 +78,31 @@ test('when the chosen month is slow to load, typed figures are not wiped by the 
   await expect(page.getByRole('row', { name: /Msasa Depot/ }).getByText('Saved')).toBeVisible();
   expect(saves).toEqual([{ site_id: 1, month: '2026-01', hours_worked: 4100, workers: 20 }]);
 });
+
+test("hours that don't look like a whole site's month are checked before saving", async ({ page }) => {
+  const saves = [];
+  await mockApi(page, {
+    'GET /sites': [{ id: 1, name: 'Msasa Depot' }],
+    'GET /site-hours': [],
+    'PUT /site-hours': (route, req) => {
+      saves.push(req.postDataJSON());
+      return route.fulfill(json(200, { id: 1, site_id: 1, period: `${lastMonth()}-01`, ...req.postDataJSON(), entered_by: 4 }));
+    },
+  });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.goto('/site-hours');
+  // one person's month (176 hours) typed instead of the site's total for 26 people
+  await page.getByLabel('Hours worked at Msasa Depot').fill('176');
+  await page.getByLabel('Number of workers at Msasa Depot').fill('26');
+  await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
+  const check = page.getByRole('alertdialog');
+  await expect(check).toContainText('about 7 hours per worker');
+  await check.getByRole('button', { name: 'Cancel' }).click();
+  expect(saves).toEqual([]);
+  // corrected to the site's total: saved without a question
+  await page.getByLabel('Hours worked at Msasa Depot').fill('4576');
+  await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
+  await expect(page.getByText('Saved')).toBeVisible();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  expect(saves).toEqual([{ site_id: 1, month: lastMonth(), hours_worked: 4576, workers: 26 }]);
+});

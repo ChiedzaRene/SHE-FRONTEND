@@ -188,6 +188,8 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Hours worked at Msasa Depot').fill('52000');
     await page.getByLabel('Number of workers at Msasa Depot').fill('30');
     await page.getByRole('button', { name: 'Save hours for Msasa Depot' }).click();
+    // about 1,733 hours each is far more than a month's work, so the page asks first
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Save anyway' }).click();
     await expect(page.getByRole('row', { name: /Msasa Depot/ }).getByText('Saved')).toBeVisible();
     await openMenu(page, 'Dashboard');
     await expect(page.locator('.card').filter({ hasText: 'Workers' }).first()).toContainText('30');
