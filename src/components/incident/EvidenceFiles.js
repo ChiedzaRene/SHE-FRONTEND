@@ -12,7 +12,14 @@ const sizeOf = (bytes) => (bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFix
 const detailOf = (err, fallback) => apiError(err, fallback);
 
 // Evidence attached to an incident: supporting documents, witness or victim reports, pictures, sketch diagrams.
-export default function EvidenceFiles({ incident, canAdd, canRemove, onChange }) {
+// `api` lets another record (a corrective action) use the same list: { add, remove, view, download }.
+export default function EvidenceFiles({ incident, canAdd, canRemove, onChange, api = null, label = "Attach evidence" }) {
+  const ops = api || {
+    add: (file) => incidentsApi.addFile(incident.id, file),
+    remove: (fileId) => incidentsApi.removeFile(incident.id, fileId),
+    view: (fileId) => incidentsApi.viewFile(incident.id, fileId),
+    download: (f) => incidentsApi.downloadFile(incident.id, f.id, f.filename),
+  };
   const input = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -25,7 +32,7 @@ export default function EvidenceFiles({ incident, canAdd, canRemove, onChange })
     let latest = null;
     try {
       for (const file of picked) {
-        latest = (await incidentsApi.addFile(incident.id, file)).data;
+        latest = (await ops.add(file)).data;
       }
     } catch (err) {
       setError(detailOf(err, "A file couldn't be attached."));
@@ -39,14 +46,13 @@ export default function EvidenceFiles({ incident, canAdd, canRemove, onChange })
   const remove = async (file) => {
     setError("");
     try {
-      onChange((await incidentsApi.removeFile(incident.id, file.id)).data);
+      onChange((await ops.remove(file.id)).data);
     } catch (err) {
       setError(detailOf(err, "The file couldn't be removed."));
     }
   };
 
-  const download = (file) => incidentsApi.downloadFile(incident.id, file.id, file.filename)
-    .catch(() => setError("The file couldn't be downloaded."));
+  const download = (file) => ops.download(file).catch(() => setError("The file couldn't be downloaded."));
 
   return (
     <div className="inc-evidence">
@@ -81,14 +87,14 @@ export default function EvidenceFiles({ incident, canAdd, canRemove, onChange })
             onChange={(e) => e.target.files.length && add([...e.target.files])} />
           <button type="button" className="btn btn-sm btn-outline" disabled={busy || files.length >= 20}
             onClick={() => input.current?.click()}>
-            <Paperclip size={14} /> {busy ? "Attaching…" : "Attach evidence"}
+            <Paperclip size={14} /> {busy ? "Attaching…" : label}
           </button>
         </>
       )}
       {error && <div role="alert" className="inc-error">{error}</div>}
       {open && (
         <FileViewer file={{ id: open.id, title: open.filename, filename: open.filename, content_type: open.content_type, can_download: true }}
-          onClose={() => setOpen(null)} onDownload={download} load={() => incidentsApi.viewFile(incident.id, open.id)} />
+          onClose={() => setOpen(null)} onDownload={download} load={() => ops.view(open.id)} />
       )}
     </div>
   );

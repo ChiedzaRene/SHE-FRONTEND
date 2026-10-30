@@ -479,10 +479,11 @@ export default function InspectionReport() {
 
       <header className="insp-cover">
         <div className="insp-cover-dept">SHE Department</div>
-        <h1>{report.site_name} site inspection report No. {report.number}</h1>
+        <h1>{report.site_name} {report.kind === "audit" ? "audit findings" : "site inspection"} report No. {report.number}</h1>
         <div className="insp-cover-meta">
           <span>Date: <strong>{fmtDay(report.inspection_date)}</strong></span>
-          {report.inspectors && <span>Inspected by: <strong>{report.inspectors}</strong></span>}
+          {report.kind === "audit" && report.audit_body && <span>Audited by: <strong>{report.audit_body}</strong></span>}
+          {report.inspectors && <span>{report.kind === "audit" ? "Auditors" : "Inspected by"}: <strong>{report.inspectors}</strong></span>}
           {report.region && <span>Region: <strong>{report.region}</strong></span>}
           <span className={`badge ${report.status === "closed" ? "badge-green" : report.status === "draft" ? "badge-gray" : "badge-red"}`}>{STATUS_LABEL[report.status]}</span>
         </div>

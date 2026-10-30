@@ -21,6 +21,9 @@ export default function LogIncidentModal({
   prefill = null,
 }) {
   const [site, setSite] = useState(null);
+  // the SHE team has no site of its own: it picks the site the incident happened at
+  const [sites, setSites] = useState(null);
+  const [chosenSite, setChosenSite] = useState("");
   const [formData, setFormData] = useState({
     type: "injury",
     description: "",
@@ -63,15 +66,21 @@ export default function LogIncidentModal({
         if (siteId) {
           const res = await sitesApi.getOne(siteId);
           setSite(res.data);
+        } else {
+          setSite(null);
+          setChosenSite(prefill?.site_id ? String(prefill.site_id) : "");
+          const res = await sitesApi.getAll();
+          setSites(res.data || []);
         }
       } catch (err) {
         console.error("Could not fetch site", err);
       }
     };
     fetchSite();
-  }, [isOpen]);
+  }, [isOpen, prefill?.site_id]);
 
   if (!isOpen) return null;
+  const siteForIncident = site?.id || (chosenSite ? Number(chosenSite) : null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -88,7 +97,7 @@ export default function LogIncidentModal({
 
     try {
       const payload = {
-        site_id: site?.id,
+        site_id: siteForIncident,
         type: formData.type,
         description: formData.description,
         severity: formData.severity,
@@ -147,13 +156,21 @@ export default function LogIncidentModal({
           <form id="incident-form" onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label" htmlFor="incident-site">Site</label>
-              <input id="incident-site"
-                type="text"
-                className="form-control"
-                value={site ? site.name : "Loading site..."}
-                disabled
-                style={{ background: "#f1f5f9", cursor: "not-allowed" }}
-              />
+              {sites && !site ? (
+                <select id="incident-site" className="form-control" required value={chosenSite}
+                  onChange={(e) => setChosenSite(e.target.value)}>
+                  <option value="">Choose the site…</option>
+                  {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              ) : (
+                <input id="incident-site"
+                  type="text"
+                  className="form-control"
+                  value={site ? site.name : "Loading site..."}
+                  disabled
+                  style={{ background: "#f1f5f9", cursor: "not-allowed" }}
+                />
+              )}
             </div>
 
             <SiteReportFields intake={intake} onChange={setIntake} idPrefix="new-incident"
@@ -272,7 +289,7 @@ export default function LogIncidentModal({
             type="submit"
             form="incident-form"
             className="btn btn-primary"
-            disabled={loading || !site}
+            disabled={loading || !siteForIncident}
           >
             {loading ? "Logging..." : "Log Incident"}
           </button>

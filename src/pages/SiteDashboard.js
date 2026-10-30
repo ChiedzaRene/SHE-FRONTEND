@@ -139,7 +139,7 @@ export default function SiteDashboard() {
           <div className="rate-notice" role="status">
             <MessageSquare size={18} style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <strong>This week's toolbox talk hasn't been submitted yet.</strong> Submissions close at the end of Tuesday;
+              <strong>This week's SHE talk hasn't been submitted yet.</strong> Submissions close at the end of Tuesday;
               after that the week counts as missed. <Link to="/trainings">Submit the talk</Link>
             </div>
           </div>
@@ -189,9 +189,9 @@ export default function SiteDashboard() {
           <SmallStat label="Actions completed (12 mo)" Icon={CheckCircle2} color="#16a34a"
             value={actionStats.actions_completion_pct == null ? '—' : `${Math.round(actionStats.actions_completion_pct)}%`}
             note={`${actionStats.actions_completed ?? 0} of ${actionStats.actions_total ?? 0} raised`} />
-          <SmallStat label="Toolbox talks" Icon={MessageSquare} color="#1d4ed8"
+          <SmallStat label="SHE talks" Icon={MessageSquare} color="#1d4ed8"
             value={talks?.cumulative?.rate == null ? '—' : `${Math.round(talks.cumulative.rate)}%`}
-            note={talks?.cumulative ? `${talks.cumulative.done} of ${talks.cumulative.due} weekly talks submitted` : 'Weekly talks submitted'}
+            note={talks?.cumulative ? `${talks.cumulative.done} of ${talks.cumulative.due} weekly SHE talks submitted` : 'Weekly SHE talks submitted'}
             action={<Link to="/trainings" style={{ color: '#003087', fontWeight: 700 }}>
               {talks?.open ? (talks.talk ? "This week's talk is in" : "Submit this week's talk") : 'See your talks'}
             </Link>} />

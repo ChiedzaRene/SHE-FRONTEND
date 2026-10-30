@@ -8,8 +8,22 @@ import { apiError } from "../utils/apiError";
 import { useAuth } from "../context/AuthContext";
 import { isReadOnly as viewOnlyRole } from "../utils/roles";
 import AddActionForm from "../components/AddAction";
+import EvidenceFiles from "../components/incident/EvidenceFiles";
 import { CONTROLS, labelOf } from "../components/incident/formOptions";
 import { ShieldCheck, Plus, Search, X, Eye } from "lucide-react";
+
+// closed = the action was done and checked ("yes"); "no" means reviewed but still open
+const closedOf = (a) => a?.is_successful === "yes" || a?.is_successful === true
+  || ["resolved", "closed"].includes(String(a?.status || "").toLowerCase());
+
+// where an action comes from, so incident, inspection and other actions can be looked at apart
+const SOURCES = [
+  ["all", "All actions"],
+  ["incident", "Incidents"],
+  ["inspection", "Inspections"],
+  ["other", "Other"],
+];
+const sourceOf = (a) => a.source || (a.incident_id ? "incident" : a.nc_id ? "inspection" : "other");
 
 const CorrectiveActions = () => {
   const newIds = useNewItems("corrective_actions");
@@ -38,6 +52,8 @@ const CorrectiveActions = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [timeFilter, setTimeFilter] = useState("all"); // days back, by when the action was recorded
+  const [sourceFilter, setSourceFilter] = useState("all");
+  const [regionFilter, setRegionFilter] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Modal States
@@ -132,8 +148,15 @@ const CorrectiveActions = () => {
   const recentCount = actions.filter(isRecent).length;
   const since = timeFilter === "all" ? null : new Date(Date.now() - Number(timeFilter) * 864e5);
 
+  const regionOfSite = Object.fromEntries(sites.map((s) => [String(s.id), s.region || ""]));
+  const regions = [...new Set(sites.map((s) => s.region).filter(Boolean))].sort();
+  const inRegion = (a) => !regionFilter || regionOfSite[String(a.site_id)] === regionFilter;
+  const countFor = (key) => actions.filter((a) => inRegion(a) && (key === "all" || sourceOf(a) === key)).length;
+
   const filteredActions = newestFirst(actions).filter((a) => {
     if (since && !(recordedAt(a) && recordedAt(a) >= since)) return false;
+    if (sourceFilter !== "all" && sourceOf(a) !== sourceFilter) return false;
+    if (!inRegion(a)) return false;
     const content = (
       a.action_taken ||
       a.description ||
@@ -142,7 +165,7 @@ const CorrectiveActions = () => {
     ).toLowerCase();
     const matchesSearch = content.includes(search.toLowerCase());
 
-    const isClosed = a.is_successful === true;
+    const isClosed = closedOf(a);
     const matchesStatus =
       statusFilter === "All" ||
       (statusFilter === "Closed" && isClosed) ||
@@ -150,6 +173,19 @@ const CorrectiveActions = () => {
 
     return matchesSearch && matchesStatus;
   });
+
+  // the evidence list answers with the updated action; keep the list and the open action in step
+  const replaceAction = (updated) => {
+    setActions((all) => all.map((x) => (x.id === updated.id ? updated : x)));
+    setSelectedAction(updated);
+  };
+  const evidenceApi = (a) => ({
+    add: (file) => actionsApi.addFile(a.id, file),
+    remove: (fileId) => actionsApi.removeFile(a.id, fileId),
+    view: (fileId) => actionsApi.viewFile(a.id, fileId),
+    download: (f) => actionsApi.downloadFile(a.id, f.id, f.filename),
+  });
+  const canClose = Boolean(resNotes.trim() && (selectedAction?.files || []).length);
 
   return (
     <div className="animate-fade-in" style={{ padding: "20px" }}>
@@ -212,6 +248,16 @@ const CorrectiveActions = () => {
         </div>
       )}
 
+      {/* Incident, inspection and other actions, each on their own (with the region filter below) */}
+      <div className="ca-tabs" role="tablist" aria-label="Where the actions come from">
+        {SOURCES.map(([key, text]) => (
+          <button key={key} type="button" role="tab" aria-selected={sourceFilter === key}
+            className={`ca-tab${sourceFilter === key ? " active" : ""}`} onClick={() => setSourceFilter(key)}>
+            {text} <span className="ca-tab-count">{countFor(key)}</span>
+          </button>
+        ))}
+      </div>
+
       {/* FILTERS */}
       <div
         className="card shadow-sm"
@@ -273,6 +319,13 @@ const CorrectiveActions = () => {
             <option value="7">Last week</option>
             <option value="30">Last month</option>
           </select>
+          {regions.length > 0 && !isSiteManager && (
+            <select className="form-control" style={{ width: "180px" }} aria-label="Region" value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}>
+              <option value="">All regions</option>
+              {regions.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          )}
           {recentCount > 0 && (
             <button type="button" className="ca-recent" aria-pressed={timeFilter === "3"}
               onClick={() => setTimeFilter(timeFilter === "3" ? "all" : "3")}>
@@ -314,7 +367,7 @@ const CorrectiveActions = () => {
                 filteredActions.map((action) => {
                   const deadline = getDaysRemaining(
                     action.due_date,
-                    action.is_successful,
+                    closedOf(action),
                   );
                   return (
                     <tr
@@ -357,6 +410,13 @@ const CorrectiveActions = () => {
                         }}
                       >
                         {action.designation || "General Compliance"}
+                        {action.incident_id && (
+                          <div>
+                            <Link to={`/incidents?open=${action.incident_id}`} style={{ fontSize: "0.78rem", color: "#003087", fontWeight: 700 }}>
+                              Incident INC-{action.incident_id}
+                            </Link>
+                          </div>
+                        )}
                         {action.inspection_id && (
                           <div>
                             <Link to={`/inspections/${action.inspection_id}#nc-${action.nc_id}`} style={{ fontSize: "0.78rem", color: "#003087", fontWeight: 700 }}>
@@ -372,13 +432,13 @@ const CorrectiveActions = () => {
                             borderRadius: "20px",
                             fontSize: "0.7rem",
                             fontWeight: "bold",
-                            background: action.is_successful
+                            background: closedOf(action)
                               ? "#dcfce7"
                               : "#fee2e2",
-                            color: action.is_successful ? "#166534" : "#991b1b",
+                            color: closedOf(action) ? "#166534" : "#991b1b",
                           }}
                         >
-                          {action.is_successful ? "Closed" : "Open · incomplete"}
+                          {closedOf(action) ? "Closed" : "Open · incomplete"}
                         </span>
                       </td>
                       <td style={{ textAlign: "right", paddingRight: "24px" }}>
@@ -500,7 +560,7 @@ const CorrectiveActions = () => {
                       {(() => {
                         const deadline = getDaysRemaining(
                           selectedAction.due_date,
-                          selectedAction.is_successful,
+                          closedOf(selectedAction),
                         );
                         return (
                           <p
@@ -555,7 +615,7 @@ const CorrectiveActions = () => {
                   {selectedAction.incident_description && (
                     <>
                       <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#64748b" }}>
-                        INCIDENT INC-{selectedAction.incident_id} (FIXED ONCE LOGGED)
+                        <Link to={`/incidents?open=${selectedAction.incident_id}`}>INCIDENT INC-{selectedAction.incident_id}</Link> (FIXED ONCE LOGGED)
                       </label>
                       <p className="ca-fixed" style={{ marginBottom: 16 }}>{selectedAction.incident_description}</p>
                     </>
@@ -587,17 +647,26 @@ const CorrectiveActions = () => {
                       "No details provided."}
                   </p>
 
+                  {!selectedAction.inspection_id && (
+                    <div style={{ marginTop: 16 }}>
+                      <label style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#64748b" }}>EVIDENCE</label>
+                      <EvidenceFiles incident={selectedAction} onChange={replaceAction} api={evidenceApi(selectedAction)}
+                        canAdd={!closedOf(selectedAction) && !viewOnlyRole(user?.role)} label="Attach evidence"
+                        canRemove={(f) => !closedOf(selectedAction) && (!isSiteManager || f.uploaded_by === user?.user_id)} />
+                    </div>
+                  )}
+
                   {selectedAction.resolution_notes && (
                     <div
                       style={{
                         marginTop: "16px",
                         padding: "12px",
                         borderRadius: "8px",
-                        background: selectedAction.is_successful
+                        background: closedOf(selectedAction)
                           ? "#f0fdf4"
                           : "#fef2f2",
                         border: `1px solid ${
-                          selectedAction.is_successful ? "#bbf7d0" : "#fecaca"
+                          closedOf(selectedAction) ? "#bbf7d0" : "#fecaca"
                         }`,
                       }}
                     >
@@ -605,13 +674,13 @@ const CorrectiveActions = () => {
                         style={{
                           fontSize: "0.7rem",
                           fontWeight: "bold",
-                          color: selectedAction.is_successful
+                          color: closedOf(selectedAction)
                             ? "#059669"
                             : "#dc2626",
                         }}
                       >
                         RESOLUTION{" "}
-                        {selectedAction.is_successful
+                        {closedOf(selectedAction)
                           ? "(Closed)"
                           : "(Open - notes saved)"}
                       </label>
@@ -666,7 +735,7 @@ const CorrectiveActions = () => {
                       <Link className="btn btn-primary" to={`/inspections/${selectedAction.inspection_id}#nc-${selectedAction.nc_id}`}>
                         Open the inspection report
                       </Link>
-                    ) : !selectedAction.is_successful && !viewOnlyRole(user?.role) && (
+                    ) : !closedOf(selectedAction) && !viewOnlyRole(user?.role) && (
                       <button
                         className="btn btn-primary"
                         onClick={() => setIsUpdating(true)}
@@ -681,7 +750,7 @@ const CorrectiveActions = () => {
                   {(() => {
                     const deadline = getDaysRemaining(
                       selectedAction.due_date,
-                      selectedAction.is_successful,
+                      closedOf(selectedAction),
                     );
                     const isOverdue =
                       selectedAction.due_date &&
@@ -707,6 +776,16 @@ const CorrectiveActions = () => {
                   })()}
 
                   <label style={{ fontWeight: "bold", fontSize: "0.9rem" }}>
+                    Evidence (required to close)
+                  </label>
+                  <p style={{ margin: "4px 0 8px", fontSize: "0.8rem", color: "#64748b" }}>
+                    A photo, PDF or document showing the action was done.
+                  </p>
+                  <EvidenceFiles incident={selectedAction} onChange={replaceAction} api={evidenceApi(selectedAction)}
+                    canAdd label="Attach evidence"
+                    canRemove={(f) => !isSiteManager || f.uploaded_by === user?.user_id} />
+
+                  <label style={{ fontWeight: "bold", fontSize: "0.9rem", display: "block", marginTop: 16 }}>
                     Resolution Comments (required to close)
                   </label>
                   <textarea
@@ -725,15 +804,16 @@ const CorrectiveActions = () => {
                   >
                     <button
                       onClick={() => handleUpdateStatus(true)}
-                      disabled={!resNotes.trim()}
+                      disabled={!canClose}
+                      title={canClose ? undefined : "Attach evidence and write the resolution comments first"}
                       style={{
                         flex: 1,
                         padding: "10px",
-                        background: resNotes.trim() ? "#16a34a" : "#94a3b8",
+                        background: canClose ? "#16a34a" : "#94a3b8",
                         color: "#fff",
                         border: "none",
                         borderRadius: "6px",
-                        cursor: resNotes.trim() ? "pointer" : "not-allowed",
+                        cursor: canClose ? "pointer" : "not-allowed",
                       }}
                     >
                       Close Action

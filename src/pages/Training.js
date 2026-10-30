@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import {
-  Upload, CalendarCheck, CalendarX, Clock, Eye, Download, Plus, X, Users, CheckCircle2, AlertTriangle, Lock,
-} from "lucide-react";
+import { Upload, CalendarCheck, CalendarX, Clock, Eye, Download, Plus, X, Users, CheckCircle2, AlertTriangle, Lock, PlayCircle } from "lucide-react";
 import { safetyTalksApi, sitesApi, trainingsApi } from "../api/endpoints";
 import { useAuth } from "../context/AuthContext";
 import { isReadOnly } from "../utils/roles";
@@ -143,7 +141,7 @@ function RateMeter({ rate, done, due, label = "Completion rate" }) {
         aria-valuenow={rate ?? 0}>
         <div className="tt-meter-fill" style={{ width: `${rate ?? 0}%` }} />
       </div>
-      <div className="tt-meter-sub">{due ? `${done} of ${due} weekly talks submitted` : "No talks due yet"}</div>
+      <div className="tt-meter-sub">{due ? `${done} of ${due} weekly SHE talks submitted` : "No SHE talks due yet"}</div>
     </div>
   );
 }
@@ -186,7 +184,7 @@ function TalkForm({ existing, onSaved, onCancel }) {
     form.append("title", title.trim());
     form.append("attendees", attendees);
     if (notes.trim()) form.append("notes", notes.trim());
-    form.append("file", file);
+    if (file) form.append("file", file);
     setBusy(true);
     try {
       const res = await safetyTalksApi.submit(form);
@@ -498,7 +496,7 @@ function TalksTracker() {
 
 function TrainingForm({ sites, onSaved, onCancel }) {
   const { notify } = useFeedback();
-  const [f, setF] = useState({ site_id: "", date: todayIso(), training_module: "", trainer_name: "", personnel: "", trained_employees: "", type: "", comments: "" });
+  const [f, setF] = useState({ site_id: "", date: todayIso(), training_module: "", trainer_name: "", personnel: "", trained_employees: "", type: "", comments: "", video_link: "" });
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -510,11 +508,13 @@ function TrainingForm({ sites, onSaved, onCancel }) {
     if (!f.site_id) return setError("Choose the site.");
     if (!f.training_module.trim() || !f.trainer_name.trim() || !f.personnel.trim()) return setError("Fill in the training, the trainer and the people trained.");
     if (!/^\d+$/.test(f.trained_employees) || Number(f.trained_employees) < 1) return setError("Enter how many people were trained.");
-    if (!file) return setError("Attach the supporting document (e.g. the attendance register or certificates).");
-    if (file.size > MAX_BYTES) return setError("The file is too large (the limit is 10 MB).");
+    const link = f.video_link.trim();
+    if (link && !/^https:\/\/\S+$/.test(link)) return setError("The recording link must be a full web address starting with https://");
+    if (!file && !link) return setError("Attach the supporting document (e.g. the attendance register), or give the link to the recording.");
+    if (file && file.size > MAX_BYTES) return setError("The file is too large (the limit is 10 MB).");
     const form = new FormData();
     Object.entries(f).forEach(([k, v]) => { if (String(v).trim()) form.append(k, String(v).trim()); });
-    form.append("file", file);
+    if (file) form.append("file", file);
     setBusy(true);
     try {
       const res = await trainingsApi.record(form);
@@ -569,6 +569,12 @@ function TrainingForm({ sites, onSaved, onCancel }) {
           <input id="tr-file" type="file" className="form-control" accept={ACCEPT} onChange={(e) => setFile(e.target.files[0] || null)} />
         </div>
         <div className="form-group tt-wide">
+          <label className="form-label" htmlFor="tr-video">Recording link (online training)</label>
+          <input id="tr-video" type="url" className="form-control" maxLength={1000} value={f.video_link} onChange={set("video_link")}
+            placeholder="https://… (the OneDrive folder with the recorded video)" />
+          <small className="tt-muted">Sites open this link to watch the recording. A document isn't needed when there is a recording.</small>
+        </div>
+        <div className="form-group tt-wide">
           <label className="form-label" htmlFor="tr-notes">Notes (optional)</label>
           <textarea id="tr-notes" className="form-control" rows={2} maxLength={2000} value={f.comments} onChange={set("comments")} />
         </div>
@@ -612,7 +618,7 @@ function SheTrainings({ canRecord }) {
         {trainings.length ? (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Date</th><th>Training</th><th>Trainer</th><th>Personnel trained</th><th>Site</th><th>Document</th></tr></thead>
+              <thead><tr><th>Date</th><th>Training</th><th>Trainer</th><th>Personnel trained</th><th>Site</th><th>Document / recording</th></tr></thead>
               <tbody>
                 {trainings.map((t) => (
                   <tr key={t.id}>
@@ -626,10 +632,17 @@ function SheTrainings({ canRecord }) {
                     <td><div><Users size={13} aria-hidden="true" /> {t.trained_employees}</div><div className="tt-muted">{t.personnel}</div></td>
                     <td>{siteName(t.site_id)}</td>
                     <td>
-                      {t.has_document ? (
+                      {t.has_document && (
                         <DocButtons name={t.document_name} viewable={t.document_viewable} title={t.training_module}
                           onOpen={() => setOpen(t)} onDownload={() => download(t)} />
-                      ) : <span className="tt-muted">—</span>}
+                      )}
+                      {t.video_link && (
+                        <a className="btn btn-outline btn-sm tt-video" href={t.video_link} target="_blank" rel="noopener noreferrer"
+                          aria-label={`Watch the recording of ${t.training_module} (opens in a new tab)`}>
+                          <PlayCircle size={14} aria-hidden="true" /> Watch recording
+                        </a>
+                      )}
+                      {!t.has_document && !t.video_link && <span className="tt-muted">—</span>}
                     </td>
                   </tr>
                 ))}
@@ -663,17 +676,17 @@ export default function Trainings() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Talks &amp; Training</h1>
+          <h1 className="page-title">SHE Talks &amp; Training</h1>
           <p className="page-subtitle">
             {isManager
-              ? "Give a toolbox talk every Monday and submit it by the end of Tuesday. Trainings given at your site by the SHE team are listed too."
-              : "Weekly toolbox talks from every site, and trainings given by the SHE team."}
+              ? "Give the SHE talk every Monday and submit it by the end of Tuesday. Trainings given at your site by the SHE team are listed too."
+              : "Weekly SHE talks from every site, and trainings given by the SHE team."}
           </p>
         </div>
       </div>
       <div className="tt-tabs" role="tablist" aria-label="Talks and training">
         <button type="button" role="tab" aria-selected={tab === "talks"} className={tab === "talks" ? "active" : ""} onClick={() => choose("talks")}>
-          <CalendarCheck size={16} aria-hidden="true" /> Weekly talks
+          <CalendarCheck size={16} aria-hidden="true" /> SHE talks
         </button>
         <button type="button" role="tab" aria-selected={tab === "trainings"} className={tab === "trainings" ? "active" : ""} onClick={() => choose("trainings")}>
           <Users size={16} aria-hidden="true" /> SHE trainings

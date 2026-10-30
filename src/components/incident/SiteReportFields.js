@@ -152,7 +152,7 @@ export default function SiteReportFields({ intake, onChange, idPrefix = "intake"
         )}
       </fieldset>
 
-      <Choice name={id("outcome")} legend="Injury outcome" options={INJURY_OUTCOMES} value={intake.injury_outcome}
+      <Choice name={id("outcome")} legend="Incident severity" options={INJURY_OUTCOMES} value={intake.injury_outcome}
         onChange={setOutcome} />
       <Choice name={id("impact")} legend="Environmental impact" options={ENVIRONMENTAL_IMPACTS}
         value={intake.environmental_impact} onChange={(v) => set({ environmental_impact: v })} />
@@ -230,10 +230,11 @@ export function SiteReportView({ incident }) {
     ["Years of service", intake.years_of_service],
     ["Witnesses", intake.witnesses],
     ["Location", intake.location],
-    ["Days off duty", incident.lost_time_days || null],
+    // always shown, 0 included, so the site report says plainly how many days were lost
+    ["Lost time days (days off duty)", String(incident.lost_time_days ?? 0)],
     ["Category", (intake.categories || []).map((c) => (c === "other" && intake.other_category
       ? `Other: ${intake.other_category}` : labelOf(CATEGORIES, c))).join(", ")],
-    ["Injury outcome", intake.injury_outcome && labelOf(INJURY_OUTCOMES, intake.injury_outcome)],
+    ["Incident severity", intake.injury_outcome && labelOf(INJURY_OUTCOMES, intake.injury_outcome)],
     ["Environmental impact", intake.environmental_impact && labelOf(ENVIRONMENTAL_IMPACTS, intake.environmental_impact)],
     ["Incident causes", (intake.site_causes || []).map((c, i) => `${i + 1}. ${c}`).join("\n")],
     ["Evidence notes", intake.evidence],

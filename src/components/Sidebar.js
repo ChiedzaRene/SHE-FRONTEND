@@ -37,7 +37,7 @@ export default function Sidebar({ id }) {
         { to: "/corrective-actions", icon: Wrench, label: "Corrective Actions" },
         { to: "/incidents", icon: AlertTriangle, label: "Incidents" },
         { to: "/legal", icon: Scale, label: "Legal" },
-        { to: "/trainings", icon: GraduationCap, label: "Talks & Training" },
+        { to: "/trainings", icon: GraduationCap, label: "SHE Talks & Training" },
         { to: "/she-files", icon: FolderOpen, label: "SHE Files" },
         { to: "/reports", icon: FileText, label: "Reports" },
         { to: "/settings", icon: Settings, label: "Settings" },
@@ -63,7 +63,7 @@ export default function Sidebar({ id }) {
       baseLinks.push(
         { to: "/inspections", icon: ClipboardCheck, label: "Inspections" },
         { to: "/legal", icon: Scale, label: "Legal" },
-        { to: "/trainings", icon: GraduationCap, label: "Talks & Training" },
+        { to: "/trainings", icon: GraduationCap, label: "SHE Talks & Training" },
       );
     }
 
