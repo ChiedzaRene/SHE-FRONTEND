@@ -4,6 +4,7 @@ import { fireInspectionsApi } from "../api/endpoints";
 import { useFeedback } from "./Feedback";
 import FileViewer from "./FileViewer";
 import RichTextEditor, { RichText } from "./RichTextEditor";
+import FilePicker from "./FilePicker";
 import { apiError } from "../utils/apiError";
 
 const KIND_LABEL = {
@@ -54,7 +55,9 @@ function Checklist({ sections, answers, onAnswer }) {
                     <label key={r} className={`fire-result fire-result-${r.toLowerCase()}${a.result === r ? " on" : ""}`} title={RESULT_TITLE[r]}>
                       <input type="radio" name={`fire-${item.key}`} value={r} checked={a.result === r}
                         aria-label={`${RESULT_TITLE[r]}: ${item.text}`}
-                        onChange={() => onAnswer(item.key, { ...a, result: r })} />
+                        onChange={() => onAnswer(item.key, { ...a, result: r })}
+                        // clicking the chosen answer again clears it
+                        onClick={() => { if (a.result === r) onAnswer(item.key, {}); }} />
                       {RESULT_LABEL[r]}
                     </label>
                   ))}
@@ -177,7 +180,12 @@ function NewFireInspection({ sections, sites, user, onCancel, onSent }) {
         <div className="fire-checklist">
           <div className="fire-progress">
             <span>{answered} of {items.length} answered{ncs ? ` · ${ncs} not conforming` : ""}</span>
-            <button type="button" className="btn btn-sm btn-outline" onClick={allConforming}>Mark the rest conforming</button>
+            <span className="fire-progress-tools">
+              <button type="button" className="btn btn-sm btn-outline" onClick={allConforming}>Mark the rest conforming</button>
+              {answered > 0 && (
+                <button type="button" className="btn btn-sm inc-clear" onClick={() => setAnswers({})}>Clear answers</button>
+              )}
+            </span>
           </div>
           <Checklist sections={sections} answers={answers} onAnswer={(key, a) => setAnswers((prev) => ({ ...prev, [key]: a }))} />
         </div>
@@ -189,13 +197,11 @@ function NewFireInspection({ sections, sites, user, onCancel, onSent }) {
           placeholder="Anything else about the inspection or the service" />
       </div>
       <div className="form-group">
-        <label className="form-label" htmlFor="fi-files">
+        <span className="form-label">
           {kind === "service_refill" ? "Evidence (required): certificate, job card or photos" : "Photos or the signed form (optional)"}
-        </label>
-        <input id="fi-files" type="file" multiple className="form-control"
-          accept=".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx,.xls,.xlsx"
-          onChange={(e) => setFiles(Array.from(e.target.files || []).slice(0, 10))} />
-        {files.length > 0 && <div className="tt-muted">{files.map((f) => f.name).join(", ")}</div>}
+        </span>
+        <FilePicker id="fi-files" label={kind === "service_refill" ? "Evidence (required)" : "Photos or the signed form"}
+          files={files} onChange={setFiles} />
       </div>
       {error && <div role="alert" className="inc-error">{error}</div>}
       <div className="tt-form-actions">
@@ -206,10 +212,28 @@ function NewFireInspection({ sections, sites, user, onCancel, onSent }) {
   );
 }
 
-function FireRecord({ id, sections, onClose }) {
+function FireRecord({ id, sections, canAdd, onClose, onChanged }) {
+  const { notify } = useFeedback();
   const [rec, setRec] = useState(null);
   const [viewing, setViewing] = useState(null);
   const [error, setError] = useState("");
+  const [more, setMore] = useState([]);
+  const [adding, setAdding] = useState(false);
+  const addFiles = async () => {
+    setAdding(true);
+    let latest = rec;
+    try {
+      for (const f of more) latest = (await fireInspectionsApi.addFile(id, f)).data;   // eslint-disable-line no-await-in-loop
+      setMore([]);
+      notify("Files added", "success");
+    } catch (err) {
+      notify(apiError(err, "A file couldn't be added."), "error");
+    } finally {
+      setRec(latest);
+      setAdding(false);
+      onChanged?.();
+    }
+  };
   useEffect(() => {
     fireInspectionsApi.get(id).then((r) => setRec(r.data)).catch((err) => setError(apiError(err, "Could not load the inspection.")));
   }, [id]);
@@ -271,6 +295,17 @@ function FireRecord({ id, sections, onClose }) {
                     ))}
                   </ul>
                 ) : <p className="tt-muted">No files.</p>}
+                {canAdd && rec.files.length < 10 && (
+                  <div className="fire-add-files">
+                    <FilePicker id={`fire-more-${id}`} label="More files for this inspection" files={more} onChange={setMore}
+                      max={10 - rec.files.length} />
+                    {more.length > 0 && (
+                      <button type="button" className="btn btn-primary btn-sm" disabled={adding} onClick={addFiles}>
+                        {adding ? "Adding…" : `Add ${more.length} file${more.length > 1 ? "s" : ""}`}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -371,7 +406,8 @@ export default function FireInspections({ user, sites, region, siteId, openId, o
           </section>
         </>
       )}
-      {openId && <FireRecord id={openId} sections={sections} onClose={() => onOpen(null)} />}
+      {openId && <FireRecord id={openId} sections={sections} canAdd={canSend} onClose={() => onOpen(null)}
+        onChanged={() => setReload((n) => n + 1)} />}
     </div>
   );
 }

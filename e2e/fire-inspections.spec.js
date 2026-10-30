@@ -40,6 +40,17 @@ test('a site manager sends the fortnightly fire equipment checklist', async ({ p
   await form.getByRole('button', { name: 'Send to the SHE team' }).click();
   await expect(form.getByRole('alert')).toContainText('Answer every item');
 
+  // clicking a chosen answer again clears it; "Clear answers" clears them all
+  const gauge = form.getByLabel('Conforming: Pressure gauge is present and in good condition', { exact: true });
+  await gauge.check({ force: true });
+  await expect(form).toContainText('1 of 3 answered');
+  await gauge.click({ force: true });
+  await expect(gauge).not.toBeChecked();
+  await expect(form).toContainText('0 of 3 answered');
+  await form.getByRole('button', { name: 'Mark the rest conforming' }).click();
+  await expect(form).toContainText('3 of 3 answered');
+  await form.getByRole('button', { name: 'Clear answers' }).click();
+  await expect(form).toContainText('0 of 3 answered');
   await form.getByLabel('Not conforming: Pointer is on the green mark').check({ force: true });
   await form.getByLabel('What is wrong: Pointer is on the green mark').fill('Pointer in the red');
   await form.getByRole('button', { name: 'Mark the rest conforming' }).click();
@@ -77,11 +88,18 @@ test('the six-monthly service and refill needs proof, and the next date is six m
   await page.keyboard.type('All ');
   await form.getByRole('toolbar', { name: 'Formatting for Comments' }).getByRole('button', { name: 'Bold' }).click();
   await page.keyboard.type('refilled');
-  await form.getByLabel(/Evidence \(required\)/).setInputFiles({ name: 'certificate.pdf', mimeType: 'application/pdf', buffer: PDF });
+  // several files, chosen in more than one go; a wrong one can be taken out again
+  await form.getByLabel(/Evidence \(required\)/).setInputFiles([
+    { name: 'certificate.pdf', mimeType: 'application/pdf', buffer: PDF },
+    { name: 'wrong.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 x') }]);
+  await form.getByLabel(/Evidence \(required\)/).setInputFiles({ name: 'tags.png', mimeType: 'image/png', buffer: Buffer.from('png') });
+  await form.getByRole('button', { name: 'Remove wrong.pdf' }).click();
+  await expect(form.getByRole('list', { name: 'Chosen files' }).getByRole('listitem')).toHaveCount(2);
   await form.getByRole('button', { name: 'Send to the SHE team' }).click();
   await expect.poll(() => sent).toContain('name="kind"\r\n\r\nservice_refill');
   for (const part of ['name="site_id"\r\n\r\n1', 'name="next_due"\r\n\r\n2027-02-28', 'name="contractor"\r\n\r\nFire Masters (Pvt) Ltd',
-    'name="extinguishers"\r\n\r\n6', 'filename="certificate.pdf"']) expect(sent).toContain(part);
+    'name="extinguishers"\r\n\r\n6', 'filename="certificate.pdf"', 'filename="tags.png"']) expect(sent).toContain(part);
+  expect(sent).not.toContain('wrong.pdf');
   expect(sent).toMatch(/name="comments"\r\n\r\nAll (&nbsp;)?<b>refilled<\/b>/);
   expect(sent).not.toContain('name="answers"');
 });
@@ -106,4 +124,32 @@ test('the SHE team records audit findings, by its own team or an audit team', as
   await form.getByLabel('Auditors').fill('J. Ncube');
   await form.getByRole('button', { name: 'Start report' }).click();
   await expect.poll(() => created).toMatchObject({ kind: 'audit', audit_body: 'Bureau Veritas audit team', site_id: 1, inspectors: 'J. Ncube' });
+});
+
+test('more files can be added to a fire equipment inspection after it was sent', async ({ page }) => {
+  const added = [];
+  const rec = { id: 9, kind: 'service_refill', kind_label: 'Fire extinguisher service and refill', site_id: 1, site_name: 'Msasa Depot',
+    inspection_date: '2026-10-20', inspector_name: 'Tendai Moyo', next_due: '2027-04-20', contractor: 'Fire Masters', extinguishers: 6,
+    submitted_by_name: 'Tendai Moyo', comments: null, answers: {},
+    files: [{ id: 1, filename: 'certificate.pdf', content_type: 'application/pdf', viewable: true }] };
+  await mockApi(page, {
+    'GET /fire-inspections/checklist': checklist,
+    'GET /fire-inspections': listing(),
+    'GET /fire-inspections/9': rec,
+    'POST /fire-inspections/9/files': (route, req) => {
+      const name = req.postDataBuffer().toString('latin1').match(/filename="([^"]+)"/)[1];
+      added.push(name);
+      rec.files = [...rec.files, { id: rec.files.length + 1, filename: name, content_type: 'image/png', viewable: true }];
+      return route.fulfill(json(201, rec));
+    },
+  });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.goto('/inspections?tab=fire&open=9');
+  const dialog = page.getByRole('dialog', { name: 'Fire equipment inspection' });
+  await dialog.getByLabel('More files for this inspection').setInputFiles([
+    { name: 'tag-1.png', mimeType: 'image/png', buffer: Buffer.from('png1') },
+    { name: 'tag-2.png', mimeType: 'image/png', buffer: Buffer.from('png2') }]);
+  await dialog.getByRole('button', { name: 'Add 2 files' }).click();
+  await expect.poll(() => added).toEqual(['tag-1.png', 'tag-2.png']);
+  await expect(dialog.getByRole('button', { name: 'Download tag-2.png' })).toBeVisible();
 });

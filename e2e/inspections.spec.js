@@ -188,7 +188,9 @@ test('the site attaches photos and documents as proof of the corrective action; 
     { name: 'receipt.pdf', mimeType: 'application/pdf', buffer: pdf },
     { name: 'after.png', mimeType: 'image/png', buffer: Buffer.from('png') },
   ]);
-  await expect(form).toContainText('receipt.pdf, after.png');
+  await expect(form.getByRole('list', { name: 'Chosen files' }).getByRole('listitem')).toHaveCount(2);
+  await expect(form).toContainText('receipt.pdf');
+  await expect(form).toContainText('after.png');
   await form.getByRole('button', { name: 'Mark as completed' }).click();
   await expect.poll(() => sent).toContain('filename="receipt.pdf"');
   expect(sent).toContain('filename="after.png"');
