@@ -280,7 +280,7 @@ test.describe.serial('a working day', () => {
     await she.getByRole('tab', { name: 'SHE trainings' }).click();
     await she.getByRole('button', { name: 'Record a training' }).click();
     const form = she.getByRole('form', { name: 'Record a training' });
-    await form.getByLabel('Site').selectOption({ label: 'Msasa Depot' });
+    await form.getByRole('checkbox', { name: 'Msasa Depot' }).check();
     await form.getByLabel('Name of training').fill('First aid');
     await form.getByLabel('Trainer').fill(SHE.name);
     await form.getByLabel('Personnel trained').fill(`${MANAGER.name}, ${INJURED}`);

@@ -3,6 +3,7 @@ import { Plus, X, Flame, Paperclip, Download, Eye } from "lucide-react";
 import { fireInspectionsApi } from "../api/endpoints";
 import { useFeedback } from "./Feedback";
 import FileViewer from "./FileViewer";
+import RichTextEditor, { RichText } from "./RichTextEditor";
 import { apiError } from "../utils/apiError";
 
 const KIND_LABEL = {
@@ -107,7 +108,7 @@ function NewFireInspection({ sections, sites, user, onCancel, onSent }) {
     setBusy(true);
     try {
       const res = await fireInspectionsApi.submit({
-        kind, inspection_date: date, inspector_name: inspector.trim(), comments: comments.trim(), next_due: nextDue,
+        kind, inspection_date: date, inspector_name: inspector.trim(), comments: comments.replace(/<[^>]*>|&nbsp;/g, "").trim() ? comments : "", next_due: nextDue,
         ...(ownSite ? {} : { site_id: siteId }),
         ...(kind === "fortnightly" ? { answers } : { contractor: contractor.trim(), extinguishers: count }),
       }, files);
@@ -183,8 +184,9 @@ function NewFireInspection({ sections, sites, user, onCancel, onSent }) {
       )}
 
       <div className="form-group">
-        <label className="form-label" htmlFor="fi-comments">Comments</label>
-        <textarea id="fi-comments" className="form-control" rows={3} maxLength={4000} value={comments} onChange={(e) => setComments(e.target.value)} />
+        <span className="form-label" id="fi-comments-label">Comments</span>
+        <RichTextEditor id="fi-comments" label="Comments" value={comments} onChange={setComments} minHeight={90}
+          placeholder="Anything else about the inspection or the service" />
       </div>
       <div className="form-group">
         <label className="form-label" htmlFor="fi-files">
@@ -255,7 +257,7 @@ function FireRecord({ id, sections, onClose }) {
                   </table>
                 </div>
               ))}
-              {rec.comments && <div className="inc-block"><h3>Comments</h3><p style={{ whiteSpace: "pre-wrap", margin: 0 }}>{rec.comments}</p></div>}
+              {rec.comments && <div className="inc-block"><h3>Comments</h3><RichText html={rec.comments} /></div>}
               <div className="inc-block">
                 <h3>Evidence</h3>
                 {rec.files.length ? (

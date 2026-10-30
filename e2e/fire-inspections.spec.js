@@ -73,11 +73,16 @@ test('the six-monthly service and refill needs proof, and the next date is six m
   await form.getByLabel('Extinguishers serviced').fill('6');
   await form.getByRole('button', { name: 'Send to the SHE team' }).click();
   await expect(form.getByRole('alert')).toContainText('proof of the service and refill');
+  await form.getByRole('textbox', { name: 'Comments' }).click();
+  await page.keyboard.type('All ');
+  await form.getByRole('toolbar', { name: 'Formatting for Comments' }).getByRole('button', { name: 'Bold' }).click();
+  await page.keyboard.type('refilled');
   await form.getByLabel(/Evidence \(required\)/).setInputFiles({ name: 'certificate.pdf', mimeType: 'application/pdf', buffer: PDF });
   await form.getByRole('button', { name: 'Send to the SHE team' }).click();
   await expect.poll(() => sent).toContain('name="kind"\r\n\r\nservice_refill');
   for (const part of ['name="site_id"\r\n\r\n1', 'name="next_due"\r\n\r\n2027-02-28', 'name="contractor"\r\n\r\nFire Masters (Pvt) Ltd',
     'name="extinguishers"\r\n\r\n6', 'filename="certificate.pdf"']) expect(sent).toContain(part);
+  expect(sent).toMatch(/name="comments"\r\n\r\nAll (&nbsp;)?<b>refilled<\/b>/);
   expect(sent).not.toContain('name="answers"');
 });
 
