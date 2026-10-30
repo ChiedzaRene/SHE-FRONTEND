@@ -496,7 +496,18 @@ function TalksTracker() {
 
 function TrainingForm({ sites, onSaved, onCancel }) {
   const { notify } = useFeedback();
-  const [f, setF] = useState({ site_id: "", date: todayIso(), training_module: "", trainer_name: "", personnel: "", trained_employees: "", type: "", comments: "", video_link: "" });
+  const [f, setF] = useState({ date: todayIso(), training_module: "", trainer_name: "", personnel: "", type: "", comments: "", video_link: "" });
+  // one training can be given to several sites at once; each site has its own number trained
+  const [counts, setCounts] = useState({});
+  const [find, setFind] = useState("");
+  const chosen = sites.filter((s) => s.id in counts);
+  const toggleSite = (id) => setCounts((c) => {
+    const next = { ...c };
+    if (id in next) delete next[id];
+    else next[id] = "";
+    return next;
+  });
+  const shown = sites.filter((s) => !find.trim() || `${s.name} ${s.region || ""}`.toLowerCase().includes(find.trim().toLowerCase()));
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -505,15 +516,17 @@ function TrainingForm({ sites, onSaved, onCancel }) {
   const submit = async (e) => {
     e.preventDefault();
     setError("");
-    if (!f.site_id) return setError("Choose the site.");
+    if (!chosen.length) return setError("Choose the site or sites trained.");
     if (!f.training_module.trim() || !f.trainer_name.trim() || !f.personnel.trim()) return setError("Fill in the training, the trainer and the people trained.");
-    if (!/^\d+$/.test(f.trained_employees) || Number(f.trained_employees) < 1) return setError("Enter how many people were trained.");
+    const missing = chosen.find((s) => !/^\d+$/.test(String(counts[s.id])) || Number(counts[s.id]) < 1);
+    if (missing) return setError(chosen.length > 1 ? `Enter how many people were trained at ${missing.name}.` : "Enter how many people were trained.");
     const link = f.video_link.trim();
     if (link && !/^https:\/\/\S+$/.test(link)) return setError("The recording link must be a full web address starting with https://");
     if (!file && !link) return setError("Attach the supporting document (e.g. the attendance register), or give the link to the recording.");
     if (file && file.size > MAX_BYTES) return setError("The file is too large (the limit is 10 MB).");
     const form = new FormData();
     Object.entries(f).forEach(([k, v]) => { if (String(v).trim()) form.append(k, String(v).trim()); });
+    chosen.forEach((s) => { form.append("site_id", String(s.id)); form.append("trained_employees", String(counts[s.id])); });
     if (file) form.append("file", file);
     setBusy(true);
     try {
@@ -538,13 +551,22 @@ function TrainingForm({ sites, onSaved, onCancel }) {
           <label className="form-label" htmlFor="tr-date">Date</label>
           <input id="tr-date" type="date" className="form-control" max={todayIso()} value={f.date} onChange={set("date")} />
         </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="tr-site">Site</label>
-          <select id="tr-site" className="form-control" value={f.site_id} onChange={set("site_id")}>
-            <option value="">Choose a site</option>
-            {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
-        </div>
+        <fieldset className="form-group tt-wide tr-sites">
+          <legend className="form-label">Sites trained <span className="tt-muted">(choose every site that attended)</span></legend>
+          {sites.length > 8 && (
+            <input type="search" className="form-control" aria-label="Find a site" placeholder="Find a site or region"
+              value={find} onChange={(e) => setFind(e.target.value)} />
+          )}
+          <div className="tr-site-list">
+            {shown.map((s) => (
+              <label key={s.id} className={`inc-check${s.id in counts ? " on" : ""}`}>
+                <input type="checkbox" checked={s.id in counts} onChange={() => toggleSite(s.id)} />
+                {s.name}{s.region && <span className="tt-muted"> · {s.region}</span>}
+              </label>
+            ))}
+            {!shown.length && <span className="tt-muted">No site matches.</span>}
+          </div>
+        </fieldset>
         <div className="form-group">
           <label className="form-label" htmlFor="tr-name">Name of training</label>
           <input id="tr-name" className="form-control" list="tr-suggestions" maxLength={200} value={f.training_module}
@@ -560,10 +582,27 @@ function TrainingForm({ sites, onSaved, onCancel }) {
           <textarea id="tr-people" className="form-control" rows={2} maxLength={2000} value={f.personnel}
             onChange={set("personnel")} placeholder="Names of the people trained, separated by commas" />
         </div>
-        <div className="form-group">
-          <label className="form-label" htmlFor="tr-count">Number trained</label>
-          <input id="tr-count" type="number" min="1" step="1" className="form-control" value={f.trained_employees} onChange={set("trained_employees")} />
-        </div>
+        {chosen.length === 1 && (
+          <div className="form-group">
+            <label className="form-label" htmlFor="tr-count">Number trained</label>
+            <input id="tr-count" type="number" min="1" step="1" className="form-control" value={counts[chosen[0].id]}
+              onChange={(e) => setCounts((c) => ({ ...c, [chosen[0].id]: e.target.value }))} />
+          </div>
+        )}
+        {chosen.length > 1 && (
+          <div className="form-group tt-wide">
+            <span className="form-label">Number trained at each site</span>
+            <div className="tr-counts">
+              {chosen.map((s) => (
+                <label key={s.id}>
+                  <span>{s.name}</span>
+                  <input type="number" min="1" step="1" className="form-control" aria-label={`Number trained at ${s.name}`}
+                    value={counts[s.id]} onChange={(e) => setCounts((c) => ({ ...c, [s.id]: e.target.value }))} />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="form-group">
           <label className="form-label" htmlFor="tr-file">Supporting document</label>
           <input id="tr-file" type="file" className="form-control" accept={ACCEPT} onChange={(e) => setFile(e.target.files[0] || null)} />
@@ -607,6 +646,15 @@ function SheTrainings({ canRecord }) {
   const download = (t) => trainingsApi.downloadDocument(t.id, t.document_name).catch(async (err) => notify(await errorText(err, "The file couldn't be downloaded."), "error"));
 
   if (!trainings) return <LoadingScreen message="Loading trainings..." />;
+  // a training given to several sites at once is one row, with each site's number trained
+  const rows = [];
+  const bySession = {};
+  trainings.forEach((t) => {
+    if (t.session_id && bySession[t.session_id]) return bySession[t.session_id].parts.push(t);
+    const row = { ...t, parts: [t] };
+    if (t.session_id) bySession[t.session_id] = row;
+    rows.push(row);
+  });
   return (
     <div className="tt-stack">
       {canRecord && !adding && (
@@ -614,23 +662,30 @@ function SheTrainings({ canRecord }) {
       )}
       {adding && <TrainingForm sites={sites} onCancel={() => setAdding(false)} onSaved={() => { setAdding(false); load(); }} />}
       <section className="card" aria-label="Trainings">
-        <div className="card-header"><div className="card-title">Trainings ({trainings.length})</div></div>
-        {trainings.length ? (
+        <div className="card-header"><div className="card-title">Trainings ({rows.length})</div></div>
+        {rows.length ? (
           <div className="table-wrap">
             <table>
               <thead><tr><th>Date</th><th>Training</th><th>Trainer</th><th>Personnel trained</th><th>Site</th><th>Document / recording</th></tr></thead>
               <tbody>
-                {trainings.map((t) => (
+                {rows.map((t) => (
                   <tr key={t.id}>
                     <td>{day(t.date)}</td>
                     <td>
                       <strong>{t.training_module}</strong>
-                      {newIds.has(t.id) && <span className="badge-new" style={{ marginLeft: 8 }}>NEW</span>}
+                      {t.parts.some((p) => newIds.has(p.id)) && <span className="badge-new" style={{ marginLeft: 8 }}>NEW</span>}
                       {t.type && <div className="tt-muted">{t.type}</div>}
                     </td>
                     <td>{t.trainer_name || "—"}</td>
-                    <td><div><Users size={13} aria-hidden="true" /> {t.trained_employees}</div><div className="tt-muted">{t.personnel}</div></td>
-                    <td>{siteName(t.site_id)}</td>
+                    <td><div><Users size={13} aria-hidden="true" /> {t.parts.reduce((n, p) => n + (p.trained_employees || 0), 0)}</div><div className="tt-muted">{t.personnel}</div></td>
+                    <td>
+                      {t.parts.length > 1
+                        ? <ul className="tr-site-parts">{t.parts.map((p) => <li key={p.id}>{siteName(p.site_id)} <span className="tt-muted">({p.trained_employees})</span></li>)}</ul>
+                        : siteName(t.site_id)}
+                      {t.parts.length === 1 && (t.session_sites || []).length > 1 && (
+                        <div className="tt-muted">Joint training with {t.session_sites.length - 1} other site{t.session_sites.length > 2 ? "s" : ""}</div>
+                      )}
+                    </td>
                     <td>
                       {t.has_document && (
                         <DocButtons name={t.document_name} viewable={t.document_viewable} title={t.training_module}

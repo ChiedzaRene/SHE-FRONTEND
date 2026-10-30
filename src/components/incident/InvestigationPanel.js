@@ -272,9 +272,11 @@ function ActionsSection({ incident, canEdit, save, busy, actions, reload }) {
 }
 
 // 5. When the corrective actions are closed, the SHE team logs the lessons learnt, the report type and the comments
-function CloseSection({ incident, canEdit, save, busy }) {
+function CloseSection({ incident, canEdit, save, busy, user }) {
   const wf = incident.incident_workflow || {};
   const status = wf.status || "reported";
+  // only a SHE Officer writes the SHE Officer's comment
+  const isOfficer = user?.role === "she_officer";
   const fromRecord = () => ({
     lessons_learned: wf.lessons_learned || "",
     report_dates: wf.report_dates || (wf.report_type ? { [wf.report_type]: "" } : {}),
@@ -298,7 +300,7 @@ function CloseSection({ incident, canEdit, save, busy }) {
       report_revised: draft.report_revised,
       // the furthest report ticked is the report this record now is
       report_type: ticked.length ? ticked[ticked.length - 1] : null,
-      she_comment: draft.she_comment.trim() || null,
+      ...(isOfficer ? { she_comment: draft.she_comment.trim() || null } : {}),
     };
   };
 
@@ -333,7 +335,9 @@ function CloseSection({ incident, canEdit, save, busy }) {
       <div className="form-group">
         <label className="form-label" htmlFor="inc-she-comment">SHE Officer's comment</label>
         <textarea id="inc-she-comment" className="form-control" rows={3} maxLength={10000} value={draft.she_comment}
+          readOnly={!isOfficer} aria-describedby={isOfficer ? undefined : "inc-she-comment-who"}
           onChange={(e) => set({ she_comment: e.target.value })} />
+        {!isOfficer && <small id="inc-she-comment-who" className="inc-muted">Written by a SHE Officer.</small>}
       </div>
       {canEdit && (
         <div className="inc-actions">
@@ -402,7 +406,7 @@ export default function InvestigationPanel({ incident, user, onSaved }) {
       setBusy(false);
     }
   };
-  const props = { incident, save, busy };
+  const props = { incident, save, busy, user };
   const [actions, setActions] = useState(null);
   const loadActions = useCallback(() => {
     actionsApi.byIncident(incident.id).then((res) => setActions(res.data || [])).catch(() => setActions([]));

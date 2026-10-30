@@ -326,6 +326,25 @@ test('once the corrective actions are closed, SHE log the lessons learnt, report
   await expect(record.locator('.inc-stepper li[aria-current="step"]')).toContainText('Closed');
 });
 
+test("only a SHE Officer writes the SHE Officer's comment; the SHE team can still close", async ({ page }) => {
+  const state = await investigation(page, { incident_workflow: { status: 'actions_assigned', she_comment: 'Alarm fitted and tested' } }, {
+    'GET /corrective-actions/incident/7': [{ id: 30, incident_id: 7, action_taken: 'Fit an overfill alarm', control: 'redesign',
+      assigned_to: 'Peter Two', status: 'resolved', is_successful: 'yes' }],
+  });
+  await signIn(page, { role: 'she_team' });
+  const record = await openRecord(page);
+  const comment = record.getByLabel("SHE Officer's comment");
+  await expect(comment).toHaveValue('Alarm fitted and tested');
+  await expect(comment).toHaveAttribute('readonly', '');
+  await expect(record.getByText('Written by a SHE Officer.')).toBeVisible();
+  await record.getByLabel('Lessons learnt').fill('Deliveries are watched');
+  await record.getByLabel('Full investigation report').check();
+  await record.getByRole('button', { name: 'Close the investigation' }).click();
+  await expect(record.getByRole('status')).toHaveText(/Investigation closed/);
+  expect(state.sent[0].incident_workflow).not.toHaveProperty('she_comment');
+  expect(state.sent[0].incident_workflow.status).toBe('closed');
+});
+
 test("the server's reason is shown when a step can't be taken yet", async ({ page }) => {
   await investigation(page, { incident_workflow: { status: 'findings_recorded', evidence: 'Statements' } }, {
     'PUT /incidents/7': (route) => route.fulfill(json(409, { detail: 'The root cause is recorded after the investigation team sends its findings' })),

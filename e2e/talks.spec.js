@@ -134,7 +134,7 @@ test('the SHE team records a fire fighting training with its supporting document
   await page.getByRole('button', { name: 'Record a training' }).click();
   const form = page.getByRole('form', { name: 'Record a training' });
   await form.getByLabel('Date').fill('2026-10-10');
-  await form.getByLabel('Site').selectOption({ label: 'Msasa Depot' });
+  await form.getByRole('checkbox', { name: 'Msasa Depot' }).check();
   await form.getByLabel('Name of training').fill('Fire fighting');
   await form.getByLabel('Trainer').fill('Rudo Chikore');
   await form.getByLabel('Personnel trained').fill('Tendai Moyo, Farai Moyo');
@@ -170,7 +170,7 @@ test('an online training carries the link to its recording, which sites open in 
   await page.getByRole('button', { name: 'Record a training' }).click();
   const form = page.getByRole('form', { name: 'Record a training' });
   await form.getByLabel('Date').fill('2026-10-12');
-  await form.getByLabel('Site').selectOption({ label: 'Msasa Depot' });
+  await form.getByRole('checkbox', { name: 'Msasa Depot' }).check();
   await form.getByLabel('Name of training').fill('Spill response (online)');
   await form.getByLabel('Trainer').fill('Rudo Chikore');
   await form.getByLabel('Personnel trained').fill('All site managers');
@@ -186,6 +186,51 @@ test('an online training carries the link to its recording, which sites open in 
   await expect(watch).toHaveAttribute('href', link);
   await expect(watch).toHaveAttribute('target', '_blank');
   await expect(watch).toHaveAttribute('rel', /noopener/);
+});
+
+test('one training given to several sites at once records each site with its own number trained', async ({ page }) => {
+  let sent = null;
+  const base = { training_module: 'First aid (joint)', personnel: 'Forecourt attendants', trainer_name: 'Rudo Chikore',
+    date: '2026-10-12T00:00:00', type: null, comments: null, has_document: false, user_id: 1,
+    video_link: 'https://onedrive.live.com/first-aid', session_id: 'abc', session_sites: [1, 2] };
+  let list = [];
+  await mockApi(page, {
+    'GET /sites': [{ id: 1, name: 'Msasa Depot', region: 'Harare' }, { id: 2, name: 'Gokwe Energy Centre', region: 'Midlands' }],
+    'POST /trainings/record': (route, req) => {
+      sent = req.postDataBuffer().toString('latin1');
+      list = [{ ...base, id: 21, site_id: 1, trained_employees: 5, total_employees: 5 },
+        { ...base, id: 22, site_id: 2, trained_employees: 7, total_employees: 7 }];
+      return route.fulfill(json(201, list[0]));
+    },
+  });
+  await page.route('http://api.test/trainings/', (route) => route.request().method() === 'GET'
+    ? route.fulfill(json(200, list)) : route.fallback());
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/trainings?tab=trainings');
+  await page.getByRole('button', { name: 'Record a training' }).click();
+  const form = page.getByRole('form', { name: 'Record a training' });
+  await form.getByLabel('Date').fill('2026-10-12');
+  await form.getByRole('checkbox', { name: 'Msasa Depot' }).check();
+  await form.getByRole('checkbox', { name: 'Gokwe Energy Centre' }).check();
+  await form.getByLabel('Name of training').fill('First aid (joint)');
+  await form.getByLabel('Trainer').fill('Rudo Chikore');
+  await form.getByLabel('Personnel trained').fill('Forecourt attendants');
+  await form.getByLabel('Recording link (online training)').fill('https://onedrive.live.com/first-aid');
+  await form.getByLabel('Number trained at Msasa Depot').fill('5');
+  await form.getByRole('button', { name: 'Record training' }).click();
+  await expect(form.getByRole('alert')).toContainText('Gokwe Energy Centre');
+  await form.getByLabel('Number trained at Gokwe Energy Centre').fill('7');
+  await form.getByRole('button', { name: 'Record training' }).click();
+  await expect.poll(() => sent).toContain('name="site_id"\r\n\r\n1');
+  expect(sent.match(/name="site_id"\r\n\r\n(\d+)/g).map((m) => m.slice(-1))).toEqual(['1', '2']);
+  expect(sent.match(/name="trained_employees"\r\n\r\n(\d+)/g).map((m) => m.slice(-1))).toEqual(['5', '7']);
+
+  // shown as one training: both sites, 12 people in all
+  const row = page.getByRole('region', { name: 'Trainings' }).getByRole('row', { name: /First aid \(joint\)/ });
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText('Msasa Depot (5)');
+  await expect(row).toContainText('Gokwe Energy Centre (7)');
+  await expect(row).toContainText('12');
 });
 
 test('site managers see SHE trainings but cannot record them', async ({ page }) => {
