@@ -151,7 +151,7 @@ export default function SiteHours() {
             {isManager
               ? "At the end of each month, enter the hours worked at your site and how many people work there. "
               : "Monthly hours worked and headcount per site, entered by each site's manager at the end of the month. "}
-            The hours are the denominator for LTIFR (per 200,000 hours); a site without hours shows N/A on the dashboards.
+            The hours are the denominator for LTIFR (per 1,000,000 hours); a site without hours shows N/A on the dashboards.
           </p>
         </div>
         <div className="form-group" style={{ margin: 0 }}>

@@ -334,7 +334,7 @@ export default function DashboardView({ title, subtitle }) {
           <div className="dash-explain">
             <Info size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
             <p>
-              <strong>LTIFR</strong> is injuries with lost work days per 200,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
+              <strong>LTIFR</strong> is injuries with lost work days per 1,000,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
               the all-sites figure is the average of the sites' rates. <strong>Days to close</strong> runs from when a
               corrective action is raised to when it is resolved.
             </p>
