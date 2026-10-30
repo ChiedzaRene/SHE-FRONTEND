@@ -25,8 +25,8 @@ test('the dashboard shows total incidents and how each figure changed since the 
   await expect(kpi('Total incidents')).toContainText('12');
   await expect(kpi('Total incidents')).toContainText('+3 vs Jul – Sep 2026');
   await expect(kpi('Total incidents').locator('.dash-change')).toHaveClass(/bad/);      // more incidents is worse
-  await expect(kpi('LTIFR (average of sites)')).toContainText('0.40');
-  await expect(kpi('LTIFR (average of sites)').locator('.dash-change')).toHaveClass(/good/);
+  await expect(kpi('LTIFR (all sites)')).toContainText('0.40');
+  await expect(kpi('LTIFR (all sites)').locator('.dash-change')).toHaveClass(/good/);
   await expect(page.getByText(/TRIR/)).toHaveCount(0); // TRIR is no longer reported anywhere
   await expect(kpi('Corrective actions completed')).toContainText('75%');
   await expect(kpi('Corrective actions completed')).toContainText('6 of 8 raised in the period');

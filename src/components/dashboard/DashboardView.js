@@ -234,7 +234,7 @@ export default function DashboardView({ title, subtitle }) {
   const change = (field, compact) => (
     <Change field={field} now={t[field]} before={p[field]} previousLabel={prevLabel} compact={compact} />
   );
-  const scope = siteId ? "" : " (average of sites)";
+  const scope = siteId ? "" : " (all sites)";
 
   return (
     <div className="dash">
@@ -382,7 +382,7 @@ export default function DashboardView({ title, subtitle }) {
             <Info size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
             <p>
               <strong>LTIFR</strong> is injuries with lost work days per 1,000,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
-              the all-sites figure is the average of the sites' rates. <strong>Days to close</strong> runs from when a
+              the all-sites figure puts every site together: all lost-time injuries over the total hours worked by everyone at those sites. <strong>Days to close</strong> runs from when a
               corrective action is raised to when it is resolved.
             </p>
           </div>

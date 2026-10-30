@@ -206,7 +206,7 @@ test.describe.serial('a working day', () => {
     await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
     // 1 lost-time injury x 1,000,000 / 52,000 hours = LTIFR 19.23
     const kpi = (label) => page.locator('.dash-kpi').filter({ has: page.getByText(label, { exact: true }) });
-    await expect(kpi('LTIFR (average of sites)')).toContainText('19.23');
+    await expect(kpi('LTIFR (all sites)')).toContainText('19.23');
     await expect(page.getByText(/TRIR/)).toHaveCount(0);
     await expect(kpi('Workers')).toContainText('30');
     await expect(page.getByText('not counted in LTIFR yet')).toHaveCount(0); // every injury now counted

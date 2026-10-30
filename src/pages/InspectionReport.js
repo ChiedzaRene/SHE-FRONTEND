@@ -10,6 +10,7 @@ import { useNotifications } from "../context/NotificationsContext";
 import LoadingScreen from "../components/LoadingScreen";
 import RichTextEditor, { RichText } from "../components/RichTextEditor";
 import FileViewer from "../components/FileViewer";
+import FilePicker from "../components/FilePicker";
 import GlowFileIcon from "../components/GlowFileIcon";
 import { apiError } from "../utils/apiError";
 import { NC_STATUS, STATUS_LABEL, fmtDay } from "./Inspections";
@@ -105,10 +106,15 @@ function ProofList({ files, canAdd, label, onAdd, onDelete }) {
       {canAdd && (
         <>
           <button type="button" className="btn btn-outline btn-sm" onClick={() => input.current?.click()}>
-            <Paperclip size={14} /> Add photo or document
+            <Paperclip size={14} /> Add photos or documents
           </button>
-          <input ref={input} type="file" accept={PROOF_ACCEPT} hidden aria-label={label}
-            onChange={(e) => { const f = e.target.files[0]; e.target.value = ""; if (f) onAdd(f); }} />
+          {/* several files can be chosen at once; they are added one after another */}
+          <input ref={input} type="file" multiple accept={PROOF_ACCEPT} hidden aria-label={label}
+            onChange={async (e) => {
+              const chosen = Array.from(e.target.files || []);
+              e.target.value = "";
+              for (const f of chosen) await onAdd(f);   // eslint-disable-line no-await-in-loop
+            }} />
         </>
       )}
     </>
@@ -236,10 +242,9 @@ function CompleteForm({ nc, onDone }) {
           placeholder="What was done, by whom and when" />
       </div>
       <div className="form-group">
-        <label className="form-label" htmlFor={`done-photo-${nc.id}`}>Proof: photos or documents (optional, up to {MAX_EVIDENCE})</label>
-        <input id={`done-photo-${nc.id}`} type="file" multiple className="form-control" accept={PROOF_ACCEPT}
-          onChange={(e) => setFiles(Array.from(e.target.files || []))} />
-        {files.length > 0 && <small className="share-hint">{files.map((f) => f.name).join(", ")}</small>}
+        <span className="form-label">Proof: photos or documents (optional, up to {MAX_EVIDENCE})</span>
+        <FilePicker id={`done-photo-${nc.id}`} label="Proof: photos or documents" files={files} onChange={setFiles}
+          max={MAX_EVIDENCE} accept={PROOF_ACCEPT} />
       </div>
       <div className="tt-form-actions">
         <button type="submit" className="btn btn-primary" disabled={busy}><CheckCircle2 size={16} /> {busy ? "Sending…" : "Mark as completed"}</button>
