@@ -111,6 +111,18 @@ export const actionsApi = {
   delete: (id) => api.delete(`/corrective-actions/${id}`),
   resolve: (id, data) => api.post(`/corrective-actions/${id}/resolve`, data),
   byIncident: (incidentId) => api.get(`/corrective-actions/incident/${incidentId}`),
+  // evidence the action was done (a photo, PDF or document), needed before it can be closed
+  addFile: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/corrective-actions/${id}/files`, form);
+  },
+  viewFile: (id, fileId) => api.get(`/corrective-actions/${id}/files/${fileId}`, { responseType: "blob" }),
+  downloadFile: async (id, fileId, filename) => {
+    const res = await api.get(`/corrective-actions/${id}/files/${fileId}`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+  removeFile: (id, fileId) => api.delete(`/corrective-actions/${id}/files/${fileId}`),
 };
 
 export const auditsApi = {
@@ -191,6 +203,33 @@ export const sheFilesApi = {
 // Inspection reports and their non-conformities (NCs).
 // SHE team: create/update/addNc/updateNc/deleteNc/addPhoto/deletePhoto/submit/review
 // Regional office: acknowledge (recommendation, assigned_to, due_date). Responsible person: complete.
+// fire equipment inspections the sites send: the fortnightly checklist and the six-monthly service and refill
+export const fireInspectionsApi = {
+  checklist: () => api.get("/fire-inspections/checklist"),
+  list: (params = {}) => api.get("/fire-inspections/", { params }),
+  get: (id) => api.get(`/fire-inspections/${id}`),
+  // data: { kind, site_id, inspection_date, inspector_name, answers, comments, contractor, extinguishers, next_due }
+  submit: (data, files = []) => {
+    const form = new FormData();
+    Object.entries(data).forEach(([k, v]) => {
+      if (v === null || v === undefined || v === "") return;
+      form.append(k, typeof v === "object" ? JSON.stringify(v) : v);
+    });
+    files.forEach((f) => form.append("files", f));
+    return api.post("/fire-inspections/", form);
+  },
+  addFile: (id, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api.post(`/fire-inspections/${id}/files`, form);
+  },
+  viewFile: (fileId) => api.get(`/fire-inspections/files/${fileId}`, { responseType: "blob" }),
+  downloadFile: async (fileId, filename) => {
+    const res = await api.get(`/fire-inspections/files/${fileId}`, { params: { download: true }, responseType: "blob" });
+    saveBlobResponse(res, filename);
+  },
+};
+
 export const inspectionsApi = {
   list: (params = {}) => api.get("/site-inspections/", { params }),
   myNcs: () => api.get("/site-inspections/my-ncs"),

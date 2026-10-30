@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { incidentsApi, sitesApi } from "../api/endpoints";
 import useNewItems, { newestFirst } from "../hooks/useNewItems";
 import NewBadge from "../components/NewBadge";
-import { CalendarDays, Building2, RefreshCw } from "lucide-react";
+import { CalendarDays, Building2, RefreshCw, Plus } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
+import { WORKFLOW_ROLES } from "../components/incident/InvestigationPanel";
 import LogIncidentModal from "../components/LogIncidentModal";
 import IncidentRecord from "../components/incident/IncidentRecord";
 import { teamIds } from "../components/incident/InvestigationPanel";
@@ -14,6 +16,9 @@ export default function Incidents() {
   const newIds = useNewItems("incidents");
   const { user } = useAuth();
   const isSiteManager = user?.role === "site_manager";
+  // the site and the SHE team both log incidents (the SHE team picks the site)
+  const canLog = isSiteManager || WORKFLOW_ROLES.includes(user?.role);
+  const [params, setParams] = useSearchParams();
 
   // --- State Management ---
   const [incidents, setIncidents] = useState([]);
@@ -141,6 +146,17 @@ export default function Incidents() {
     setIsModalOpen(true);
   };
 
+  // a corrective action links to its incident with ?open=<incident number>
+  useEffect(() => {
+    const wanted = params.get("open");
+    if (!wanted || !incidents.length) return;
+    const found = incidents.find((i) => String(i.id) === wanted);
+    if (found) openDetails(found);
+    const next = new URLSearchParams(params);
+    next.delete("open");
+    setParams(next, { replace: true });
+  }, [incidents]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const updateIncident = (updated) => {
     setIncidents((all) => all.map((i) => (i.id === updated.id ? updated : i)));
     setSelectedIncident(updated);
@@ -154,8 +170,13 @@ export default function Incidents() {
 
   return (
     <div style={{ padding: "20px" }}>
-      <div className="page-header" style={{ marginBottom: "24px" }}>
+      <div className="page-header" style={{ marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <h1 className="page-title">Incidents Register</h1>
+        {canLog && (
+          <button type="button" className="btn btn-primary" onClick={() => setIsFollowUpOpen(true)}>
+            <Plus size={18} /> Log Incident
+          </button>
+        )}
       </div>
 
       {/* --- Filter & Report Panel --- */}

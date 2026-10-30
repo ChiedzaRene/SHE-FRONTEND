@@ -44,7 +44,11 @@ export default function Reports() {
   const isManager = user?.role === "site_manager";
   const types = REPORT_TYPES.filter((t) => !(t.teamOnly && isManager));
 
-  const [kind, setKind] = useState("performance");
+  // the dashboard's LTIFR tile opens the site comparison directly (?report=leaderboard)
+  const [kind, setKind] = useState(() => {
+    const wanted = new URLSearchParams(window.location.search).get("report");
+    return types.some((t) => t.id === wanted) ? wanted : "performance";
+  });
   const [sites, setSites] = useState([]);
   const [siteId, setSiteId] = useState("");
   const [month, setMonth] = useState(lastMonth);

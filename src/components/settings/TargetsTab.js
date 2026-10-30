@@ -46,7 +46,7 @@ export default function TargetsTab() {
         <form onSubmit={save} style={{ padding: 20 }}>
           <p style={{ marginTop: 0, color: "#475569", fontSize: "0.9rem" }}>
             A site is flagged <strong>Action required</strong> when its LTIFR is above this limit,
-            per {targets ? targets.rate_basis_hours.toLocaleString() : "200,000"} hours worked.
+            per {targets ? targets.rate_basis_hours.toLocaleString() : "1,000,000"} hours worked.
           </p>
           <div className="form-group">
             <label className="form-label" htmlFor="limit-ltifr">LTIFR limit</label>
@@ -70,7 +70,7 @@ export default function TargetsTab() {
         <div style={{ padding: 20, color: "#334155", fontSize: "0.9rem", lineHeight: 1.6 }}>
           <p style={{ marginTop: 0 }}>These rules are fixed so every screen and report agrees:</p>
           <ul style={{ paddingLeft: 18, margin: 0 }}>
-            <li><strong>LTIFR</strong> = lost-time injuries × {targets ? targets.rate_basis_hours.toLocaleString() : "200,000"} ÷ hours worked</li>
+            <li><strong>LTIFR</strong> = lost-time injuries × {targets ? targets.rate_basis_hours.toLocaleString() : "1,000,000"} ÷ hours worked</li>
             <li>{targets ? targets.recordable_rule : "An incident of type 'injury' is recordable."}</li>
             <li>{targets ? targets.lost_time_rule : "A lost-time injury is a recordable injury with lost days above 0."}</li>
             <li>Only months with hours entered (Hours Worked page) are counted. A site with no hours shows N/A.</li>

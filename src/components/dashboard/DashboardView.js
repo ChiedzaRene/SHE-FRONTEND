@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   AlertTriangle,
   Activity,
@@ -20,6 +20,7 @@ import {
 import { dashboardApi, sitesApi } from "../../api/endpoints";
 import { fmtRate, siteStatus, STATUS_STYLE } from "../../utils/rates";
 import useSafetyTargets from "../../hooks/useSafetyTargets";
+import { useAuth } from "../../context/AuthContext";
 import LoadingScreen from "../LoadingScreen";
 import RateCoverageNotice from "../RateCoverageNotice";
 import SitesMap from "../SitesMap";
@@ -36,6 +37,19 @@ export const PERIOD_OPTIONS = [
   { value: "12m", label: "Last 12 months" },
 ];
 const PERIODS = new Set(PERIOD_OPTIONS.map((p) => p.value));
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+// Where each tile leads: the page with everything behind the figure. Regional managers have no Sites or
+// Hours Worked pages, so those tiles are not links for them.
+const KPI_PAGES = {
+  incidents: "/incidents",
+  ltifr: "/reports?report=leaderboard",
+  actions: "/corrective-actions",
+  hours: "/site-hours",
+  talks: "/trainings",
+  sites: "/sites",
+};
+const NOT_FOR = { regional_manager: ["hours", "sites"] };
 
 const fmtNum = (n) => (n === null || n === undefined ? "—" : Number(n).toLocaleString());
 const fmtPct = (n) => (n === null || n === undefined ? "—" : `${Number(n).toFixed(0)}%`);
@@ -52,7 +66,7 @@ const MEASURES = {
   actions_total: { label: "Corrective actions raised", fmt: fmtNum, better: null },
   actions_completion_pct: { label: "Corrective actions completed", fmt: fmtPct, better: "up", unit: " pts", digits: 0 },
   avg_days_to_close: { label: "Average days to close an action", fmt: fmtDays, better: "down", unit: " days", digits: 1 },
-  talks_rate: { label: "Weekly toolbox talks submitted", fmt: fmtPct, better: "up", unit: " pts", digits: 0 },
+  talks_rate: { label: "Weekly SHE talks submitted", fmt: fmtPct, better: "up", unit: " pts", digits: 0 },
 };
 
 // "▲ 2 vs Apr – Jun 2026", coloured only when the direction is good or bad, always with an arrow and words
@@ -87,9 +101,10 @@ function Change({ field, now, before, previousLabel, compact }) {
   );
 }
 
-function Kpi({ label, value, Icon, color, sub, change }) {
+function Kpi({ label, value, Icon, color, sub, change, to }) {
+  const Tile = to ? Link : "div";
   return (
-    <div className="dash-kpi">
+    <Tile className={`dash-kpi${to ? " dash-kpi-link" : ""}`} {...(to ? { to, title: `Open ${label.toLowerCase()}` } : {})}>
       <div className="dash-kpi-top">
         <div className="dash-kpi-label">{label}</div>
         <span className="dash-kpi-icon" style={{ backgroundColor: `${color}15`, color }} aria-hidden="true">
@@ -99,7 +114,7 @@ function Kpi({ label, value, Icon, color, sub, change }) {
       <div className="dash-kpi-value">{value}</div>
       {sub ? <div className="dash-kpi-sub">{sub}</div> : null}
       {change}
-    </div>
+    </Tile>
   );
 }
 
@@ -117,7 +132,13 @@ const Section = ({ title, aside, children }) => (
 export default function DashboardView({ title, subtitle }) {
   const limits = useSafetyTargets();
   const [params, setParams] = useSearchParams();
+  const { user } = useAuth();
   const period = PERIODS.has(params.get("period")) ? params.get("period") : "quarter";
+  // a From and To month (e.g. September to October) replace the quick periods
+  const fromMonth = MONTH.test(params.get("from") || "") ? params.get("from") : "";
+  const toMonth = MONTH.test(params.get("to") || "") ? params.get("to") : "";
+  const range = fromMonth && toMonth && fromMonth <= toMonth ? { from: fromMonth, to: toMonth } : null;
+  const pageFor = (key) => (NOT_FOR[user?.role] || []).includes(key) ? undefined : KPI_PAGES[key];
   const siteId = params.get("site") || "";
   const region = params.get("region") || "";
 
@@ -137,7 +158,7 @@ export default function DashboardView({ title, subtitle }) {
     setUpdating(true);
     setError("");
     dashboardApi
-      .summary({ period, ...(siteId ? { site_id: siteId } : region ? { region } : {}) })
+      .summary({ ...(range || { period }), ...(siteId ? { site_id: siteId } : region ? { region } : {}) })
       .then((res) => live && setData(res.data))
       .catch((err) => {
         if (!live) return;
@@ -150,13 +171,26 @@ export default function DashboardView({ title, subtitle }) {
         setLoading(false);
       });
     return () => { live = false; };
-  }, [period, siteId, region]);
+  }, [period, range?.from, range?.to, siteId, region]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setFilter = (key, value) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
     else next.delete(key);
     if (key === "region") next.delete("site"); // a new region starts from all its sites
+    if (key === "period") { next.delete("from"); next.delete("to"); } // a quick period replaces chosen months
+    setParams(next, { replace: true });
+  };
+  // Choosing one end of the range keeps the other (the months currently shown), and swaps them if reversed
+  const setMonths = (which, value) => {
+    if (!MONTH.test(value)) return;
+    let from = which === "from" ? value : fromMonth || data?.from;
+    let to = which === "to" ? value : toMonth || data?.to;
+    if (from && to && from > to) [from, to] = [value, value]; // a reversed range becomes just the month chosen
+    const next = new URLSearchParams(params);
+    next.set("from", from);
+    next.set("to", to);
+    next.delete("period");
     setParams(next, { replace: true });
   };
   const siteChoices = sites.filter((s) => !region || s.region === region);
@@ -178,9 +212,9 @@ export default function DashboardView({ title, subtitle }) {
   // Chart: the previous period's months next to this one's when they follow on, so the bars compare
   const chartMonths = useMemo(() => {
     if (!cur) return [];
-    const follows = prev && period !== "ytd";
+    const follows = prev && (range || period !== "ytd");
     return [...(follows ? prev.by_month : []), ...cur.by_month];
-  }, [cur, prev, period]);
+  }, [cur, prev, period, !!range]); // eslint-disable-line react-hooks/exhaustive-deps
   const typeCounts = useMemo(() => {
     const out = {};
     chartMonths.forEach((row) =>
@@ -230,12 +264,23 @@ export default function DashboardView({ title, subtitle }) {
           </div>
           <div className="form-group">
             <label className="form-label" htmlFor="dash-period">Period</label>
-            <select id="dash-period" className="form-control" value={period}
-              onChange={(e) => setFilter("period", e.target.value === "quarter" ? "" : e.target.value)}>
+            <select id="dash-period" className="form-control" value={range ? "range" : period}
+              onChange={(e) => e.target.value !== "range" && setFilter("period", e.target.value === "quarter" ? "" : e.target.value)}>
               {PERIOD_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
+              {range && <option value="range">From–to months</option>}
             </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="dash-from">From</label>
+            <input id="dash-from" type="month" className="form-control" value={fromMonth || data?.from || ""}
+              max={toMonth || data?.to || undefined} onChange={(e) => setMonths("from", e.target.value)} />
+          </div>
+          <div className="form-group">
+            <label className="form-label" htmlFor="dash-to">To</label>
+            <input id="dash-to" type="month" className="form-control" value={toMonth || data?.to || ""}
+              min={fromMonth || data?.from || undefined} onChange={(e) => setMonths("to", e.target.value)} />
           </div>
         </div>
       </div>
@@ -278,30 +323,32 @@ export default function DashboardView({ title, subtitle }) {
 
           <div className="dash-kpis">
             <Kpi label="Total incidents" value={fmtNum(t.incidents)} Icon={AlertTriangle} color="#dc2626"
-              sub={`${fmtNum(t.injuries)} injur${t.injuries === 1 ? "y" : "ies"}`} change={change("incidents")} />
+              sub={`${fmtNum(t.injuries)} injur${t.injuries === 1 ? "y" : "ies"}`} change={change("incidents")} to={pageFor("incidents")} />
             <Kpi label={`LTIFR${scope}`} value={fmtRate(t.ltifr)} Icon={Activity} color="#7c3aed"
-              sub={limits.ltifr_limit != null ? `Target < ${limits.ltifr_limit}` : null} change={change("ltifr")} />
+              sub={limits.ltifr_limit != null ? `Target < ${limits.ltifr_limit}` : null} change={change("ltifr")} to={pageFor("ltifr")} />
             <Kpi label="Corrective actions completed" value={fmtPct(t.actions_completion_pct)} Icon={CheckCircle2}
               color="#16a34a" sub={`${fmtNum(t.actions_completed)} of ${fmtNum(t.actions_total)} raised in the period`}
-              change={change("actions_completion_pct")} />
+              change={change("actions_completion_pct")} to={pageFor("actions")} />
             <Kpi label="Average days to close" value={fmtDays(t.avg_days_to_close)} Icon={Timer} color="#ea580c"
-              sub="From raising an action to resolving it" change={change("avg_days_to_close")} />
+              sub="From raising an action to resolving it" change={change("avg_days_to_close")} to={pageFor("actions")} />
             <Kpi label="Hours worked" value={fmtNum(t.hours_worked)} Icon={Clock} color="#0891b2"
               sub={siteId ? "Entered by the site manager" : `${t.sites_with_hours} of ${t.sites} sites reported`}
-              change={change("hours_worked")} />
+              change={change("hours_worked")} to={pageFor("hours")} />
             <Kpi label="Workers" value={fmtNum(t.workers)} Icon={Users} color="#0f766e"
-              sub="Latest headcount entered" change={change("workers")} />
-            <Kpi label="Weekly toolbox talks" value={fmtPct(t.talks_rate)} Icon={MessageSquare} color="#1d4ed8"
-              sub={`${fmtNum(t.talks_done ?? 0)} of ${fmtNum(t.talks_due ?? 0)} weeks submitted`} change={change("talks_rate")} />
+              sub="Latest headcount entered" change={change("workers")} to={pageFor("hours")} />
+            <Kpi label="SHE talks" value={fmtPct(t.talks_rate)} Icon={MessageSquare} color="#1d4ed8"
+              sub={`${fmtNum(t.talks_done ?? 0)} of ${fmtNum(t.talks_due ?? 0)} weeks submitted`} change={change("talks_rate")}
+              to={pageFor("talks")} />
             {!siteId && (
               <Kpi label="Sites" value={fmtNum(t.sites)} Icon={Building2} color="#475569"
-                sub={`${fmtNum(t.lost_time_injuries)} lost-time injur${t.lost_time_injuries === 1 ? "y" : "ies"}`} />
+                sub={`${fmtNum(t.lost_time_injuries)} lost-time injur${t.lost_time_injuries === 1 ? "y" : "ies"}`}
+                to={pageFor("sites")} />
             )}
           </div>
 
           <div className="dash-grid">
             <Section title="Incidents by month and type"
-              aside={<span className="dash-muted">{period === "ytd" ? cur.label : `${prevLabel} and ${cur.label}`}</span>}>
+              aside={<span className="dash-muted">{period === "ytd" && !range ? cur.label : `${prevLabel} and ${cur.label}`}</span>}>
               <IncidentsByMonthChart months={chartMonths} counts={typeCounts} />
             </Section>
 
@@ -334,7 +381,7 @@ export default function DashboardView({ title, subtitle }) {
           <div className="dash-explain">
             <Info size={16} aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }} />
             <p>
-              <strong>LTIFR</strong> is injuries with lost work days per 200,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
+              <strong>LTIFR</strong> is injuries with lost work days per 1,000,000 hours worked. Each site's rate uses its own hours, entered by its manager at the end of the month;
               the all-sites figure is the average of the sites' rates. <strong>Days to close</strong> runs from when a
               corrective action is raised to when it is resolved.
             </p>
@@ -363,7 +410,7 @@ export default function DashboardView({ title, subtitle }) {
                     <th scope="col">Hours</th>
                     <th scope="col">Actions completed</th>
                     <th scope="col">Avg days to close</th>
-                    <th scope="col">Weekly talks</th>
+                    <th scope="col">SHE talks</th>
                     <th scope="col">Status</th>
                   </tr>
                 </thead>

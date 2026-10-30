@@ -377,7 +377,7 @@ test("a description that is too short is caught before sending, and the server's
   await expect(form.getByText("The incident wasn't logged. Occurred at occurred_at cannot be in the future")).toBeVisible();
 });
 
-test('an injury outcome or environmental impact unselects when clicked again, and Clear stands out', async ({ page }) => {
+test('an incident severity or environmental impact unselects when clicked again, and Clear stands out', async ({ page }) => {
   await mockApi(page, { 'GET /sites/1': SITES[0], 'GET /sites': SITES });
   await signIn(page, { role: 'site_manager', site_id: 1 });
   await page.getByRole('button', { name: 'Log Incident' }).click();
@@ -387,7 +387,7 @@ test('an injury outcome or environmental impact unselects when clicked again, an
   await expect(firstAid).toBeChecked();
   await firstAid.click();                                   // clicked again: unselected
   await expect(firstAid).not.toBeChecked();
-  await expect(form.getByRole('button', { name: 'Clear injury outcome' })).toHaveCount(0);
+  await expect(form.getByRole('button', { name: 'Clear incident severity' })).toHaveCount(0);
 
   const withinSite = form.getByLabel('Impact within site boundaries');
   await withinSite.check();

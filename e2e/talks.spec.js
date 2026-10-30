@@ -29,7 +29,7 @@ test('on Monday the site manager submits the toolbox talk with its register', as
   await page.route('http://api.test/safety-talks/current', (route) => route.request().method() === 'OPTIONS'
     ? route.fallback() : route.fulfill(json(200, state)));
   await signIn(page, { role: 'site_manager', site_id: 1 });
-  await page.locator('#app-sidebar').getByRole('link', { name: 'Talks & Training' }).click();
+  await page.locator('#app-sidebar').getByRole('link', { name: 'SHE Talks & Training' }).click();
 
   const week = page.getByRole('region', { name: "This week's talk" });
   await expect(week).toContainText("This week's talk is due");
@@ -152,6 +152,42 @@ test('the SHE team records a fire fighting training with its supporting document
     'name="trainer_name"\r\n\r\nRudo Chikore', 'name="trained_employees"\r\n\r\n2', 'filename="attendance.pdf"']) expect(sent).toContain(part);
 });
 
+test('an online training carries the link to its recording, which sites open in a new tab', async ({ page }) => {
+  let sent = null;
+  const link = 'https://glowpetroleum-my.sharepoint.com/:f:/g/personal/she/recording';
+  const saved = { id: 6, site_id: 1, user_id: 1, training_module: 'Spill response (online)', personnel: 'All site managers',
+    trainer_name: 'Rudo Chikore', trained_employees: 9, total_employees: 9, date: '2026-10-12T00:00:00', type: null,
+    comments: null, has_document: false, video_link: link };
+  let list = [];
+  await mockApi(page, {
+    'GET /sites': [{ id: 1, name: 'Msasa Depot' }],
+    'POST /trainings/record': (route, req) => { sent = req.postDataBuffer().toString('latin1'); list = [saved]; return route.fulfill(json(201, saved)); },
+  });
+  await page.route('http://api.test/trainings/', (route) => route.request().method() === 'GET'
+    ? route.fulfill(json(200, list)) : route.fallback());
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/trainings?tab=trainings');
+  await page.getByRole('button', { name: 'Record a training' }).click();
+  const form = page.getByRole('form', { name: 'Record a training' });
+  await form.getByLabel('Date').fill('2026-10-12');
+  await form.getByLabel('Site').selectOption({ label: 'Msasa Depot' });
+  await form.getByLabel('Name of training').fill('Spill response (online)');
+  await form.getByLabel('Trainer').fill('Rudo Chikore');
+  await form.getByLabel('Personnel trained').fill('All site managers');
+  await form.getByLabel('Number trained').fill('9');
+  await form.getByLabel('Recording link (online training)').fill('http://onedrive.live.com/recording');
+  await form.getByRole('button', { name: 'Record training' }).click();
+  await expect(form.getByRole('alert')).toContainText('https://');
+  await form.getByLabel('Recording link (online training)').fill(link);
+  await form.getByRole('button', { name: 'Record training' }).click();
+  await expect.poll(() => sent).toContain(`name="video_link"\r\n\r\n${link}`);
+
+  const watch = page.getByRole('link', { name: /Watch the recording of Spill response/ });
+  await expect(watch).toHaveAttribute('href', link);
+  await expect(watch).toHaveAttribute('target', '_blank');
+  await expect(watch).toHaveAttribute('rel', /noopener/);
+});
+
 test('site managers see SHE trainings but cannot record them', async ({ page }) => {
   await mockApi(page, { 'GET /sites': [{ id: 1, name: 'Msasa Depot' }], 'GET /trainings': [] });
   await signIn(page, { role: 'site_manager', site_id: 1 });
@@ -172,7 +208,7 @@ test('the dashboards show weekly talk completion, and the SHE dashboard filters 
     },
   });
   await signIn(page, { role: 'she_team' });
-  const kpi = page.locator('.dash-kpi').filter({ has: page.getByText('Weekly toolbox talks', { exact: true }) });
+  const kpi = page.locator('.dash-kpi').filter({ has: page.getByText('SHE talks', { exact: true }) });
   await expect(kpi).toContainText('75%');
   await expect(kpi).toContainText('6 of 8 weeks submitted');
   await expect(kpi).toContainText('+25 pts');

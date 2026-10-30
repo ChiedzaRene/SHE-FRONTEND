@@ -51,14 +51,14 @@ test('a regional manager has the dashboard, reports and their region\'s pages, a
   await signIn(page, { role: 'regional_manager', region: 'Harare East' });
   const nav = page.locator('#app-sidebar');
   for (const [link, heading] of [['Dashboard', /Dashboard/], ['Incidents', 'Incidents Register'], ['Legal', 'Licences'],
-    ['Talks & Training', 'Talks & Training'], ['SHE Files', 'SHE Files'], ['Reports', /Reports/]]) {
+    ['SHE Talks & Training', 'SHE Talks & Training'], ['SHE Files', 'SHE Files'], ['Reports', /Reports/]]) {
     await nav.getByRole('link', { name: link, exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: heading }).first()).toBeVisible();
   }
   await nav.getByRole('link', { name: 'SHE Files' }).click();
   await expect(page.getByText('Regional briefing')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Share a file' })).toHaveCount(0);   // they receive, they don't share
-  await nav.getByRole('link', { name: 'Talks & Training' }).click();
+  await nav.getByRole('link', { name: 'SHE Talks & Training' }).click();
   await page.getByRole('tab', { name: 'SHE trainings' }).click();
   await expect(page.getByRole('button', { name: 'Record a training' })).toHaveCount(0);
 });

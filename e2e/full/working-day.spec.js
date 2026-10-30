@@ -204,9 +204,9 @@ test.describe.serial('a working day', () => {
 
     await openMenu(page, 'Dashboard');
     await page.getByLabel('Period').selectOption({ label: 'Last 12 months' });
-    // 1 lost-time injury x 200,000 / 52,000 hours = LTIFR 3.85
+    // 1 lost-time injury x 1,000,000 / 52,000 hours = LTIFR 19.23
     const kpi = (label) => page.locator('.dash-kpi').filter({ has: page.getByText(label, { exact: true }) });
-    await expect(kpi('LTIFR (average of sites)')).toContainText('3.85');
+    await expect(kpi('LTIFR (average of sites)')).toContainText('19.23');
     await expect(page.getByText(/TRIR/)).toHaveCount(0);
     await expect(kpi('Workers')).toContainText('30');
     await expect(page.getByText('not counted in LTIFR yet')).toHaveCount(0); // every injury now counted
@@ -252,7 +252,7 @@ test.describe.serial('a working day', () => {
 
   test('the manager gives the weekly talk; the SHE team tracks it and records a first aid training', async ({ page, browser }) => {
     await signIn(page, MANAGER.email, MANAGER.own);
-    await openMenu(page, 'Talks & Training');
+    await openMenu(page, 'SHE Talks & Training');
     const week = page.getByRole('region', { name: "This week's talk" });
     const day = new Date().getDay();               // talks can be submitted on Monday (1) and Tuesday (2)
     const windowOpen = day === 1 || day === 2;
@@ -270,7 +270,7 @@ test.describe.serial('a working day', () => {
 
     const she = await (await browser.newContext()).newPage();
     await signIn(she, SHE.email, SHE.own);
-    await openMenu(she, 'Talks & Training');
+    await openMenu(she, 'SHE Talks & Training');
     await she.getByLabel('Region').selectOption('Harare East');
     const row = she.getByRole('region', { name: 'Completion by site' }).getByRole('row', { name: /Msasa Depot/ });
     // the site was added today, so the only week due is this one (if its window is open)

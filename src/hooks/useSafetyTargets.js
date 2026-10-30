@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { settingsApi } from "../api/endpoints";
 
-// Used until the server answers (or if it can't be reached): the original fixed limits.
-export const DEFAULT_TARGETS = { ltifr_limit: 0.5 };
+// Used until the server answers (or if it can't be reached): the default limit, per 1,000,000 hours.
+export const DEFAULT_TARGETS = { ltifr_limit: 2.5 };
 
 let pending = null; // one shared request, so every screen on a page load doesn't ask again
 

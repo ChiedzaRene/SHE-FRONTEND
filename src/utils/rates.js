@@ -4,7 +4,7 @@ export const fmtRate = (value) =>
   value === null || value === undefined ? "N/A" : Number(value).toFixed(2);
 
 // "no-data" when hours haven't been entered, so a site is never shown COMPLIANT by default.
-// `limits` comes from useSafetyTargets() (admin-editable in Settings), per 200,000 hours.
+// `limits` comes from useSafetyTargets() (admin-editable in Settings), per 1,000,000 hours.
 export const siteStatus = (site, limits) => {
   if (site.ltifr == null) return "no-data";
   return site.ltifr > limits.ltifr_limit ? "action" : "ok";
