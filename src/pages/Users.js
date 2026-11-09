@@ -16,6 +16,21 @@ import {
   Trash2,
 } from 'lucide-react';
 
+// "Just now", "25 minutes ago", "Yesterday at 14:05", or the date for anything older than a week
+export function lastActive(iso, now = new Date()) {
+  const when = new Date(iso);
+  const minutes = Math.floor((now - when) / 60000);
+  if (minutes < 5) return "Just now";   // activity is recorded every few minutes
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const time = when.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (when >= startOfToday) return `Today at ${time}`;
+  if (when >= new Date(startOfToday - 86400000)) return `Yesterday at ${time}`;
+  const days = Math.floor((startOfToday - when) / 86400000) + 1;
+  if (days < 7) return `${days} days ago`;
+  return when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+}
+
 const UserManagement = () => {
   const { notify, confirm } = useFeedback();
   const { user: currentUser } = useAuth();
@@ -226,20 +241,21 @@ const UserManagement = () => {
                 <th>Role</th>
                 <th>Site</th>
                 <th>Status</th>
+                <th>Last active</th>
                 <th className="users-actions-head">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="users-state-cell">
+                  <td colSpan={6} className="users-state-cell">
                     <div className="spinner"></div>
                     <p className="users-state-text">Loading users...</p>
                   </td>
                 </tr>
               ) : filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="users-state-cell users-state-cell-empty">
+                  <td colSpan={6} className="users-state-cell users-state-cell-empty">
                     <p className="users-state-text">No users found.</p>
                   </td>
                 </tr>
@@ -260,6 +276,13 @@ const UserManagement = () => {
                         <span className="users-status users-status-active"><UserCheck size={14}/> Active</span> : 
                         <span className="users-status users-status-inactive"><UserX size={14}/> Inactive</span>
                       }
+                    </td>
+                    <td>
+                      {user.last_active_at ? (
+                        <time dateTime={user.last_active_at} title={new Date(user.last_active_at).toLocaleString()}>
+                          {lastActive(user.last_active_at)}
+                        </time>
+                      ) : <span className="users-email">Never signed in</span>}
                     </td>
                     <td className="users-actions-cell">
                       <div className="users-actions-wrap">
