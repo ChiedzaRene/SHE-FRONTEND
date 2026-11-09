@@ -96,9 +96,12 @@ test('the regional office acknowledges each NC; once all are assigned the report
   await page.keyboard.type('Drain and clean the oil separator');
   await form.getByLabel('By who').selectOption({ label: 'Tendai Moyo' });
   await expect(form.getByLabel('By who').locator('optgroup')).toHaveCount(3);
-  await form.getByLabel('By when').fill('2026-11-02');
+  // a due date a week from today (the form only takes dates from today on)
+  const due = new Date(Date.now() + 7 * 86400000);
+  const dueIso = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`;
+  await form.getByLabel('By when').fill(dueIso);
   await form.getByRole('button', { name: 'Acknowledge and assign' }).click();
-  await expect.poll(() => sent[11]).toEqual({ recommendation: 'Drain and clean the oil separator', assigned_to: 3, due_date: '2026-11-02' });
+  await expect.poll(() => sent[11]).toEqual({ recommendation: 'Drain and clean the oil separator', assigned_to: 3, due_date: dueIso });
   // one NC still waits, so the report stays open
   const card = page.getByRole('article', { name: 'NC 15/CBD/01' });
   await expect(card).toContainText('Corrective action open (unresolved)');
