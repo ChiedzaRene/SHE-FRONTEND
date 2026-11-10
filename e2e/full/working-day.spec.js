@@ -550,10 +550,10 @@ test.describe.serial('a working day', () => {
     await expect(manager.getByText('Account is disabled. Contact your administrator.')).toBeVisible();
   });
 
-  test('the admin looks up everything the manager did in the audit log', async ({ page }) => {
+  test('the admin looks up everything the manager did in the audit trail', async ({ page }) => {
     await signIn(page, ADMIN.email, ADMIN.password);
-    await openMenu(page, 'Settings');
-    await page.getByRole('tab', { name: 'Audit log' }).click();
+    await openMenu(page, 'Audit Trail');
+    await expect(page.getByRole('heading', { name: 'Audit Trail' })).toBeVisible();
     await page.getByRole('combobox', { name: 'Person' }).click();
     await page.getByLabel('Search people').fill('tendai');
     await page.getByRole('option', { name: /Tendai Moyo/ }).click();
@@ -562,6 +562,9 @@ test.describe.serial('a working day', () => {
     await expect(log).toContainText('Signed in');
     await expect(log).toContainText(/incident/i);
     await expect(log).toContainText(/password/i);
+    // an entry opens to show exactly what changed, before and after
+    await page.getByRole('button', { name: 'Show what changed' }).first().click();
+    await expect(page.locator('.audit-change-table').first()).toBeVisible();
   });
 
   test('on a phone, the menu opens from the menu button and closes after choosing a page', async ({ page }) => {
