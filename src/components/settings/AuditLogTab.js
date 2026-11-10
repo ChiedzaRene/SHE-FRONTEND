@@ -20,6 +20,47 @@ const Stat = ({ label, value, warn }) => (
   </div>
 );
 
+// What changed in one entry: each record, then each field with its value before and after
+const OPS = { RECORD_CREATED: "Added", RECORD_UPDATED: "Changed", RECORD_DELETED: "Deleted" };
+const fieldName = (key) => key.replace(/_id$/, "").replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+const shown = (v, side) => {
+  const value = v[side];
+  if (value === null || value === undefined || value === "") return <span style={{ color: "#94a3b8" }}>—</span>;
+  const label = v[`${side}_label`];
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return label ? `${label} (#${value})` : String(value);
+};
+
+function Changes({ changes }) {
+  return (
+    <div className="audit-changes">
+      {changes.map((c, i) => (
+        <div key={i} className="audit-change">
+          <div className="audit-change-head">
+            <strong>{OPS[c.op] || c.op}</strong> {c.table_label || c.table}{c.id ? ` #${c.id}` : ""}
+          </div>
+          {Object.keys(c.fields || {}).length > 0 && (
+            <table className="audit-change-table">
+              <thead>
+                <tr><th>Field</th>{c.op !== "RECORD_CREATED" && <th>Before</th>}{c.op !== "RECORD_DELETED" && <th>After</th>}</tr>
+              </thead>
+              <tbody>
+                {Object.entries(c.fields).map(([key, v]) => (
+                  <tr key={key}>
+                    <td>{fieldName(key)}</td>
+                    {c.op !== "RECORD_CREATED" && <td className="audit-before">{shown(v, "old")}</td>}
+                    {c.op !== "RECORD_DELETED" && <td className="audit-after">{shown(v, "new")}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function AuditLogTab() {
   const [facets, setFacets] = useState({ actions: [], resources: [], users: [], action_labels: {}, resource_labels: {} });
   const [email, setEmail] = useState(""); // the person picked; "" means everyone
@@ -31,6 +72,7 @@ export default function AuditLogTab() {
   const [refresh, setRefresh] = useState(0);
 
   const [rows, setRows] = useState([]);
+  const [open, setOpen] = useState({}); // entry id -> its changes are showing
   const [total, setTotal] = useState(0);
   const [person, setPerson] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -217,7 +259,8 @@ export default function AuditLogTab() {
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.id}>
+                  <React.Fragment key={r.id}>
+                  <tr>
                     <td style={{ whiteSpace: "nowrap" }}>
                       <div style={{ fontWeight: 600 }}>{fmtDate(r.timestamp)}</div>
                       <div style={{ color: "#64748b", fontSize: "0.8rem" }}>{fmtTime(r.timestamp)}</div>
@@ -226,9 +269,25 @@ export default function AuditLogTab() {
                     {!email && <td>{(r.user_role || "").replace(/_/g, " ")}</td>}
                     <td><span className="badge badge-pending" title={r.action} style={{ textTransform: "none", whiteSpace: "normal" }}>{actionName(r.action)}</span></td>
                     <td>{areaName(r.resource)}{r.resource_id ? ` #${r.resource_id}` : ""}</td>
-                    <td style={{ maxWidth: 360 }}>{r.details}</td>
+                    <td style={{ maxWidth: 360 }}>
+                      {r.details}
+                      {(r.changes || []).length > 0 && (
+                        <div>
+                          <button type="button" className="link-button audit-toggle" aria-expanded={!!open[r.id]}
+                            onClick={() => setOpen((o) => ({ ...o, [r.id]: !o[r.id] }))}>
+                            {open[r.id] ? "Hide changes" : "Show what changed"}
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td>{r.ip_address}</td>
                   </tr>
+                  {open[r.id] && (
+                    <tr className="audit-changes-row">
+                      <td colSpan={email ? 5 : 7}><Changes changes={r.changes} /></td>
+                    </tr>
+                  )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>

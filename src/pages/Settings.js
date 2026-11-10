@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { UserCircle, Target, ScrollText } from "lucide-react";
+import { UserCircle, Target } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AccountTab from "../components/settings/AccountTab";
 import TargetsTab from "../components/settings/TargetsTab";
-import AuditLogTab from "../components/settings/AuditLogTab";
 import { useFeedback } from "../components/Feedback";
 
 import { homeFor } from "../utils/home";
@@ -23,7 +22,6 @@ export default function Settings() {
       [
         { id: "account", label: "My account", icon: UserCircle, show: true, Component: AccountTab },
         { id: "targets", label: "Safety targets", icon: Target, show: !forced && (role === "admin" || role === "super_admin"), Component: TargetsTab },
-        { id: "audit", label: "Audit log", icon: ScrollText, show: !forced && role === "super_admin", Component: AuditLogTab },
       ].filter((t) => t.show),
     [role, forced],
   );

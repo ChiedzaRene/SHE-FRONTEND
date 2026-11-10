@@ -21,6 +21,7 @@ const InspectionReport = lazy(() => import("./pages/InspectionReport"));
 const Legal = lazy(() => import("./pages/Legal"));
 const Trainings = lazy(() => import("./pages/Training"));
 const UserManagement = lazy(() => import("./pages/Users"));
+const AuditTrail = lazy(() => import("./pages/AuditTrail"));
 const SiteHours = lazy(() => import("./pages/SiteHours"));
 const SheFiles = lazy(() => import("./pages/SheFiles"));
 const Reports = lazy(() => import("./pages/Reports"));
@@ -40,6 +41,7 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={["admin", "super_admin"]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/users" element={<UserManagement />} />
+              <Route path="/audit-trail" element={<AuditTrail />} />
             </Route>
 
             {/* Admin, SHE Team & Site Manager (Read-only for Site Manager in page logic) */}

@@ -5,6 +5,7 @@ import emblem from "../assets/glow-emblem.png";
 import NotificationBell from "./NotificationBell";
 import { isReadOnly, isSheStaff, ROLE_LABELS } from "../utils/roles";
 import {
+  ScrollText,
   LayoutDashboard,
   Factory,
   AlertTriangle,
@@ -80,6 +81,7 @@ export default function Sidebar({ id }) {
     if (role === "admin") {
       baseLinks.push(
         { to: "/users", icon: Users, label: "Users" },
+        { to: "/audit-trail", icon: ScrollText, label: "Audit Trail" },
       );
     }
 
