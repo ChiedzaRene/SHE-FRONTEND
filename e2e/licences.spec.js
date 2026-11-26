@@ -120,3 +120,52 @@ test('many sites start folded, worst first; the status buttons show only those l
   await expect(heads).toHaveCount(1);
   await expect(heads.first()).toContainText('Borrowdale');
 });
+
+// An EIA licence is renewed every quarter and uploaded by the SHE team only
+const eiaCell = (over = {}) => ({ licence_type: 'ema_eia', name: 'Environmental Impact Assessment (EIA) licence', issuer: 'EMA',
+  current: null, status: 'missing', status_label: 'Not recorded', history: [], valid_months: 3, reminder_days: [30, 14],
+  she_only: true, can_edit: true, ...over });
+const withEia = (cell) => {
+  const reg = register();
+  reg.sites[0].licences.push(cell);
+  return reg;
+};
+const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+test('the SHE team uploads the quarterly EIA licence; its expiry fills itself in three months on', async ({ page }) => {
+  let sent = null;
+  await mockApi(page, {
+    'GET /licences': withEia(eiaCell()),
+    'POST /licences': (route, req) => { sent = req.postDataBuffer().toString('latin1');
+      return route.fulfill(json(201, lic({ licence_type: 'ema_eia' }))); },
+  });
+  await signIn(page, { role: 'she_team' });
+  await page.goto('/legal');
+  await page.getByRole('button', { name: 'Environmental Impact Assessment (EIA) licence at Msasa Depot: Not recorded' }).click();
+  const dialog = page.getByRole('dialog', { name: /EIA\) licence at Msasa Depot/ });
+  await expect(dialog).toContainText('Renewed every quarter. The site and the SHE team are reminded 1 month and 2 weeks before it expires.');
+  const today = new Date();
+  await expect(dialog.getByLabel('Issue date')).toHaveValue(isoOf(today));
+  // changing the issue date moves the expiry with it, three months on (end of a short month: its last day)
+  await dialog.getByLabel('Issue date').fill('2026-11-30');
+  await expect(dialog.getByLabel('Expiry / payment due date')).toHaveValue('2027-02-28');
+  await dialog.getByLabel('Licence certificate (PDF, photo or document)').setInputFiles({ name: 'eia-q4.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4') });
+  await dialog.getByRole('button', { name: 'Save licence' }).click();
+  await expect.poll(() => sent).toContain('name="licence_type"\r\n\r\nema_eia');
+  for (const part of ['name="issue_date"\r\n\r\n2026-11-30', 'name="expiry_date"\r\n\r\n2027-02-28', 'filename="eia-q4.pdf"']) expect(sent).toContain(part);
+});
+
+test('a site manager sees their EIA licence but cannot upload it', async ({ page }) => {
+  const current = lic({ licence_type: 'ema_eia', name: 'Environmental Impact Assessment (EIA) licence', issuer: 'EMA',
+    expiry_date: '2026-12-10', days_left: 14, status: 'due_1_month', status_label: 'Due within 2 weeks' });
+  await mockApi(page, { 'GET /licences': withEia(eiaCell({ current, status: 'due_1_month', status_label: 'Due within 2 weeks', can_edit: false })) });
+  await signIn(page, { role: 'site_manager', site_id: 1 });
+  await page.goto('/legal');
+  const row = page.getByRole('button', { name: /^Environmental Impact Assessment \(EIA\) licence at Msasa Depot: Due within 2 weeks/ });
+  await row.click();
+  const dialog = page.getByRole('dialog', { name: /EIA\) licence at Msasa Depot/ });
+  await expect(dialog.locator('.lic-banner-mode')).toHaveText('Viewing');
+  await expect(dialog).toContainText('Uploaded by the SHE team.');
+  await expect(dialog.getByRole('form')).toHaveCount(0);
+  await expect(dialog.getByText('Due within 2 weeks').first()).toBeVisible();
+});

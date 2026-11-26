@@ -286,7 +286,9 @@ test('the SHE team assigns corrective actions with the hierarchy of control; the
   await expect(record.locator('.ca-fixed')).toHaveText('Diesel spilt at pump 3 during delivery');
   await expect(record.getByLabel('Action plan (what will be done)')).toHaveValue('');   // only the plan goes here
   await record.getByLabel('Assigned Personnel').fill('Peter Two');
-  await record.getByLabel('Deadline').fill('2026-11-15');
+  // a deadline a week from today (the form only takes dates from today on)
+  const due = new Date(Date.now() + 7 * 86400000);
+  await record.getByLabel('Deadline').fill(`${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`);
   await record.getByLabel('Hierarchy of control').selectOption('redesign');
   await record.getByLabel('Action plan (what will be done)').fill('Fit an overfill alarm on pump 3');
   await record.getByRole('button', { name: 'Assign Action' }).click();
