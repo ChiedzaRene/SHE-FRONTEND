@@ -2028,3 +2028,4 @@ a.dash-kpi-link:focus-visible { outline: 3px solid var(--primary); outline-offse
 .audit-change-table th, .audit-change-table td { padding: 4px 10px; }
 .audit-before { color: #991B1B; }
 .audit-after { color: #166534; }
+.lic-rhythm { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; border-radius: 8px; padding: 8px 12px; font-size: 0.88rem; margin: 10px 0; }

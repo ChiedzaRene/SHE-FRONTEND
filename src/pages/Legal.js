@@ -20,6 +20,16 @@ const fmtDay = (iso) => {
   return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
 };
 const ACCEPT = ".pdf,.png,.jpg,.jpeg,.gif,.webp,.doc,.docx";
+// The server names each licence's status for its own rhythm (an EIA licence is due "within 2 weeks", not "a month")
+const statusText = (item) => item.status_label || LICENCE_STATUS[item.status].label;
+const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+// The same day `months` later (or the last day of a shorter month), like the server works it out
+const addMonths = (iso, months) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  const last = new Date(y, m - 1 + months + 1, 0).getDate();
+  return isoOf(new Date(y, m - 1 + months, Math.min(d, last)));
+};
+const remindText = (days) => days.map((n) => ({ 90: "3 months", 30: "1 month", 14: "2 weeks", 7: "1 week" }[n] || `${n} days`)).join(" and ");
 const dueText = (lic) => {
   if (!lic) return "";
   if (lic.days_left < 0) return `Expired ${fmtDay(lic.expiry_date)}`;
@@ -27,14 +37,23 @@ const dueText = (lic) => {
   return `Due ${fmtDay(lic.expiry_date)} (${lic.days_left} day${lic.days_left === 1 ? "" : "s"})`;
 };
 
-function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
+function LicenceDialog({ site, cell, canEdit: mayEditLicences, onClose, onSaved }) {
   const { notify } = useFeedback();
   const current = cell.current;
-  const [form, setForm] = useState({ licence_number: "", issue_date: "", expiry_date: "", amount: "", notes: "" });
+  // some licences (EIA) are only uploaded by the SHE team; everyone else sees them read-only
+  const canEdit = mayEditLicences && cell.can_edit !== false;
+  const months = cell.valid_months;
+  const today = isoOf(new Date());
+  const [form, setForm] = useState({ licence_number: "", issue_date: months ? today : "", expiry_date: months ? addMonths(today, months) : "", amount: "", notes: "" });
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState(null);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  // a quarterly licence runs three months from its issue date: the expiry fills itself in (and can still be changed)
+  const setIssue = (e) => {
+    const issue = e.target.value;
+    setForm((f) => ({ ...f, issue_date: issue, ...(months && issue ? { expiry_date: addMonths(issue, months) } : {}) }));
+  };
 
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -80,7 +99,7 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
             <span className="lic-banner-mode">{canEdit ? "Editing" : "Viewing"}</span>
             <div className="lic-banner-site">{site.name}{site.region && <span> · {site.region}</span>}</div>
             <div className="lic-banner-licence">
-              {cell.name} <span className={`badge ${LICENCE_STATUS[cell.status].cls}`}>{LICENCE_STATUS[cell.status].label}</span>
+              {cell.name} <span className={`badge ${LICENCE_STATUS[cell.status].cls}`}>{statusText(cell)}</span>
             </div>
             <div className="lic-banner-issuer">Issued by {cell.issuer}</div>
           </div>
@@ -89,7 +108,7 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
         <div className="modal-body">
           {current ? (
             <dl className="lic-current">
-              <div><dt>Status</dt><dd><span className={`badge ${LICENCE_STATUS[cell.status].cls}`}>{LICENCE_STATUS[cell.status].label}</span></dd></div>
+              <div><dt>Status</dt><dd><span className={`badge ${LICENCE_STATUS[cell.status].cls}`}>{statusText(cell)}</span></dd></div>
               <div><dt>Expires / due</dt><dd>{dueText(current)}</dd></div>
               <div><dt>Licence number</dt><dd>{current.licence_number || "—"}</dd></div>
               <div><dt>Issued</dt><dd>{current.issue_date ? fmtDay(current.issue_date) : "—"}</dd></div>
@@ -98,6 +117,12 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
               {current.notes && <div className="lic-wide"><dt>Notes</dt><dd>{current.notes}</dd></div>}
             </dl>
           ) : <p className="tt-muted">This licence hasn't been recorded for {site.name} yet.</p>}
+          {months && (
+            <p className="lic-rhythm">
+              Renewed every {months === 3 ? "quarter" : `${months} months`}. The site and the SHE team are reminded {remindText(cell.reminder_days || [])} before it expires.
+              {!canEdit && cell.she_only && " Uploaded by the SHE team."}
+            </p>
+          )}
 
           {canEdit && (
             <form onSubmit={save} aria-label={current ? "Record the renewal" : "Record the licence"} className="lic-form">
@@ -109,7 +134,7 @@ function LicenceDialog({ site, cell, canEdit, onClose, onSaved }) {
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="lic-issue">Issue date</label>
-                  <input id="lic-issue" type="date" className="form-control" value={form.issue_date} onChange={set("issue_date")} />
+                  <input id="lic-issue" type="date" className="form-control" value={form.issue_date} onChange={setIssue} />
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="lic-number">Licence number</label>
@@ -188,7 +213,7 @@ function SiteLicences({ site, cells, expanded, onToggle, onOpen, openType }) {
       {expanded && (
         <ul className="lic-items">
           {cells.map((cell) => {
-            const st = LICENCE_STATUS[cell.status];
+            const st = { ...LICENCE_STATUS[cell.status], label: statusText(cell) };
             return (
               <li key={cell.licence_type}>
                 <button type="button" className={`lic-item ${cell.status}${openType === cell.licence_type ? " is-open" : ""}`}
@@ -255,13 +280,13 @@ function LicenceRegister() {
           <ul className="lic-due-list">
             {data.due.map((d) => (
               <li key={d.id}>
-                <span className={`badge ${LICENCE_STATUS[d.status].cls}`}>{LICENCE_STATUS[d.status].label}</span>
+                <span className={`badge ${LICENCE_STATUS[d.status].cls}`}>{statusText(d)}</span>
                 <span><strong>{d.name}</strong> · {d.site_name}</span>
                 <span className="tt-muted">{dueText(d)}</span>
               </li>
             ))}
           </ul>
-          <p className="tt-muted" style={{ margin: "8px 0 0" }}>The site and the SHE team are reminded 3 months and 1 month before each licence is due.</p>
+          <p className="tt-muted" style={{ margin: "8px 0 0" }}>The site and the SHE team are reminded 3 months and 1 month before each licence is due (EIA licences, renewed every quarter: 1 month and 2 weeks before).</p>
         </section>
       )}
 

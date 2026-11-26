@@ -6,7 +6,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 has no browsers for newer Ubuntu releases
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,7 +21,7 @@ jobs:
 
   ui-tests:
     # Drives the app through its screens (sign in, click, type) against the real backend and a fresh database
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 has no browsers for newer Ubuntu releases
     env:
       BACKEND_DIR: ${{ github.workspace }}/../SHE-BACKEND
       PYTHON: python
@@ -61,7 +61,7 @@ jobs:
 
   ui-tests-simulated:
     # Situations a real server can't produce on demand: unreachable, very slow, or an older version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # Playwright 1.56 has no browsers for newer Ubuntu releases
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
