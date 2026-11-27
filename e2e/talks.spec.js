@@ -14,7 +14,7 @@ const current = (over = {}) => ({
   cumulative: { due: 4, done: 3, rate: 75, missed_weeks: ['2026-10-05'] }, tracking_since: '2026-09-21', ...over,
 });
 
-test('on Monday the site manager submits the toolbox talk with its register', async ({ page }) => {
+test('while the window is open the site manager submits the toolbox talk with its register', async ({ page }) => {
   let sent = null;
   let state = current();
   await mockApi(page, {
@@ -54,13 +54,15 @@ test('on Monday the site manager submits the toolbox talk with its register', as
 
 test('after Tuesday the week is closed and nothing can be submitted', async ({ page }) => {
   await mockApi(page, {
-    'GET /safety-talks/current': current({ open: false, week_of: null, deadline: null, next_open: '2026-10-26' }),
+    'GET /safety-talks/current': current({ open: false, week_of: null, deadline: null, next_open: '2026-10-25' }),
     'GET /safety-talks/overview': { talks: [talk()], sites: [], missed: [] },
     'GET /safety-talks/7/view': (route) => route.fulfill({ status: 200, contentType: 'application/pdf', body: PDF, headers: { 'access-control-allow-origin': '*' } }),
   });
   await signIn(page, { role: 'site_manager', site_id: 1 });
   await page.goto('/trainings');
   await expect(page.getByRole('region', { name: "This week's talk" })).toContainText('Submissions are closed');
+  await expect(page.getByRole('region', { name: "This week's talk" })).toContainText('from Sunday until the end of Tuesday');
+  await expect(page.getByRole('region', { name: "This week's talk" })).toContainText(/Sunday, (25 October|October 25)/);
   await expect(page.getByRole('form', { name: "Submit this week's talk" })).toHaveCount(0);
   await page.getByRole('button', { name: 'Open Safe refuelling' }).click();
   await expect(page.getByRole('dialog', { name: 'Safe refuelling' }).getByRole('img', { name: 'Page 1 of 1' })).toBeVisible();

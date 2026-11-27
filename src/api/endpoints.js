@@ -147,7 +147,7 @@ export const trainingsApi = {
   },
 };
 
-// Weekly toolbox talks: site managers submit Monday or Tuesday; the SHE team tracks every site
+// Weekly toolbox talks: site managers submit from Sunday to Tuesday; the SHE team tracks every site
 export const safetyTalksApi = {
   current: () => api.get("/safety-talks/current"),
   // form: FormData with title, attendees, notes, file

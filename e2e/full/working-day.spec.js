@@ -256,8 +256,8 @@ test.describe.serial('a working day', () => {
     await signIn(page, MANAGER.email, MANAGER.own);
     await openMenu(page, 'SHE Talks & Training');
     const week = page.getByRole('region', { name: "This week's talk" });
-    const day = new Date().getDay();               // talks can be submitted on Monday (1) and Tuesday (2)
-    const windowOpen = day === 1 || day === 2;
+    const day = new Date().getDay();               // talks can be submitted on Sunday (0), Monday (1) and Tuesday (2)
+    const windowOpen = day === 0 || day === 1 || day === 2;
     if (windowOpen) {
       const form = page.getByRole('form', { name: "Submit this week's talk" });
       await form.getByLabel('Title of the talk').fill('Safe refuelling');

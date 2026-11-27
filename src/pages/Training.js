@@ -31,9 +31,10 @@ const day = (iso, opts = { weekday: "short", day: "numeric", month: "short", yea
 const fmtPct = (n) => (n === null || n === undefined ? "—" : `${Math.round(n)}%`);
 
 const rateTone = (rate) => (rate == null ? "" : rate >= 90 ? "good" : rate >= 70 ? "warn" : "bad");
-const nextMonday = () => {
+// The next Sunday, when the next submission window opens
+const nextSunday = () => {
   const d = new Date();
-  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  d.setDate(d.getDate() + ((7 - d.getDay()) % 7 || 7));
   return d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });
 };
 
@@ -54,7 +55,7 @@ function MissedPanel({ missed }) {
       </h3>
       <p className="tt-panel-note">
         The deadline passed without a talk ({missed.length} week{missed.length === 1 ? "" : "s"} in this period).
-        The next week opens on {nextMonday()}.
+        The next week opens on {nextSunday()}.
       </p>
       {bySite.length ? (
         <ul className="tt-wanting-list tt-wanting-row">
@@ -86,7 +87,7 @@ function PendingPanel({ week }) {
       <p className="tt-panel-note">
         {week?.open
           ? <>Week of {day(week.week_of, { day: "numeric", month: "short" })} · closes at the end of <strong>{day(week.deadline, { weekday: "long", day: "numeric", month: "short" })}</strong></>
-          : <>No week is open. The next one opens on {nextMonday()}.</>}
+          : <>No week is open. The next one opens on {nextSunday()}.</>}
       </p>
       {pending.length ? (
         <ul className="tt-wanting-list tt-wanting-row">
@@ -273,7 +274,7 @@ function ManagerTalks() {
             ) : (
               <>
                 <h2>Submissions are closed</h2>
-                <p>Talks are given on Monday and can be submitted until the end of Tuesday. The next window opens on {day(current.next_open, { weekday: "long", day: "numeric", month: "long" })}.</p>
+                <p>Talks can be submitted from Sunday until the end of Tuesday. The next window opens on {day(current.next_open, { weekday: "long", day: "numeric", month: "long" })}.</p>
               </>
             )}
           </div>
@@ -734,7 +735,7 @@ export default function Trainings() {
           <h1 className="page-title">SHE Talks &amp; Training</h1>
           <p className="page-subtitle">
             {isManager
-              ? "Give the SHE talk every Monday and submit it by the end of Tuesday. Trainings given at your site by the SHE team are listed too."
+              ? "Give the SHE talk each week and submit it between Sunday and the end of Tuesday. Trainings given at your site by the SHE team are listed too."
               : "Weekly SHE talks from every site, and trainings given by the SHE team."}
           </p>
         </div>
