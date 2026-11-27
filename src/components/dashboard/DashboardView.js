@@ -16,8 +16,9 @@ import {
   UserCircle2,
   Info,
   MessageSquare,
+  FileCheck,
 } from "lucide-react";
-import { dashboardApi, sitesApi } from "../../api/endpoints";
+import { dashboardApi, licencesApi, sitesApi } from "../../api/endpoints";
 import { fmtRate, siteStatus, STATUS_STYLE } from "../../utils/rates";
 import useSafetyTargets from "../../hooks/useSafetyTargets";
 import { useAuth } from "../../context/AuthContext";
@@ -152,6 +153,25 @@ export default function DashboardView({ title, subtitle }) {
   useEffect(() => {
     sitesApi.getAll().then((res) => setSites(res.data || [])).catch(() => setSites([]));
   }, []);
+
+  // Administrators also see where the sites stand on their quarterly EIA licences (a snapshot, not a period figure)
+  const showEia = user?.role === "admin" || user?.role === "super_admin";
+  const [eia, setEia] = useState(null); // { valid, due, expired, missing, total } or null while loading / if it failed
+  useEffect(() => {
+    if (!showEia) return undefined;
+    let live = true;
+    setEia(null);
+    licencesApi.register(siteId ? { site_id: siteId } : region ? { region } : {})
+      .then((res) => {
+        if (!live) return;
+        const cells = (res.data?.sites || []).flatMap((s) => s.licences || []).filter((c) => c.licence_type === "ema_eia");
+        const count = (...statuses) => cells.filter((c) => statuses.includes(c.status)).length;
+        setEia({ total: cells.length, valid: count("valid"), due: count("due_3_months", "due_1_month"),
+          expired: count("expired"), missing: count("missing") });
+      })
+      .catch(() => live && setEia(null));
+    return () => { live = false; };
+  }, [showEia, siteId, region]);
 
   useEffect(() => {
     let live = true;
@@ -339,6 +359,12 @@ export default function DashboardView({ title, subtitle }) {
             <Kpi label="SHE talks" value={fmtPct(t.talks_rate)} Icon={MessageSquare} color="#1d4ed8"
               sub={`${fmtNum(t.talks_done ?? 0)} of ${fmtNum(t.talks_due ?? 0)} weeks submitted`} change={change("talks_rate")}
               to={pageFor("talks")} />
+            {showEia && (
+              <Kpi label="EIA licences" value={eia ? `${eia.valid} of ${eia.total} valid` : "—"} Icon={FileCheck} color="#15803d"
+                sub={eia ? [eia.due && `${eia.due} due soon`, eia.expired && `${eia.expired} expired`,
+                  eia.missing && `${eia.missing} not recorded`].filter(Boolean).join(" · ") || "All up to date" : "Quarterly, uploaded by the SHE team"}
+                to={region && !siteId ? `/legal?region=${encodeURIComponent(region)}` : "/legal"} />
+            )}
             {!siteId && (
               <Kpi label="Sites" value={fmtNum(t.sites)} Icon={Building2} color="#475569"
                 sub={`${fmtNum(t.lost_time_injuries)} lost-time injur${t.lost_time_injuries === 1 ? "y" : "ies"}`}

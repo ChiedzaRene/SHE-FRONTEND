@@ -163,3 +163,41 @@ test('on a narrow screen the open menu sits above the map, and its items can be 
   await sidebar.getByRole('link', { name: 'Settings', exact: true }).click();
   await expect(page).toHaveURL(/\/settings$/);
 });
+
+// The licence register as /licences returns it: each site with its EIA licence status
+const licenceRegister = (statuses) => ({
+  types: [], regions: ['Harare'], counts: {}, due: [], can_edit: true,
+  sites: statuses.map((status, i) => ({ site_id: i + 1, name: `Site ${i + 1}`, region: 'Harare', licences: [
+    { licence_type: 'fire_brigade', status: 'expired' },                 // other licences don't count here
+    { licence_type: 'ema_eia', status } ] })),
+});
+
+test('admins see where every site stands on its quarterly EIA licence, and the card opens the Legal page', async ({ page }) => {
+  const asked = [];
+  await mockApi(page, {
+    'GET /sites': [...sites.map((s) => ({ ...s, region: 'Harare' }))],
+    'GET /dashboard/summary': (route) => route.fulfill(json(200, { ...dashboardSummary(), regions: ['Harare'] })),
+    'GET /licences': (route, req) => {
+      asked.push(new URL(req.url()).searchParams.get('region'));
+      return route.fulfill(json(200, licenceRegister(['valid', 'valid', 'due_1_month', 'due_3_months', 'expired', 'missing'])));
+    },
+  });
+  await signIn(page, { role: 'admin' });
+  const card = page.locator('.dash-kpi').filter({ has: page.getByText('EIA licences', { exact: true }) });
+  await expect(card).toContainText('2 of 6 valid');
+  await expect(card).toContainText('2 due soon · 1 expired · 1 not recorded');
+  // following the dashboard's region filter
+  await page.getByLabel('Region').selectOption('Harare');
+  await expect.poll(() => asked).toContain('Harare');
+  await expect(card).toHaveAttribute('href', '/legal?region=Harare');
+  await card.click();
+  await expect(page).toHaveURL(/\/legal\?region=Harare$/);
+});
+
+test('the SHE team dashboard has no EIA licences card', async ({ page }) => {
+  const calls = await mockApi(page, { 'GET /sites': sites, 'GET /dashboard/summary': dashboardSummary() });
+  await signIn(page, { role: 'she_team' });
+  await expect(page.getByRole('heading', { name: 'Overall SHE Dashboard' })).toBeVisible();
+  await expect(page.locator('.dash-kpi').filter({ has: page.getByText('EIA licences', { exact: true }) })).toHaveCount(0);
+  expect(calls).not.toContain('GET /licences');
+});
